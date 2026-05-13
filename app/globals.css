@@ -28,8 +28,8 @@ em { font-style:normal; background:var(--grad); -webkit-background-clip:text; -w
 
 .lnav { position:fixed; top:0; left:0; right:0; z-index:100; padding:1rem 2rem; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(to bottom,rgba(9,9,11,0.8),transparent); transition:background .4s,padding .3s; }
 .lnav.solid { background:rgba(9,9,11,0.96); padding:.85rem 2rem; border-bottom:1px solid var(--border); }
-.ln-logo { font-size:22px; font-weight:800; letter-spacing:-.5px; color:#fff; }
-.ln-logo span { background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.ln-logo { font-size:22px; font-weight:800; letter-spacing:-.5px; color:#12A0D7; }
+.ln-logo span { background:none; -webkit-text-fill-color:#12A0D7; color:#12A0D7; }
 .ln-menu { display:flex; align-items:center; gap:1.8rem; }
 .ln-menu a { font-size:13px; font-weight:500; color:var(--text2); transition:color .2s; }
 .ln-menu a:hover { color:#fff; }
@@ -206,8 +206,8 @@ em { font-style:normal; background:var(--grad); -webkit-background-clip:text; -w
 
 .ln-footer { background:var(--dark); border-top:1px solid var(--border); padding:4rem 2rem 2rem; }
 .footer-inner { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr auto; gap:4rem; padding-bottom:3rem; border-bottom:1px solid var(--border); }
-.footer-brand .ln-logo-sm { font-size:20px; font-weight:800; color:#fff; margin-bottom:.8rem; }
-.footer-brand .ln-logo-sm span { background:var(--grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.footer-brand .ln-logo-sm { font-size:20px; font-weight:800; color:#12A0D7; margin-bottom:.8rem; }
+.footer-brand .ln-logo-sm span { background:none; -webkit-text-fill-color:#12A0D7; color:#12A0D7; }
 .footer-brand p { font-size:13px; color:var(--text2); line-height:1.7; }
 .footer-links { display:flex; gap:4rem; }
 .fcol { display:flex; flex-direction:column; gap:.6rem; }
