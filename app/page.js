@@ -119,7 +119,7 @@ export default function Home() {
         <div className="hero-bg" />
         <div className="hero-content">
           <div className="hero-badge" data-anim="up">Milano - Roma</div>
-          <h1 className="hero-title" data-anim="up">Cosa fai<br /><em>stasera?</em></h1>
+          <h1 className="hero-title" data-anim="up">Cosa fai<br /><em>stasera?!</em></h1>
           <p className="hero-sub" data-anim="up" data-delay="200">
             Discoteche, feste universitarie, cene show e molto altro.<br />
             Prenota il tuo posto in pochi secondi.
