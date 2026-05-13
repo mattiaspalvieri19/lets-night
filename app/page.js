@@ -25,58 +25,25 @@ function formatTime(timeStr) {
   return timeStr ? timeStr.substring(0,5) : '';
 }
 
-function EventCard({ ev, delay }) {
-  const catClass = 'cat-' + ev.category.toLowerCase().replace(/ /g,'-');
-  const colors = COLORS_BY_CAT[ev.category] || ['#1a0533','#0d0d1a'];
-  const priceLabel = ev.price > 0 ? 'EUR ' + ev.price : 'Lista';
-  return (
-    <Link href={'/event/' + ev.id} className="ev-card" data-anim="up" style={{ '--delay': delay + 'ms' }}>
-      <div className="ev-visual" style={{ background:'linear-gradient(135deg,' + colors[0] + ',' + colors[1] + ')' }}>
-        <div className="ev-top">
-          <span className={'ev-cat ' + catClass}>{ev.category}</span>
-          <div className="ev-badges">
-            {ev.is_sponsored && <span className="badge-sp-sm">Sponsorizzato</span>}
-            {ev.is_hot && <span className="badge-hot-sm">HOT</span>}
-          </div>
-        </div>
-        <div className="ev-spheres">
-          {[...Array(6)].map((_,i) => <div key={i} className="ev-sphere" style={{ animationDelay:(i*.2)+'s' }} />)}
-        </div>
-      </div>
-      <div className="ev-body">
-        <div className="ev-meta">
-          <span className="ev-venue">{ev.venues?.name || 'Locale'}</span>
-          <span className="ev-price">{priceLabel}</span>
-        </div>
-        <h3 className="ev-title">{ev.title}</h3>
-        <div className="ev-info">
-          <span className="ev-date">{formatDate(ev.event_date)} - {formatTime(ev.event_time)}</span>
-        </div>
-        <div className="ev-zona">{ev.venues?.zona}, {ev.venues?.city}</div>
-      </div>
-      <div className="ev-footer">
-        <span className="ev-cta">Prenota ora</span>
-      </div>
-    </Link>
-  );
-}
-
 export default function Home() {
-  const cursorRef = useRef(null);
-  const innerRef = useRef(null);
+  const scrollerRef = useRef(null);
   const [city, setCity] = useState('Milano');
   const [cat, setCat] = useState('Tutti');
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [walletEmail, setWalletEmail] = useState('');
+  const [walletSubmitted, setWalletSubmitted] = useState(false);
+  const [walletLoading, setWalletLoading] = useState(false);
+
 
   useEffect(() => {
     async function loadEvents() {
       setLoading(true);
       const { data, error } = await supabase
         .from('events')
-        .select('*, venues(name, zona, city)')
+        .select('*, venues(name, zona, city, is_partner)')
         .eq('is_active', true)
         .order('event_date', { ascending: true });
       if (error) console.error('Errore caricamento eventi:', error);
@@ -85,37 +52,6 @@ export default function Home() {
     }
     loadEvents();
   }, []);
-
-  useEffect(() => {
-    const dot = cursorRef.current;
-    const ring = innerRef.current;
-    if (!dot || !ring) return;
-    let mx=0, my=0, cx=0, cy=0, raf;
-    const onMove = e => { mx=e.clientX; my=e.clientY; };
-    window.addEventListener('mousemove', onMove);
-    const tick = () => {
-      cx += (mx-cx)*.14; cy += (my-cy)*.14;
-      dot.style.transform = 'translate('+(mx-4)+'px,'+(my-4)+'px)';
-      ring.style.transform = 'translate('+(cx-20)+'px,'+(cy-20)+'px)';
-      raf = requestAnimationFrame(tick);
-    };
-    tick();
-    const over = e => { if (e.target.closest('a,button,input,.ev-card')) ring.classList.add('expand'); };
-    const out = () => ring.classList.remove('expand');
-    document.addEventListener('mouseover', over);
-    document.addEventListener('mouseout', out);
-    const nav = document.getElementById('lnav');
-    const onScroll = () => nav && nav.classList.toggle('solid', window.scrollY > 60);
-    window.addEventListener('scroll', onScroll, { passive:true });
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('scroll', onScroll);
-      document.removeEventListener('mouseover', over);
-      document.removeEventListener('mouseout', out);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-
   useEffect(() => {
     const obs = new IntersectionObserver(entries => entries.forEach(e => {
       if (e.isIntersecting) e.target.classList.add('in');
@@ -125,6 +61,13 @@ export default function Home() {
     return () => obs.disconnect();
   }, [events, loading]);
 
+  function scrollCarousel(dir) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.8;
+    el.scrollBy({ left: dir * amount, behavior: 'smooth' });
+  }
+
   const filtered = events.filter(e => {
     if (e.venues?.city !== city) return false;
     if (cat !== 'Tutti' && e.category !== cat) return false;
@@ -132,14 +75,33 @@ export default function Home() {
     return true;
   });
 
-  const sponsored = filtered.filter(e => e.is_sponsored);
-  const rest = filtered.filter(e => !e.is_sponsored);
+  const sorted = [...filtered].sort((a, b) => {
+    const scoreA = (a.is_sponsored ? 100 : 0) + ((a.source === 'partner' || a.source === 'manual') ? 50 : 0);
+    const scoreB = (b.is_sponsored ? 100 : 0) + ((b.source === 'partner' || b.source === 'manual') ? 50 : 0);
+    if (scoreB !== scoreA) return scoreB - scoreA;
+    return new Date(a.event_date) - new Date(b.event_date);
+  });
+
+
+  async function handleWalletWaitlist(e) {
+    e.preventDefault();
+    if (!walletEmail || walletLoading) return;
+    setWalletLoading(true);
+    const { error } = await supabase
+      .from('wallet_waitlist')
+      .insert({ email: walletEmail, city: city, source: 'homepage_teaser' });
+    setWalletLoading(false);
+    if (!error || error.code === '23505') {
+      setWalletSubmitted(true);
+      setWalletEmail('');
+    } else {
+      alert('Errore: riprova tra poco');
+      console.error(error);
+    }
+  }
 
   return (
     <>
-      <div className="cur-dot" ref={cursorRef} />
-      <div className="cur-ring" ref={innerRef} />
-
       <nav className="lnav" id="lnav">
         <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
         <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
@@ -205,31 +167,51 @@ export default function Home() {
 
         {loading && <div className="loading-state"><p>Caricamento eventi...</p></div>}
 
-        {!loading && sponsored.length > 0 && (
-          <>
-            <div className="ev-section-label" data-anim="right">
-              <span>In evidenza</span>
-              <span className="badge-sp">Sponsorizzati</span>
+        {!loading && sorted.length > 0 && (
+          <div className="carousel-wrap" data-anim="up">
+            <button className="carousel-arrow carousel-arrow-left" onClick={() => scrollCarousel(-1)} aria-label="Scorri a sinistra">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </button>
+            <button className="carousel-arrow carousel-arrow-right" onClick={() => scrollCarousel(1)} aria-label="Scorri a destra">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+            <div className="ev-scroller" ref={scrollerRef}>
+              {sorted.map((ev, i) => {
+                const catClass = 'cat-' + ev.category.toLowerCase().replace(/ /g,'-');
+                const colors = COLORS_BY_CAT[ev.category] || ['#1a0533','#0d0d1a'];
+                const priceLabel = ev.price > 0 ? 'EUR ' + ev.price : 'Lista';
+                return (
+                  <Link key={ev.id} href={'/event/' + ev.id} className="ev-card">
+                    <div className="ev-visual" style={{ background:'linear-gradient(135deg,' + colors[0] + ',' + colors[1] + ')' }}>
+                      <div className="ev-top">
+                        <span className={'ev-cat ' + catClass}>{ev.category}</span>
+                      </div>
+                      <div className="ev-spheres">
+                        {[0,1,2,3,4,5].map(j => <div key={j} className="ev-sphere" style={{ animationDelay:(j*.2)+'s' }} />)}
+                      </div>
+                    </div>
+                    <div className="ev-body">
+                      <div className="ev-venue">{ev.venues?.name || 'Locale'}</div>
+                      <h3 className="ev-title">{ev.title}</h3>
+                      <div className="ev-date">{formatDate(ev.event_date)} - {formatTime(ev.event_time)}</div>
+                      <div className="ev-zona">{ev.venues?.zona}, {ev.venues?.city}</div>
+                    </div>
+                    <div className="ev-footer">
+                      <span className="ev-price">{priceLabel}</span>
+                      <span className="ev-cta">Prenota &rarr;</span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
-            <div className="ev-grid">
-              {sponsored.map((e,i) => <EventCard key={e.id} ev={e} delay={i*80} />)}
-            </div>
-          </>
+          </div>
         )}
 
-        {!loading && rest.length > 0 && (
-          <>
-            <div className="ev-section-label" data-anim="right" style={{ marginTop:'2.5rem' }}>
-              <span>Tutti gli eventi</span>
-              <span className="badge-hot">HOT</span>
-            </div>
-            <div className="ev-grid">
-              {rest.map((e,i) => <EventCard key={e.id} ev={e} delay={i*80} />)}
-            </div>
-          </>
-        )}
-
-        {!loading && filtered.length === 0 && (
+        {!loading && sorted.length === 0 && (
           <div className="empty-state" data-anim="up">
             <p>Nessun evento trovato per questa selezione.<br />Prova a cambiare filtro o citta.</p>
           </div>
@@ -239,21 +221,6 @@ export default function Home() {
           <Link href="/explore" className="ln-btn-outline">Vedi tutti gli eventi</Link>
         </div>
       </section>
-
-      <div className="business-banner" data-anim="up">
-        <div className="bb-inner">
-          <div className="bb-left">
-            <div className="bb-label">Per i locali</div>
-            <h2>Porta il tuo locale<br />su <em>Let&apos;s Night</em></h2>
-            <p>Raggiungi migliaia di utenti ogni sera. Gestisci prenotazioni e guadagni dalla tua dashboard personale.</p>
-          </div>
-          <div className="bb-right">
-            <div className="bb-stat"><strong>+340%</strong><span>visibilita media</span></div>
-            <div className="bb-stat"><strong>EUR 0</strong><span>costo di attivazione</span></div>
-            <Link href="/business" className="ln-btn-primary big">Inizia gratis</Link>
-          </div>
-        </div>
-      </div>
 
       <section className="how-section">
         <div className="sec-head" data-anim="right">
@@ -272,6 +239,77 @@ export default function Home() {
               <p>{s.d}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+
+      <section className="wallet-teaser" data-anim="up">
+        <div className="wt-glow" />
+        <div className="wt-inner">
+          <div className="wt-badge">
+            <span className="wt-badge-dot" />
+            COMING SOON
+          </div>
+          <div className="wt-label">Prossimamente</div>
+          <h2 className="wt-title">
+            Il tuo <em>wallet</em><br />Let&apos;s Night
+          </h2>
+          <p className="wt-sub">
+            Carica credito una volta, paga ovunque. Salta la fila al bar, 
+            prenota al volo, accumula cashback.
+          </p>
+
+          <div className="wt-benefits">
+            <div className="wt-benefit">
+              <div className="wt-benefit-icon">⚡</div>
+              <div className="wt-benefit-text">
+                <strong>Zero code al bar</strong>
+                <span>Scansiona il QR e paga in 2 secondi</span>
+              </div>
+            </div>
+            <div className="wt-benefit">
+              <div className="wt-benefit-icon">🎁</div>
+              <div className="wt-benefit-text">
+                <strong>Cashback fino all&apos;8%</strong>
+                <span>Piu carichi, piu guadagni</span>
+              </div>
+            </div>
+            <div className="wt-benefit">
+              <div className="wt-benefit-icon">👑</div>
+              <div className="wt-benefit-text">
+                <strong>Priority lane</strong>
+                <span>Accesso prioritario ai locali partner</span>
+              </div>
+            </div>
+          </div>
+
+          {!walletSubmitted ? (
+            <form className="wt-form" onSubmit={handleWalletWaitlist}>
+              <input
+                type="email"
+                required
+                placeholder="La tua email"
+                value={walletEmail}
+                onChange={e => setWalletEmail(e.target.value)}
+                disabled={walletLoading}
+              />
+              <button type="submit" disabled={walletLoading}>
+                {walletLoading ? 'Attendi...' : 'Avvisami al lancio'}
+              </button>
+            </form>
+          ) : (
+            <div className="wt-success">
+              <div className="wt-success-icon">✓</div>
+              <div>
+                <strong>Sei in lista!</strong>
+                <span>Ti avviseremo appena il wallet sara disponibile.</span>
+              </div>
+            </div>
+          )}
+
+          <div className="wt-footer-note">
+            Oltre <strong>1.200 persone</strong> gia in lista d&apos;attesa
+          </div>
         </div>
       </section>
 
