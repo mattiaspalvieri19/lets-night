@@ -1,0 +1,32 @@
+{
+  "name": "@lets-night/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build:ios": "eas build --platform ios",
+    "build:android": "eas build --platform android",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@lets-night/shared": "*",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@supabase/supabase-js": "^2.104.0",
+    "expo": "~52.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-router": "~4.0.0",
+    "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "~2.0.0",
+    "nativewind": "^4.1.23",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "react-native-url-polyfill": "^2.0.0",
+    "tailwindcss": "^3.4.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0"
+  }
+}

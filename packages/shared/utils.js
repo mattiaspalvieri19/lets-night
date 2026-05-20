@@ -1,0 +1,35 @@
+const DAYS_SHORT  = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+const DAYS_FULL   = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato'];
+const MONTHS_SHORT = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+const MONTHS_FULL  = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+// "Ven 15 Gen"
+export function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+}
+
+// "Venerdi 15 Gennaio 2026"
+export function formatDateFull(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return DAYS_FULL[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_FULL[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// "23:00"
+export function formatTime(timeStr) {
+  return timeStr ? timeStr.substring(0, 5) : '';
+}
+
+// "EUR 15" oppure "Lista"
+export function getPriceLabel(price) {
+  return price > 0 ? 'EUR ' + price : 'Lista';
+}
+
+export function isPastDate(dateStr) {
+  if (!dateStr) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return new Date(dateStr) < today;
+}
