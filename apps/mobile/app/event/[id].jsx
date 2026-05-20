@@ -1,0 +1,171 @@
+import { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Linking } from 'react-native';
+import { useLocalSearchParams, Link } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
+
+export default function EventDetailScreen() {
+  const { id } = useLocalSearchParams();
+  const [event, setEvent] = useState(null);
+  const [otherEvents, setOtherEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('events')
+        .select('*, venues(id, name, zona, city, address, phone, description, category)')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) { setNotFound(true); setLoading(false); return; }
+      setEvent(data);
+
+      if (data.venues?.id) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: others } = await supabase
+          .from('events')
+          .select('*, venues(name, zona, city)')
+          .eq('venue_id', data.venues.id)
+          .eq('is_active', true)
+          .neq('id', id)
+          .gte('event_date', today)
+          .order('event_date', { ascending: true })
+          .limit(4);
+        setOtherEvents(others || []);
+      }
+      setLoading(false);
+    }
+    load();
+  }, [id]);
+
+  async function handleShare() {
+    await Share.share({
+      message: `${event.title} — ${event.venues?.name}\n${formatDateFull(event.event_date)} alle ${formatTime(event.event_time)}\n\nTrova questo evento su Let's Night!`,
+    });
+  }
+
+  function handleBook() {
+    if (event.venues?.phone) {
+      Linking.openURL(`tel:${event.venues.phone}`);
+    }
+  }
+
+  if (loading) {
+    return (
+      <View className="flex-1 bg-dark items-center justify-center">
+        <ActivityIndicator color="#12A0D7" size="large" />
+      </View>
+    );
+  }
+
+  if (notFound || !event) {
+    return (
+      <View className="flex-1 bg-dark items-center justify-center px-6">
+        <Text className="text-white text-xl font-bold mb-2">Evento non trovato</Text>
+        <Text className="text-gray-400 text-center">Questo evento non esiste o è stato rimosso.</Text>
+      </View>
+    );
+  }
+
+  const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
+  const isPast = isPastDate(event.event_date);
+
+  return (
+    <ScrollView className="flex-1 bg-dark">
+      {/* Hero */}
+      <View style={{ backgroundColor: colors[0], height: 200 }} className="relative justify-end p-5">
+        <View className="absolute top-4 right-4">
+          <View className="bg-black/40 px-3 py-1 rounded-full">
+            <Text className="text-white text-xs font-semibold">{event.category}</Text>
+          </View>
+        </View>
+        {isPast && (
+          <View className="absolute top-4 left-4 bg-gray-800/80 px-3 py-1 rounded-full">
+            <Text className="text-gray-400 text-xs">Evento passato</Text>
+          </View>
+        )}
+        <Text className="text-white text-2xl font-bold leading-tight">{event.title}</Text>
+        <Text className="text-gray-300 mt-1">{event.venues?.name}</Text>
+      </View>
+
+      <View className="px-5 pt-5 pb-10">
+        {/* Info principali */}
+        <View className="bg-card rounded-2xl p-5 mb-4">
+          <View className="flex-row justify-between mb-4">
+            <View>
+              <Text className="text-gray-400 text-xs mb-1">Data</Text>
+              <Text className="text-white font-semibold">{formatDateFull(event.event_date)}</Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-gray-400 text-xs mb-1">Orario</Text>
+              <Text className="text-white font-semibold">{formatTime(event.event_time) || '—'}</Text>
+            </View>
+          </View>
+          <View className="flex-row justify-between">
+            <View>
+              <Text className="text-gray-400 text-xs mb-1">Dove</Text>
+              <Text className="text-white font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
+            </View>
+            <View className="items-end">
+              <Text className="text-gray-400 text-xs mb-1">Prezzo</Text>
+              <Text className="text-brand font-bold text-lg">{getPriceLabel(event.price)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Descrizione */}
+        {event.description ? (
+          <View className="mb-4">
+            <Text className="text-white font-semibold text-base mb-2">Descrizione</Text>
+            <Text className="text-gray-400 leading-6">{event.description}</Text>
+          </View>
+        ) : null}
+
+        {/* Bottoni azione */}
+        {!isPast && (
+          <View className="flex-row gap-3 mb-6">
+            <Pressable
+              onPress={handleBook}
+              className="flex-1 bg-brand rounded-xl py-4 items-center"
+            >
+              <Text className="text-white font-bold text-base">Prenota</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleShare}
+              className="border border-gray-700 rounded-xl py-4 px-5 items-center"
+            >
+              <Text className="text-white">Condividi</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Altri eventi del locale */}
+        {otherEvents.length > 0 && (
+          <View>
+            <Text className="text-white font-semibold text-base mb-3">
+              Altri eventi a {event.venues?.name}
+            </Text>
+            <View className="gap-3">
+              {otherEvents.map(ev => (
+                <Link key={ev.id} href={`/event/${ev.id}`} asChild>
+                  <Pressable className="bg-card rounded-xl p-4 flex-row justify-between items-center">
+                    <View className="flex-1 mr-3">
+                      <Text className="text-white font-semibold" numberOfLines={1}>{ev.title}</Text>
+                      <Text className="text-gray-400 text-sm mt-1">
+                        {formatDateFull(ev.event_date)} · {formatTime(ev.event_time)}
+                      </Text>
+                    </View>
+                    <Text className="text-brand font-semibold">{getPriceLabel(ev.price)}</Text>
+                  </Pressable>
+                </Link>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+}

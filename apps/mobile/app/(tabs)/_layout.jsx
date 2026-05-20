@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabsLayout() {
   return (
@@ -9,19 +10,36 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: '#555577',
         headerStyle: { backgroundColor: '#0a0a0f' },
         headerTintColor: '#ffffff',
+        headerTitleStyle: { fontWeight: 'bold' },
       }}
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Scopri', tabBarIcon: ({ color }) => null }}
+        options={{
+          title: 'Scopri',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="explore"
-        options={{ title: 'Esplora', tabBarIcon: ({ color }) => null }}
+        options={{
+          title: 'Esplora',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profilo', tabBarIcon: ({ color }) => null }}
+        options={{
+          title: 'Profilo',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
       />
     </Tabs>
   );
