@@ -33,3 +33,22 @@ export function isPastDate(dateStr) {
   today.setHours(0, 0, 0, 0);
   return new Date(dateStr) < today;
 }
+
+export function isInDateRange(dateStr, range) {
+  if (range === 'all') return true;
+  const d = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (range === 'today') return d.toDateString() === today.toDateString();
+  if (range === 'week') {
+    const end = new Date(today);
+    end.setDate(end.getDate() + 7);
+    return d >= today && d <= end;
+  }
+  if (range === 'month') {
+    const end = new Date(today);
+    end.setMonth(end.getMonth() + 1);
+    return d >= today && d <= end;
+  }
+  return true;
+}

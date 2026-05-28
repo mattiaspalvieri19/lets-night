@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
-import { CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT, formatDate, formatTime } from '@lets-night/shared';
+import { CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT, formatDate, formatTime, isInDateRange } from '@lets-night/shared';
 
 const DATE_RANGES = [
   { id: 'all', label: 'Tutte le date' },
@@ -17,27 +17,6 @@ const SORT_OPTIONS = [
   { id: 'price_asc', label: 'Prezzo (dal piu basso)' },
   { id: 'price_desc', label: 'Prezzo (dal piu alto)' },
 ];
-
-function isInDateRange(dateStr, range) {
-  if (range === 'all') return true;
-  const d = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  if (range === 'today') {
-    return d.toDateString() === today.toDateString();
-  }
-  if (range === 'week') {
-    const end = new Date(today);
-    end.setDate(end.getDate() + 7);
-    return d >= today && d <= end;
-  }
-  if (range === 'month') {
-    const end = new Date(today);
-    end.setMonth(end.getMonth() + 1);
-    return d >= today && d <= end;
-  }
-  return true;
-}
 
 export default function ExplorePage() {
   const cursorRef = useRef(null);
