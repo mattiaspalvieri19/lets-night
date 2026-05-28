@@ -26,12 +26,6 @@ export default function LoginScreen() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
     setLoading(false);
     router.replace('/(tabs)');
   }

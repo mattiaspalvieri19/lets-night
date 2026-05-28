@@ -108,8 +108,9 @@ export default function ExploreScreen() {
     if (selectedCats.length > 0 && !selectedCats.includes(e.category)) return false;
     if (selectedZone !== 'all' && e.venues?.zona !== selectedZone) return false;
     if (!isInDateRange(e.event_date, dateRange)) return false;
-    const price = parseFloat(e.price) || 0;
-    if (price > priceMax) return false;
+    const price = e.price == null ? null : parseFloat(e.price);
+    if (priceMax === 0 && (price == null || price > 0)) return false;
+    if (price != null && price > priceMax) return false;
     if (search) {
       const q = search.toLowerCase();
       if (

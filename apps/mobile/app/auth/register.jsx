@@ -38,7 +38,7 @@ export default function RegisterScreen() {
     }
 
     if (data.user) {
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: data.user.id,
@@ -47,6 +47,7 @@ export default function RegisterScreen() {
           phone: phone || null,
           city,
         });
+      if (profileError) console.error('Errore profilo:', profileError);
     }
 
     setLoading(false);
