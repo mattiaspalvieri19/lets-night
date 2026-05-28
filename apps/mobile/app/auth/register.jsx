@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Link, router } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, BackHandler } from 'react-native';
+import { Link, router, Stack } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { CITIES } from '@lets-night/shared';
 
@@ -54,9 +54,19 @@ export default function RegisterScreen() {
     setSent(true);
   }
 
+  useEffect(() => {
+    if (!sent) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/auth/login');
+      return true;
+    });
+    return () => sub.remove();
+  }, [sent]);
+
   if (sent) {
     return (
       <View className="flex-1 bg-dark px-6 items-center justify-center">
+        <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false }} />
         <View className="items-center">
           <View className="w-16 h-16 bg-brand/20 rounded-full items-center justify-center mb-6">
             <Text className="text-brand text-3xl">✓</Text>

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { COLORS_BY_CAT, formatDateFull, formatTime } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel } from '@lets-night/shared';
 
 function isPastEvent(dateStr) {
   if (!dateStr) return false;
@@ -195,7 +195,7 @@ export default function EventDetailPage({ params }) {
           <div className="ev-info-divider" />
           <div className="ev-info-block">
             <span className="ev-info-label">Prezzo</span>
-            <strong className="ev-info-value ev-price-big">{event.price > 0 ? 'EUR ' + event.price : 'In lista'}</strong>
+            <strong className="ev-info-value ev-price-big">{getPriceLabel(event.price)}</strong>
           </div>
           <div className="ev-info-divider" />
           <div className="ev-info-block">
@@ -265,7 +265,7 @@ export default function EventDetailPage({ params }) {
                     <div className="ev-other-body">
                       <h4>{o.title}</h4>
                       <div className="ev-other-date">{formatDateFull(o.event_date).split(',')[0] || new Date(o.event_date).toLocaleDateString('it-IT')} - {formatTime(o.event_time)}</div>
-                      <div className="ev-other-price">{o.price > 0 ? 'EUR ' + o.price : 'In lista'}</div>
+                      <div className="ev-other-price">{getPriceLabel(o.price)}</div>
                     </div>
                   </Link>
                 ))}

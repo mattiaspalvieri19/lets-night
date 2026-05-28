@@ -93,6 +93,7 @@ export default function TicketsScreen() {
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -104,12 +105,17 @@ export default function TicketsScreen() {
   }, []);
 
   async function fetchBookings(userId) {
+    setFetchError(false);
     const { data, error } = await supabase
       .from('bookings')
       .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
-    if (error) console.error('Errore bookings:', error);
+    if (error) {
+      console.error('Errore bookings:', error);
+      setFetchError(true);
+      return;
+    }
     setBookings(data || []);
   }
 
@@ -196,6 +202,22 @@ export default function TicketsScreen() {
       {loadingBookings ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color="#A855F7" size="large" />
+        </View>
+      ) : fetchError ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Text style={{ fontSize: 40, marginBottom: 12 }}>⚠️</Text>
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+            Errore di connessione
+          </Text>
+          <Text style={{ color: '#64748B', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+            Non riusciamo a caricare i tuoi biglietti. Controlla la connessione e riprova.
+          </Text>
+          <Pressable
+            onPress={() => { setLoadingBookings(true); fetchBookings(session.user.id).finally(() => setLoadingBookings(false)); }}
+            style={({ pressed }) => ({ backgroundColor: '#7C3AED', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10, opacity: pressed ? 0.85 : 1 })}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Riprova</Text>
+          </Pressable>
         </View>
       ) : bookings.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>

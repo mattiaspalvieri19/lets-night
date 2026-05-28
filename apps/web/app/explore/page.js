@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
-import { CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT, formatDate, formatTime, isInDateRange } from '@lets-night/shared';
+import { CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT, formatDate, formatTime, isInDateRange, getPriceLabel } from '@lets-night/shared';
 
 const DATE_RANGES = [
   { id: 'all', label: 'Tutte le date' },
@@ -302,7 +302,7 @@ export default function ExplorePage() {
                       <div className="ev-zona">{ev.venues?.zona}, {ev.venues?.city}</div>
                     </div>
                     <div className="ev-footer">
-                      <span className={'ev-price' + (ev.price > 0 ? ' ev-price-paid' : '')}>{ev.price > 0 ? 'EUR ' + ev.price : 'Lista'}</span>
+                      <span className={'ev-price' + (ev.price > 0 ? ' ev-price-paid' : '')}>{getPriceLabel(ev.price)}</span>
                       <span className="ev-cta">Prenota &rarr;</span>
                     </div>
                   </Link>

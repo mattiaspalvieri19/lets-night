@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { CATS, COLORS_BY_CAT, formatDate, formatTime } from '@lets-night/shared';
+import { CATS, COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 
 export default function Home() {
   const scrollerRef = useRef(null);
@@ -176,7 +176,7 @@ export default function Home() {
               {sorted.map((ev, i) => {
                 const catClass = 'cat-' + ev.category.toLowerCase().replace(/ /g,'-');
                 const colors = COLORS_BY_CAT[ev.category] || ['#1a0533','#0d0d1a'];
-                const priceLabel = ev.price > 0 ? 'EUR ' + ev.price : 'Lista';
+                const priceLabel = getPriceLabel(ev.price);
                 return (
                   <Link key={ev.id} href={'/event/' + ev.id} className="ev-card">
                     <div className="ev-visual" style={{ background:'linear-gradient(135deg,' + colors[0] + ',' + colors[1] + ')' }}>
