@@ -4,6 +4,8 @@ module.exports = function (api) {
     presets: [
       ['babel-preset-expo', { jsxImportSource: 'nativewind' }]
     ],
-    plugins: ['nativewind/babel'],
+    plugins: [
+      ['transform-inline-environment-variables', { include: ['EXPO_ROUTER_APP_ROOT', 'EXPO_ROUTER_IMPORT_MODE'] }]
+    ],
   };
 };
