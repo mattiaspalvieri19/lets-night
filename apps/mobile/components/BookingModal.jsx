@@ -29,11 +29,13 @@ export default function BookingModal({ visible, onClose, event, session }) {
     submitting.current = true;
     setError('');
     setLoading(true);
+    const qty = isFree ? 1 : quantity;
     const { error: err } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
-      quantity: isFree ? 1 : quantity,
+      quantity: qty,
+      total_price: isFree ? 0 : event.price * qty,
     });
     setLoading(false);
     submitting.current = false;
