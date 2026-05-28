@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '../../lib/useSession';
 import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
 import BookingModal from '../../components/BookingModal';
 
@@ -12,14 +13,8 @@ export default function EventDetailScreen() {
   const [otherEvents, setOtherEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [session, setSession] = useState(null);
+  const { session } = useSession();
   const [bookingVisible, setBookingVisible] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => setSession(s));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     async function load() {

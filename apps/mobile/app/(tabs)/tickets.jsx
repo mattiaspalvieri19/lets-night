@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '../../lib/useSession';
 import { formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
 
 function TicketCard({ booking, onPress }) {
@@ -88,21 +89,11 @@ function TicketCard({ booking, onPress }) {
 
 export default function TicketsScreen() {
   const router = useRouter();
-  const [session, setSession] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const { session, loading: loadingAuth } = useSession();
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoadingAuth(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => subscription.unsubscribe();
-  }, []);
 
   async function fetchBookings(userId) {
     setFetchError(false);
