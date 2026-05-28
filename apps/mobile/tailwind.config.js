@@ -5,9 +5,14 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        brand: '#12A0D7',
-        dark: '#0a0a0f',
-        card: '#111118',
+        brand:    '#7C3AED',
+        'brand-light': '#A855F7',
+        fuchsia:  '#C026D3',
+        gold:     '#F59E0B',
+        dark:     '#09090f',
+        card:     '#111118',
+        card2:    '#18181f',
+        text2:    '#64748B',
       },
     },
   },

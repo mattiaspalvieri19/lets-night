@@ -3,17 +3,23 @@ const DAYS_FULL   = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'V
 const MONTHS_SHORT = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 const MONTHS_FULL  = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
+// Parsa una stringa 'YYYY-MM-DD' come ora locale (non UTC) per evitare shift di data nelle timezone negative
+function parseLocalDate(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // "Ven 15 Gen"
 export function formatDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   return DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
 }
 
 // "Venerdi 15 Gennaio 2026"
 export function formatDateFull(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   return DAYS_FULL[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_FULL[d.getMonth()] + ' ' + d.getFullYear();
 }
 
@@ -22,14 +28,33 @@ export function formatTime(timeStr) {
   return timeStr ? timeStr.substring(0, 5) : '';
 }
 
-// "EUR 15" oppure "Lista"
+// "EUR 15" oppure "Gratuito"
 export function getPriceLabel(price) {
-  return price > 0 ? 'EUR ' + price : 'Lista';
+  return price > 0 ? 'EUR ' + price : 'Gratuito';
 }
 
 export function isPastDate(dateStr) {
   if (!dateStr) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return new Date(dateStr) < today;
+  return parseLocalDate(dateStr) < today;
+}
+
+export function isInDateRange(dateStr, range) {
+  if (!dateStr || range === 'all') return true;
+  const d = parseLocalDate(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (range === 'today') return d.toDateString() === today.toDateString();
+  if (range === 'week') {
+    const end = new Date(today);
+    end.setDate(end.getDate() + 7);
+    return d >= today && d <= end;
+  }
+  if (range === 'month') {
+    const end = new Date(today);
+    end.setMonth(end.getMonth() + 1);
+    return d >= today && d <= end;
+  }
+  return true;
 }

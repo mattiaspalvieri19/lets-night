@@ -5,10 +5,14 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: { backgroundColor: '#0a0a0f', borderTopColor: '#1a1a2e' },
-        tabBarActiveTintColor: '#12A0D7',
-        tabBarInactiveTintColor: '#555577',
-        headerStyle: { backgroundColor: '#0a0a0f' },
+        tabBarStyle: {
+          backgroundColor: '#09090f',
+          borderTopColor: 'rgba(168,85,247,0.2)',
+          borderTopWidth: 1,
+        },
+        tabBarActiveTintColor: '#A855F7',
+        tabBarInactiveTintColor: '#3f3f5a',
+        headerStyle: { backgroundColor: '#09090f' },
         headerTintColor: '#ffffff',
         headerTitleStyle: { fontWeight: 'bold' },
       }}
@@ -27,8 +31,19 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'Esplora',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="tickets"
+        options={{
+          title: 'Biglietti',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="ticket-outline" size={size} color={color} />
           ),
         }}
       />
@@ -36,6 +51,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profilo',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

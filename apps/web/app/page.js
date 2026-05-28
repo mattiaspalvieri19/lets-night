@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { CATS, COLORS_BY_CAT, formatDate, formatTime } from '@lets-night/shared';
+import { CATS, COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 
 export default function Home() {
   const scrollerRef = useRef(null);
@@ -40,6 +40,15 @@ export default function Home() {
     document.querySelectorAll('[data-anim]').forEach(el => obs.observe(el));
     return () => obs.disconnect();
   }, [events, loading]);
+
+  useEffect(() => {
+    function onScroll() {
+      const nav = document.getElementById('lnav');
+      if (nav) nav.classList.toggle('solid', window.scrollY > 60);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   function scrollCarousel(dir) {
     const el = scrollerRef.current;
@@ -87,6 +96,10 @@ export default function Home() {
         <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
           <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
           <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
+          <button className="ln-city-pill" onClick={() => { setCity(c => c === 'Milano' ? 'Roma' : 'Milano'); setMenuOpen(false); }}>
+            {city}
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </button>
           <Link href="/login" className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
           <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
         </div>
@@ -163,12 +176,13 @@ export default function Home() {
               {sorted.map((ev, i) => {
                 const catClass = 'cat-' + ev.category.toLowerCase().replace(/ /g,'-');
                 const colors = COLORS_BY_CAT[ev.category] || ['#1a0533','#0d0d1a'];
-                const priceLabel = ev.price > 0 ? 'EUR ' + ev.price : 'Lista';
+                const priceLabel = getPriceLabel(ev.price);
                 return (
                   <Link key={ev.id} href={'/event/' + ev.id} className="ev-card">
                     <div className="ev-visual" style={{ background:'linear-gradient(135deg,' + colors[0] + ',' + colors[1] + ')' }}>
                       <div className="ev-top">
                         <span className={'ev-cat ' + catClass}>{ev.category}</span>
+                        {ev.is_sponsored && <span className="ev-sp-tag">★ SPONSOR</span>}
                       </div>
                       <div className="ev-spheres">
                         {[0,1,2,3,4,5].map(j => <div key={j} className="ev-sphere" style={{ animationDelay:(j*.2)+'s' }} />)}
@@ -181,7 +195,7 @@ export default function Home() {
                       <div className="ev-zona">{ev.venues?.zona}, {ev.venues?.city}</div>
                     </div>
                     <div className="ev-footer">
-                      <span className="ev-price">{priceLabel}</span>
+                      <span className={'ev-price' + (ev.price > 0 ? ' ev-price-paid' : '')}>{priceLabel}</span>
                       <span className="ev-cta">Prenota &rarr;</span>
                     </div>
                   </Link>

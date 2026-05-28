@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { formatDate, formatTime } from '@lets-night/shared';
 
 export default function ProfileScreen() {
   const [session, setSession] = useState(null);
@@ -32,9 +31,8 @@ export default function ProfileScreen() {
 
     const { data: bookingsData } = await supabase
       .from('bookings')
-      .select('*, events(title, event_date, event_time, venues(name, city))')
-      .eq('user_id', s.user.id)
-      .order('created_at', { ascending: false });
+      .select('id, status')
+      .eq('user_id', s.user.id);
     setBookings(bookingsData || []);
 
     setLoading(false);
@@ -50,7 +48,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View className="flex-1 bg-dark items-center justify-center">
-        <ActivityIndicator color="#12A0D7" size="large" />
+        <ActivityIndicator color="#A855F7" size="large" />
       </View>
     );
   }
@@ -115,42 +113,6 @@ export default function ProfileScreen() {
             <Text className="text-gray-400 text-xs mt-1">Confermate</Text>
           </View>
         </View>
-      </View>
-
-      {/* Prenotazioni */}
-      <View className="px-5 pt-5">
-        <Text className="text-white font-semibold text-base mb-3">Le mie prenotazioni</Text>
-
-        {bookings.length === 0 ? (
-          <View className="bg-card rounded-2xl p-8 items-center">
-            <Text className="text-gray-400 text-center">Nessuna prenotazione ancora.{'\n'}Esplora gli eventi!</Text>
-          </View>
-        ) : (
-          <View className="gap-3">
-            {bookings.map(booking => (
-              <View key={booking.id} className="bg-card rounded-xl p-4">
-                <View className="flex-row justify-between items-start">
-                  <View className="flex-1 mr-3">
-                    <Text className="text-white font-semibold" numberOfLines={1}>
-                      {booking.events?.title || 'Evento'}
-                    </Text>
-                    <Text className="text-gray-400 text-sm mt-1">
-                      {booking.events?.venues?.name}
-                    </Text>
-                    <Text className="text-gray-500 text-sm mt-1">
-                      {formatDate(booking.events?.event_date)} · {formatTime(booking.events?.event_time)}
-                    </Text>
-                  </View>
-                  <View className={`px-3 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-green-900/50' : 'bg-gray-800'}`}>
-                    <Text className={`text-xs font-semibold ${booking.status === 'confirmed' ? 'text-green-400' : 'text-gray-400'}`}>
-                      {booking.status === 'confirmed' ? 'Confermata' : booking.status || 'In attesa'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
 
       {/* Logout */}
