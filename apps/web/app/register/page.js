@@ -43,9 +43,15 @@ export default function RegisterPage() {
       return;
     }
 
-    // Aggiorna profilo con phone e city (il trigger ha gia' creato la riga)
     if (data.user) {
-      await supabase.from('profiles').update({ phone, city }).eq('id', data.user.id);
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: data.user.id,
+        full_name: fullName,
+        role: 'user',
+        phone: phone || null,
+        city,
+      });
+      if (profileError) console.error('Errore profilo:', profileError);
     }
 
     router.push('/auth/confirm-sent?email=' + encodeURIComponent(email));
