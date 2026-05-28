@@ -115,10 +115,11 @@ import {
 - Mobile: `apps/mobile/app/[route].jsx` oppure `apps/mobile/app/[route]/index.jsx`
 
 ## Tabelle Supabase
-- `events` — id, title, category, event_date, event_time, price, is_active, is_sponsored, source, venue_id
-- `venues` — id, name, zona, city, owner_id, is_partner, is_verified
-- `profiles` — id, role (user/business/admin), full_name, phone, city
-- `bookings` — id, user_id, event_id, status, created_at
+- `events` — id, venue_id, title, description, category, event_date, event_time, price, capacity, booked_count, is_active, is_sponsored, is_hot, source, ticket_url
+- `venues` — id, owner_id, name, description, category, city, zona, address, phone, email, website, instagram, is_verified, is_partner
+- `profiles` — id, role (user/business), full_name, phone, city
+- `bookings` — id, user_id, event_id, quantity (default 1), total_price, fee (default 1.50), status, qr_code, created_at
+- `scraping_sources` — id, venue_id, name, source_type, url, city, is_active
 - `wallet_waitlist` — email, city, source
 
 ## Branch strategy

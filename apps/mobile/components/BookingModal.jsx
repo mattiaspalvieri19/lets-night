@@ -36,6 +36,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
       status: 'confirmed',
       quantity: qty,
       total_price: isFree ? 0 : event.price * qty,
+      fee: 1.50,
     });
     setLoading(false);
     submitting.current = false;
