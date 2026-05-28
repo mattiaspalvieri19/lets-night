@@ -49,10 +49,12 @@ export default function ExploreScreen() {
   const [pendingPriceMax, setPendingPriceMax] = useState(200);
 
   async function loadData() {
+    const today = new Date().toISOString().split('T')[0];
     const { data } = await supabase
       .from('events')
       .select('*, venues(name, zona, city, is_partner)')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .gte('event_date', today);
     const list = data || [];
     setEvents(list);
     const zonesSet = new Set(list.map(e => e.venues?.zona).filter(Boolean));

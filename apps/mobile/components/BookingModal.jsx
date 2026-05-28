@@ -29,6 +29,22 @@ export default function BookingModal({ visible, onClose, event, session }) {
     submitting.current = true;
     setError('');
     setLoading(true);
+
+    const { data: existing } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('event_id', event.id)
+      .neq('status', 'cancelled')
+      .maybeSingle();
+
+    if (existing) {
+      setError('Hai già prenotato questo evento.');
+      setLoading(false);
+      submitting.current = false;
+      return;
+    }
+
     const qty = isFree ? 1 : quantity;
     const { error: err } = await supabase.from('bookings').insert({
       user_id: session.user.id,
@@ -36,7 +52,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
       status: 'confirmed',
       quantity: qty,
       total_price: isFree ? 0 : event.price * qty,
-      fee: 1.50,
+      fee: isFree ? 0 : 1.50,
     });
     setLoading(false);
     submitting.current = false;

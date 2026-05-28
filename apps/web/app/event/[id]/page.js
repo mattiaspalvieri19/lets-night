@@ -31,6 +31,7 @@ export default function EventDetailPage({ params }) {
         .from('events')
         .select('*, venues(id, name, zona, city, address, phone, description, category)')
         .eq('id', id)
+        .eq('is_active', true)
         .single();
 
       if (error || !data) {
@@ -122,9 +123,10 @@ export default function EventDetailPage({ params }) {
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533','#0d0d1a','#c084fc'];
   const catClass = 'cat-' + event.category.toLowerCase().replace(/ /g,'-');
   const past = isPastEvent(event.event_date);
-  const availableSpots = event.capacity - (event.booked_count || 0);
-  const availabilityPct = Math.round((availableSpots / event.capacity) * 100);
-  const urgency = availabilityPct < 20 ? 'low' : availabilityPct < 50 ? 'medium' : 'high';
+  const hasCapacity = event.capacity != null && event.capacity > 0;
+  const availableSpots = hasCapacity ? event.capacity - (event.booked_count || 0) : null;
+  const availabilityPct = hasCapacity ? Math.round((availableSpots / event.capacity) * 100) : null;
+  const urgency = !hasCapacity || availabilityPct >= 50 ? 'high' : availabilityPct >= 20 ? 'medium' : 'low';
 
   return (
     <>

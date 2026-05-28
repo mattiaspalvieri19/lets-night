@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
@@ -26,8 +26,23 @@ export default function LoginScreen() {
       return;
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
     setLoading(false);
-    router.replace('/(tabs)');
+
+    if (profile?.role === 'business') {
+      Alert.alert(
+        'Portale business',
+        'Per gestire il tuo locale accedi dal sito web. Sull\'app puoi esplorare gli eventi.',
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+      );
+    } else {
+      router.replace('/(tabs)');
+    }
   }
 
   return (

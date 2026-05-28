@@ -5,11 +5,6 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { COLORS_BY_CAT, formatDate, formatTime } from '@lets-night/shared';
 
-function isPast(dateStr) {
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  return new Date(dateStr) < today;
-}
 
 export default function VenueDetailPage({ params }) {
   const { id } = use(params);
@@ -42,16 +37,13 @@ export default function VenueDetailPage({ params }) {
 
       setVenue(venueData);
 
-      const { data: eventsData } = await supabase
-        .from('events')
-        .select('*, venues(name, zona, city)')
-        .eq('venue_id', id)
-        .eq('is_active', true)
-        .order('event_date', { ascending: true });
-
-      const all = eventsData || [];
-      setUpcomingEvents(all.filter(e => !isPast(e.event_date)));
-      setPastEvents(all.filter(e => isPast(e.event_date)));
+      const today = new Date().toISOString().split('T')[0];
+      const [{ data: upcoming }, { data: past }] = await Promise.all([
+        supabase.from('events').select('*, venues(name, zona, city)').eq('venue_id', id).eq('is_active', true).gte('event_date', today).order('event_date', { ascending: true }).limit(10),
+        supabase.from('events').select('*, venues(name, zona, city)').eq('venue_id', id).eq('is_active', true).lt('event_date', today).order('event_date', { ascending: false }).limit(6),
+      ]);
+      setUpcomingEvents(upcoming || []);
+      setPastEvents(past || []);
 
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user || null);

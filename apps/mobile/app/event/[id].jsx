@@ -23,6 +23,7 @@ export default function EventDetailScreen() {
         .from('events')
         .select('*, venues(id, name, zona, city, address, phone, description, category)')
         .eq('id', id)
+        .eq('is_active', true)
         .single();
 
       if (error || !data) { setNotFound(true); setLoading(false); return; }

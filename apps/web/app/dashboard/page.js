@@ -39,7 +39,7 @@ export default function DashboardPage() {
 
       const { data: bookingsData } = await supabase
         .from('bookings')
-        .select('*, events(title, event_date, event_time, venues(name, city))')
+        .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
