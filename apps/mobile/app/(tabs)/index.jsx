@@ -69,7 +69,7 @@ export default function HomeScreen() {
 
       {/* Events list */}
       {loading ? (
-        <ActivityIndicator color="#12A0D7" className="mt-10" />
+        <ActivityIndicator color="#A855F7" className="mt-10" />
       ) : filtered.length === 0 ? (
         <View className="px-5 mt-10">
           <Text className="text-gray-500 text-center">Nessun evento trovato.</Text>

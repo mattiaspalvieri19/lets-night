@@ -10,7 +10,7 @@ Monorepo: sito web (Next.js) + app iOS/Android (Expo) con backend Supabase condi
 |---|---|
 | Monorepo | Turborepo + npm workspaces |
 | Web | Next.js 16.2 — App Router (`apps/web/app/`) |
-| Mobile | Expo SDK 52 + Expo Router (`apps/mobile/app/`) |
+| Mobile | Expo SDK 54 + Expo Router (`apps/mobile/app/`) |
 | UI Web | CSS custom in `globals.css` + Tailwind CSS 4 |
 | UI Mobile | NativeWind (Tailwind per React Native) |
 | Backend | Supabase (DB PostgreSQL + Auth + RLS) |
@@ -135,6 +135,97 @@ npm run dev:mobile   # solo app Expo → Expo Go
 npm run build:web    # build Next.js
 npm run lint         # lint tutto il monorepo
 ```
+
+## Setup iniziale (nuovo sviluppatore)
+
+Passi da eseguire su un nuovo Mac prima di iniziare a lavorare.
+
+### 1. Prerequisiti
+```bash
+node -v   # deve essere >= 18
+npm -v    # deve essere >= 10
+```
+
+### 2. Clone e dipendenze
+```bash
+git clone https://github.com/mattiaspalvieri19/lets-night.git
+cd lets-night
+npm install
+```
+
+### 3. Variabili d'ambiente
+Creare i due file (chiedere le chiavi a Mattia):
+```
+apps/web/.env.local
+  NEXT_PUBLIC_SUPABASE_URL=...
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+  SUPABASE_SERVICE_ROLE_KEY=...     ← solo server, NON in mobile
+  STRIPE_SECRET_KEY=...
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
+
+apps/mobile/.env.local
+  EXPO_PUBLIC_SUPABASE_URL=...
+  EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+### 4. Claude Code + MCP servers
+```bash
+# Installa Claude Code
+npm install -g @anthropic-ai/claude-code
+
+# Context7 (documentazione live — nessun token)
+claude mcp add -s user context7 -- npx -y @upstash/context7-mcp@latest
+
+# Supabase MCP — token da supabase.com/dashboard/account/tokens
+claude mcp add -s user supabase \
+  -e SUPABASE_ACCESS_TOKEN=<TOKEN> \
+  -- npx -y @supabase/mcp-server-supabase@latest \
+  --project-ref bfnqkpyouqszpvxisajr --read-only
+
+# GitHub MCP — token da github.com/settings/tokens (scopes: repo, read:org)
+claude mcp add -s user github \
+  -e GITHUB_TOKEN=<TOKEN> \
+  -- npx -y @modelcontextprotocol/server-github
+```
+
+Riavviare Claude Code dopo aver aggiunto i server.
+
+---
+
+## Team AI — workflow
+
+### Modalità operative
+
+| Modalità | Quando | Come si attiva |
+|---|---|---|
+| **Plan** | Feature con >3 file coinvolti | Di' "progetta [feature]" |
+| **Build** | Implementazione | Di' "implementa [feature]" → worktree isolato |
+| **Review** | Prima di ogni merge su develop | `/ultrareview` (Claude lo suggerisce) |
+| **Debug** | Qualcosa è rotto | Di' "debug [problema]" → agente Explore + fix |
+
+### Flusso per ogni feature
+
+```
+PLAN → BUILD (worktree isolato) → REVIEW (/ultrareview) → MERGE su develop
+```
+
+### Regole
+- Nessun `git push --force` o `git reset --hard`
+- Il Reviewer segnala, non corregge — la correzione avviene in una nuova sessione
+- Il Supabase MCP è in read-only: le migration si scrivono a mano su Supabase dashboard
+- CLAUDE.md è la fonte di verità condivisa tra tutti gli agenti e collaboratori
+
+### MCP Servers
+
+| Server | Uso |
+|---|---|
+| **Context7** | Docs aggiornate di Expo, Next.js, Supabase, React Native |
+| **Supabase** | Ispeziona schema, RLS policies, esegue SELECT diretti |
+| **GitHub** | Crea PR, legge issues, code review |
+
+Attivare Context7 in una query aggiungendo `use context7` nel messaggio.
+
+---
 
 ## Slash commands disponibili
 | Comando | Cosa fa |

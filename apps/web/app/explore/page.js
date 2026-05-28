@@ -310,6 +310,7 @@ export default function ExplorePage() {
                     <div className="ev-visual" style={{ background: 'linear-gradient(135deg,' + colors[0] + ',' + colors[1] + ')' }}>
                       <div className="ev-top">
                         <span className={'ev-cat cat-' + ev.category.toLowerCase().replace(/ /g,'-')}>{ev.category}</span>
+                        {ev.is_sponsored && <span className="ev-sp-tag">★ SPONSOR</span>}
                       </div>
                       <div className="ev-spheres">
                         {[0,1,2,3,4,5].map(j => <div key={j} className="ev-sphere" style={{ animationDelay:(j*.2)+'s' }} />)}
@@ -322,7 +323,7 @@ export default function ExplorePage() {
                       <div className="ev-zona">{ev.venues?.zona}, {ev.venues?.city}</div>
                     </div>
                     <div className="ev-footer">
-                      <span className="ev-price">{ev.price > 0 ? 'EUR ' + ev.price : 'Lista'}</span>
+                      <span className={'ev-price' + (ev.price > 0 ? ' ev-price-paid' : '')}>{ev.price > 0 ? 'EUR ' + ev.price : 'Lista'}</span>
                       <span className="ev-cta">Prenota &rarr;</span>
                     </div>
                   </Link>
