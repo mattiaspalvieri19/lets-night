@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -16,6 +16,7 @@ export default function VenueDetailScreen() {
   const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     async function load() {
       setLoading(true);
       const { data: venueData, error } = await supabase
@@ -24,34 +25,38 @@ export default function VenueDetailScreen() {
         .eq('id', id)
         .single();
 
+      if (!mounted) return;
       if (error || !venueData) { setNotFound(true); setLoading(false); return; }
       setVenue(venueData);
 
       const today = new Date().toISOString().split('T')[0];
 
-      const { data: upcoming } = await supabase
-        .from('events')
-        .select('*, venues(name, zona, city)')
-        .eq('venue_id', id)
-        .eq('is_active', true)
-        .gte('event_date', today)
-        .order('event_date', { ascending: true })
-        .limit(10);
+      const [{ data: upcoming }, { data: past }] = await Promise.all([
+        supabase
+          .from('events')
+          .select('*, venues(name, zona, city)')
+          .eq('venue_id', id)
+          .eq('is_active', true)
+          .gte('event_date', today)
+          .order('event_date', { ascending: true })
+          .limit(10),
+        supabase
+          .from('events')
+          .select('*, venues(name, zona, city)')
+          .eq('venue_id', id)
+          .eq('is_active', true)
+          .lt('event_date', today)
+          .order('event_date', { ascending: false })
+          .limit(6),
+      ]);
+
+      if (!mounted) return;
       setUpcomingEvents(upcoming || []);
-
-      const { data: past } = await supabase
-        .from('events')
-        .select('*, venues(name, zona, city)')
-        .eq('venue_id', id)
-        .eq('is_active', true)
-        .lt('event_date', today)
-        .order('event_date', { ascending: false })
-        .limit(6);
       setPastEvents(past || []);
-
       setLoading(false);
     }
     load();
+    return () => { mounted = false; };
   }, [id]);
 
   function handleMaps() {

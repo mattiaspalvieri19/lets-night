@@ -4,6 +4,7 @@ import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-nigh
 
 export default function EventCard({ event, onPress }) {
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
+  const accent = accent || '#c084fc';
 
   return (
     <Pressable
@@ -25,8 +26,8 @@ export default function EventCard({ event, onPress }) {
         style={{ height: 110, padding: 10, justifyContent: 'space-between' }}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ backgroundColor: colors[2] + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: colors[2], fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          <View style={{ backgroundColor: accent + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+            <Text style={{ color: accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
               {event.category}
             </Text>
           </View>
@@ -63,7 +64,7 @@ export default function EventCard({ event, onPress }) {
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.12)' }}>
-        <Text style={{ color: event.price > 0 ? colors[2] : '#fff', fontWeight: '700', fontSize: 13 }}>
+        <Text style={{ color: event.price > 0 ? accent : '#fff', fontWeight: '700', fontSize: 13 }}>
           {getPriceLabel(event.price)}
         </Text>
         <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>Prenota →</Text>

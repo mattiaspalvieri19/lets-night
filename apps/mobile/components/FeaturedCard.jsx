@@ -4,6 +4,7 @@ import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-nigh
 
 export default function FeaturedCard({ event, onPress }) {
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
+  const accent = accent || '#c084fc';
 
   return (
     <Pressable
@@ -28,8 +29,8 @@ export default function FeaturedCard({ event, onPress }) {
               ★ In Evidenza
             </Text>
           </View>
-          <View style={{ backgroundColor: colors[2] + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: colors[2], fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>
+          <View style={{ backgroundColor: accent + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+            <Text style={{ color: accent, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>
               {event.category}
             </Text>
           </View>
