@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { formatDateFull, formatTime, getPriceLabel } from '@lets-night/shared';
@@ -8,6 +8,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const submitting = useRef(false);
 
   const isFree = !event?.price || event.price === 0;
   const total = isFree ? 0 : event.price * quantity;
@@ -20,14 +21,22 @@ export default function BookingModal({ visible, onClose, event, session }) {
   }
 
   async function handleConfirm() {
+    if (submitting.current) return;
+    if (!session) {
+      setError('Sessione scaduta. Rieffettua il login.');
+      return;
+    }
+    submitting.current = true;
     setError('');
     setLoading(true);
     const { error: err } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
+      quantity: isFree ? 1 : quantity,
     });
     setLoading(false);
+    submitting.current = false;
     if (err) {
       setError('Prenotazione non riuscita. Riprova.');
       console.error('Errore booking:', err);

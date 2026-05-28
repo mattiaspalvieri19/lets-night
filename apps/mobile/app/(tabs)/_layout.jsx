@@ -31,6 +31,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'Esplora',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color} />
           ),
@@ -50,6 +51,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profilo',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

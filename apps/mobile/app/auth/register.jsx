@@ -40,8 +40,13 @@ export default function RegisterScreen() {
     if (data.user) {
       await supabase
         .from('profiles')
-        .update({ phone, city })
-        .eq('id', data.user.id);
+        .upsert({
+          id: data.user.id,
+          full_name: fullName,
+          role: 'user',
+          phone: phone || null,
+          city,
+        });
     }
 
     setLoading(false);
