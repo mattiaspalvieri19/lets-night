@@ -8,9 +8,10 @@ import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel } from '@lets-
 
 function isPastEvent(dateStr) {
   if (!dateStr) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
   const today = new Date();
-  today.setHours(0,0,0,0);
-  return new Date(dateStr) < today;
+  today.setHours(0, 0, 0, 0);
+  return new Date(y, m - 1, d) < today;
 }
 
 export default function EventDetailPage({ params }) {
