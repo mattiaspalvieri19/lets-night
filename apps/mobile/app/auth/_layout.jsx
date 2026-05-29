@@ -12,6 +12,8 @@ export default function AuthLayout() {
     >
       <Stack.Screen name="login" options={{ title: 'Accedi' }} />
       <Stack.Screen name="register" options={{ title: 'Crea account' }} />
+      <Stack.Screen name="business-register" options={{ title: 'Registra locale' }} />
+      <Stack.Screen name="callback" options={{ headerShown: false }} />
     </Stack>
   );
 }
