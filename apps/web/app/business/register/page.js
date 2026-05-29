@@ -36,8 +36,7 @@ export default function BusinessRegister() {
 
     setLoading(true);
 
-    // 1. Crea utente con role=business
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -45,6 +44,15 @@ export default function BusinessRegister() {
         data: {
           full_name: form.ownerName,
           role: 'business',
+          phone: form.phone,
+          city: form.city,
+          venue_name: form.venueName,
+          venue_category: form.category,
+          venue_city: form.city,
+          venue_zona: form.zona,
+          venue_address: form.address,
+          venue_phone: form.phone,
+          venue_description: form.description,
         },
       },
     });
@@ -53,37 +61,6 @@ export default function BusinessRegister() {
       setError(authError.message);
       setLoading(false);
       return;
-    }
-
-    // 2. Crea il venue (non verificato di default)
-    if (authData.user) {
-      const { error: venueError } = await supabase.from('venues').insert({
-        owner_id: authData.user.id,
-        name: form.venueName,
-        category: form.category,
-        city: form.city,
-        zona: form.zona,
-        address: form.address,
-        phone: form.phone,
-        description: form.description,
-        contact_email: form.email,
-        is_verified: false,
-      });
-
-      if (venueError) {
-        setError('Errore creazione locale: ' + venueError.message);
-        setLoading(false);
-        return;
-      }
-
-      // 3. Aggiorna profilo
-      await supabase.from('profiles').upsert({
-        id: authData.user.id,
-        full_name: form.ownerName,
-        role: 'business',
-        phone: form.phone,
-        city: form.city,
-      });
     }
 
     setLoading(false);
