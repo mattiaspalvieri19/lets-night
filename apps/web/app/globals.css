@@ -1633,3 +1633,61 @@ em { font-style:normal; background:var(--grad); -webkit-background-clip:text; -w
     padding: 12px;
   }
 }
+
+/* Booking modal */
+.book-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 16px; backdrop-filter: blur(4px);
+}
+.book-modal {
+  background: var(--dark2, #111118); border-radius: 20px; padding: 28px;
+  max-width: 460px; width: 100%; border: 1px solid rgba(168,85,247,0.25);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.book-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+.book-modal-eyebrow { color: #A855F7; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+.book-modal-title { color: #fff; font-size: 22px; font-weight: 800; margin: 0 0 4px; line-height: 1.2; }
+.book-modal-venue { color: #64748B; font-size: 13px; margin: 0; }
+.book-modal-close {
+  background: transparent; border: none; color: #64748B; font-size: 28px;
+  cursor: pointer; padding: 0; line-height: 1; width: 32px;
+}
+.book-modal-info {
+  background: var(--dark3, #18181f); border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 18px; display: flex; justify-content: space-between;
+  border: 1px solid rgba(168,85,247,0.12);
+}
+.book-modal-info span { color: #64748B; font-size: 11px; display: block; margin-bottom: 3px; }
+.book-modal-info strong { color: #fff; font-size: 14px; font-weight: 600; }
+.book-modal-qty { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.book-modal-qty > span { color: #fff; font-size: 15px; font-weight: 600; }
+.book-modal-qty-controls { display: flex; align-items: center; gap: 16px; }
+.book-modal-qty-controls button {
+  width: 36px; height: 36px; border-radius: 18px; border: 1.5px solid rgba(168,85,247,0.3);
+  background: transparent; color: #A855F7; font-size: 20px; font-weight: 700; cursor: pointer;
+}
+.book-modal-qty-controls strong { color: #fff; font-size: 18px; min-width: 24px; text-align: center; }
+.book-modal-total {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 0; border-top: 1px solid rgba(168,85,247,0.12);
+  border-bottom: 1px solid rgba(168,85,247,0.12); margin-bottom: 18px;
+}
+.book-modal-total span { color: #64748B; font-size: 14px; }
+.book-modal-total strong { color: #fff; font-size: 20px; font-weight: 900; }
+.book-modal-confirm { width: 100%; }
+.book-modal-success { text-align: center; padding: 16px 0; }
+.book-modal-check {
+  width: 60px; height: 60px; border-radius: 30px;
+  background: rgba(74,222,128,0.15); border: 1.5px solid rgba(74,222,128,0.4);
+  color: #4ADE80; font-size: 28px; display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+}
+.book-modal-success h2 { color: #fff; font-size: 22px; font-weight: 900; margin: 0 0 6px; }
+.book-modal-success p { color: #64748B; font-size: 14px; margin: 0 0 24px; }
+
+/* Ticket QR */
+.ticket-qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; background: var(--dark3, #18181f); border-radius: 12px; }
+.ticket-qr-inner { background: #fff; padding: 12px; border-radius: 8px; }
+.ticket-qr-hint { color: #64748B; font-size: 12px; text-align: center; }
+

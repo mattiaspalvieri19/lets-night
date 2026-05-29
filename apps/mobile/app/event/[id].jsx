@@ -121,16 +121,23 @@ export default function EventDetailScreen() {
               <Text className="text-white text-xs font-semibold">{event.category}</Text>
             </View>
           </View>
-          {event.is_sponsored && (
-            <View className="absolute top-4 left-4 px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(202,138,4,0.25)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)' }}>
-              <Text style={{ color: '#FBBF24', fontSize: 11, fontWeight: '700' }}>★ SPONSOR</Text>
-            </View>
-          )}
-          {isPast && !event.is_sponsored && (
-            <View className="absolute top-4 left-4 bg-gray-800/80 px-3 py-1 rounded-full">
-              <Text className="text-gray-400 text-xs">Evento passato</Text>
-            </View>
-          )}
+          <View style={{ position: 'absolute', top: 16, left: 16, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+            {event.is_sponsored && (
+              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(202,138,4,0.25)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)' }}>
+                <Text style={{ color: '#FBBF24', fontSize: 11, fontWeight: '700' }}>★ SPONSOR</Text>
+              </View>
+            )}
+            {event.is_hot && !isPast && (
+              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(239,68,68,0.2)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }}>
+                <Text style={{ color: '#F87171', fontSize: 11, fontWeight: '700' }}>🔥 HOT</Text>
+              </View>
+            )}
+            {isPast && (
+              <View className="bg-gray-800/80 px-3 py-1 rounded-full">
+                <Text className="text-gray-400 text-xs">Evento passato</Text>
+              </View>
+            )}
+          </View>
           <Text className="text-white text-2xl font-bold leading-tight">{event.title}</Text>
           <Text className="text-gray-300 mt-1">{event.venues?.name}</Text>
         </View>
@@ -160,6 +167,17 @@ export default function EventDetailScreen() {
                 <Text className="text-brand font-bold text-lg">{getPriceLabel(event.price)}</Text>
               </View>
             </View>
+            {event.capacity != null && event.capacity > 0 && (() => {
+              const available = event.capacity - (event.booked_count || 0);
+              const pct = Math.round((available / event.capacity) * 100);
+              const color = pct >= 50 ? '#4ADE80' : pct >= 20 ? '#FBBF24' : '#F87171';
+              return (
+                <View className="flex-row justify-between mt-4 pt-4 border-t border-gray-800">
+                  <Text className="text-gray-400 text-xs self-center">Disponibilità</Text>
+                  <Text style={{ color, fontWeight: '600', fontSize: 13 }}>{available} / {event.capacity} posti</Text>
+                </View>
+              );
+            })()}
           </View>
 
           {/* Locale */}

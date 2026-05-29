@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
+import { CATS_NO_TUTTI } from '@lets-night/shared';
 
 export default function BusinessRegister() {
   const router = useRouter();
@@ -76,13 +77,16 @@ export default function BusinessRegister() {
       }
 
       // 3. Aggiorna profilo
-      await supabase.from('profiles').update({ 
-        phone: form.phone, 
-        city: form.city,
+      await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        full_name: form.ownerName,
         role: 'business',
-      }).eq('id', authData.user.id);
+        phone: form.phone,
+        city: form.city,
+      });
     }
 
+    setLoading(false);
     router.push('/auth/confirm-sent?email=' + encodeURIComponent(form.email) + '&type=business');
   }
 
@@ -106,11 +110,7 @@ export default function BusinessRegister() {
             <div className="auth-field">
               <label>Categoria</label>
               <select value={form.category} onChange={handleChange('category')}>
-                <option value="Discoteca">Discoteca</option>
-                <option value="Universitario">Universitario</option>
-                <option value="Cena Show">Cena Show</option>
-                <option value="VIP">VIP</option>
-                <option value="Aperitivo">Aperitivo</option>
+                {CATS_NO_TUTTI.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div className="auth-field">

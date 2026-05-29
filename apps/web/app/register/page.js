@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [city, setCity] = useState('Milano');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,6 +22,10 @@ export default function RegisterPage() {
 
     if (password.length < 6) {
       setError('La password deve essere di almeno 6 caratteri');
+      return;
+    }
+    if (!birthDate) {
+      setError('Inserisci la tua data di nascita');
       return;
     }
 
@@ -50,6 +55,7 @@ export default function RegisterPage() {
         role: 'user',
         phone: phone || null,
         city,
+        birth_date: birthDate,
       });
       if (profileError) console.error('Errore profilo:', profileError);
     }
@@ -87,12 +93,17 @@ export default function RegisterPage() {
               <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+39 340..." />
             </div>
             <div className="auth-field">
-              <label>Citta</label>
-              <select value={city} onChange={e => setCity(e.target.value)}>
-                <option value="Milano">Milano</option>
-                <option value="Roma">Roma</option>
-              </select>
+              <label>Data di nascita</label>
+              <input type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} required max={new Date().toISOString().split('T')[0]} />
             </div>
+          </div>
+
+          <div className="auth-field">
+            <label>Città</label>
+            <select value={city} onChange={e => setCity(e.target.value)}>
+              <option value="Milano">Milano</option>
+              <option value="Roma">Roma</option>
+            </select>
           </div>
 
           {error && <div className="auth-error">{error}</div>}

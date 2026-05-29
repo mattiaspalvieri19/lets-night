@@ -35,11 +35,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (profile?.role === 'business') {
-      Alert.alert(
-        'Portale business',
-        'Per gestire il tuo locale accedi dal sito web. Sull\'app puoi esplorare gli eventi.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-      );
+      router.replace('/(business)');
     } else {
       router.replace('/(tabs)');
     }

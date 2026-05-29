@@ -14,6 +14,14 @@ function isPastEvent(dateStr) {
   return new Date(y, m - 1, d) < today;
 }
 
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 export default function EventDetailPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
@@ -24,6 +32,11 @@ export default function EventDetailPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [bookingModal, setBookingModal] = useState(false);
+  const [bookingQty, setBookingQty] = useState(1);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   useEffect(() => {
     async function loadEvent() {
@@ -87,8 +100,62 @@ export default function EventDetailPage({ params }) {
     };
   }, [loading]);
 
-  function handleBook() {
-    alert('Sistema di prenotazione in arrivo!\n\nPer ora puoi contattare il locale:\n' + (event.venues?.phone || 'numero non disponibile'));
+  async function handleBook() {
+    setBookingError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/login?next=' + encodeURIComponent('/event/' + id));
+      return;
+    }
+    setBookingModal(true);
+  }
+
+  async function confirmBooking() {
+    setBookingError('');
+    setBookingLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setBookingError('Sessione scaduta. Effettua di nuovo il login.');
+      setBookingLoading(false);
+      return;
+    }
+    const { data: existing } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('event_id', event.id)
+      .neq('status', 'cancelled')
+      .maybeSingle();
+    if (existing) {
+      setBookingError('Hai già prenotato questo evento.');
+      setBookingLoading(false);
+      return;
+    }
+    const isFree = !event.price || event.price === 0;
+    const qty = isFree ? 1 : bookingQty;
+    const { error } = await supabase.from('bookings').insert({
+      user_id: session.user.id,
+      event_id: event.id,
+      status: 'confirmed',
+      quantity: qty,
+      total_price: isFree ? 0 : event.price * qty,
+      fee: isFree ? 0 : 1.50,
+      qr_code: generateUUID(),
+    });
+    setBookingLoading(false);
+    if (error) {
+      setBookingError('Prenotazione non riuscita. Riprova.');
+      console.error('Errore booking:', error);
+      return;
+    }
+    setBookingSuccess(true);
+  }
+
+  function closeBookingModal() {
+    setBookingModal(false);
+    setBookingSuccess(false);
+    setBookingError('');
+    setBookingQty(1);
   }
 
   function shareWhatsApp() {
@@ -200,13 +267,17 @@ export default function EventDetailPage({ params }) {
             <span className="ev-info-label">Prezzo</span>
             <strong className="ev-info-value ev-price-big">{getPriceLabel(event.price)}</strong>
           </div>
-          <div className="ev-info-divider" />
-          <div className="ev-info-block">
-            <span className="ev-info-label">Disponibilita</span>
-            <strong className={'ev-info-value ev-availability ev-avail-' + urgency}>
-              {availableSpots} / {event.capacity}
-            </strong>
-          </div>
+          {hasCapacity && (
+            <>
+              <div className="ev-info-divider" />
+              <div className="ev-info-block">
+                <span className="ev-info-label">Disponibilita</span>
+                <strong className={'ev-info-value ev-availability ev-avail-' + urgency}>
+                  {availableSpots} / {event.capacity}
+                </strong>
+              </div>
+            </>
+          )}
           <div className="ev-info-cta">
             {past ? (
               <button className="ev-book-btn-disabled" disabled>Evento passato</button>
@@ -314,6 +385,59 @@ export default function EventDetailPage({ params }) {
           </div>
         </aside>
       </div>
+
+      {bookingModal && (
+        <div className="book-modal-overlay" onClick={closeBookingModal}>
+          <div className="book-modal" onClick={e => e.stopPropagation()}>
+            {bookingSuccess ? (
+              <div className="book-modal-success">
+                <div className="book-modal-check">✓</div>
+                <h2>Prenotato!</h2>
+                <p>Trovi il tuo biglietto con QR code nella tua area.</p>
+                <Link href="/dashboard" className="ln-btn-primary" onClick={closeBookingModal}>Vedi biglietto</Link>
+              </div>
+            ) : (
+              <>
+                <div className="book-modal-head">
+                  <div>
+                    <div className="book-modal-eyebrow">Prenota</div>
+                    <h2 className="book-modal-title">{event.title}</h2>
+                    <p className="book-modal-venue">{event.venues?.name}</p>
+                  </div>
+                  <button onClick={closeBookingModal} className="book-modal-close" aria-label="Chiudi">×</button>
+                </div>
+
+                <div className="book-modal-info">
+                  <div><span>Data</span><strong>{formatDateFull(event.event_date)}</strong></div>
+                  <div><span>Orario</span><strong>{formatTime(event.event_time) || '—'}</strong></div>
+                </div>
+
+                {event.price > 0 && (
+                  <div className="book-modal-qty">
+                    <span>Posti</span>
+                    <div className="book-modal-qty-controls">
+                      <button onClick={() => setBookingQty(q => Math.max(1, q - 1))}>−</button>
+                      <strong>{bookingQty}</strong>
+                      <button onClick={() => setBookingQty(q => Math.min(10, q + 1))}>+</button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="book-modal-total">
+                  <span>Totale</span>
+                  <strong>{!event.price || event.price === 0 ? 'Gratuito' : `EUR ${event.price * bookingQty}`}</strong>
+                </div>
+
+                {bookingError && <div className="auth-error">{bookingError}</div>}
+
+                <button onClick={confirmBooking} disabled={bookingLoading} className="ev-book-btn book-modal-confirm">
+                  {bookingLoading ? 'Prenotazione...' : 'Conferma prenotazione'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <footer className="ln-footer">
         <div className="footer-inner">

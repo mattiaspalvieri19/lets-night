@@ -3,6 +3,13 @@ import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { formatDateFull, formatTime, getPriceLabel } from '@lets-night/shared';
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 export default function BookingModal({ visible, onClose, event, session }) {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -53,6 +60,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
       quantity: qty,
       total_price: isFree ? 0 : event.price * qty,
       fee: isFree ? 0 : 1.50,
+      qr_code: generateUUID(),
     });
     setLoading(false);
     submitting.current = false;

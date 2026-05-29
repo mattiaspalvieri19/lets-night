@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
+import { CATS_NO_TUTTI, formatDateFull, formatTime } from '@lets-night/shared';
+
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 export default function BusinessDashboard() {
   const router = useRouter();
@@ -29,34 +35,53 @@ export default function BusinessDashboard() {
   }, []);
 
   async function loadData() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/business/login');
-      return;
-    }
-    setUser(session.user);
-
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-    if (profile?.role !== 'business') {
-      router.push('/dashboard');
-      return;
-    }
-
-    const { data: venueData } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).single();
-    setVenue(venueData);
-
-    if (venueData) {
-      const { data: eventsData } = await supabase.from('events').select('*').eq('venue_id', venueData.id).order('event_date', { ascending: false });
-      setEvents(eventsData || []);
-
-      const eventIds = (eventsData || []).map(e => e.id);
-      if (eventIds.length > 0) {
-        const { data: bookingsData } = await supabase.from('bookings').select('*, events(title), profiles(full_name, phone)').in('event_id', eventIds).order('created_at', { ascending: false });
-        setBookings(bookingsData || []);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/business/login');
+        return;
       }
-    }
+      setUser(session.user);
 
-    setLoading(false);
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+      if (profile?.role !== 'business') {
+        router.push('/dashboard');
+        return;
+      }
+
+      const { data: venueData } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).single();
+      setVenue(venueData);
+
+      if (venueData) {
+        const { data: eventsData } = await supabase.from('events').select('*').eq('venue_id', venueData.id).order('event_date', { ascending: false });
+        setEvents(eventsData || []);
+
+        const eventIds = (eventsData || []).map(e => e.id);
+        if (eventIds.length > 0) {
+          const { data: bookingsData } = await supabase
+            .from('bookings')
+            .select('*, events(title, event_date, event_time), profiles(full_name, phone)')
+            .in('event_id', eventIds)
+            .neq('status', 'cancelled')
+            .order('created_at', { ascending: false });
+          setBookings(bookingsData || []);
+        }
+      }
+    } catch (e) {
+      console.error('Errore dashboard:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCheckIn(bookingId, alreadyIn) {
+    if (alreadyIn) return;
+    const { error } = await supabase.from('bookings').update({
+      checked_in: true,
+      checked_in_at: new Date().toISOString(),
+    }).eq('id', bookingId);
+    if (error) { alert('Errore: ' + error.message); return; }
+    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: true } : b));
   }
 
   async function handleLogout() {
@@ -101,8 +126,11 @@ export default function BusinessDashboard() {
   if (loading) return <div className="dash-loading">Caricamento dashboard...</div>;
   if (!venue) return <div className="dash-loading">Nessun locale trovato per questo account.</div>;
 
-  const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
-  const thisMonthBookings = bookings.filter(b => new Date(b.created_at).getMonth() === new Date().getMonth()).length;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const todayStr = todayLocal();
+  const weekBookings = bookings.filter(b => b.created_at >= weekAgo);
+  const totalRevenue = weekBookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+  const todayCheckins = bookings.filter(b => b.checked_in && b.events?.event_date === todayStr).length;
   const activeEvents = events.filter(e => e.is_active).length;
 
   return (
@@ -132,14 +160,19 @@ export default function BusinessDashboard() {
 
       <div className="biz-stats-grid">
         <div className="biz-stat-card">
-          <span className="biz-stat-label">Entrate totali</span>
-          <strong className="biz-stat-value">EUR {totalRevenue.toFixed(2)}</strong>
-          <span className="biz-stat-sub">da {bookings.filter(b=>b.status==='confirmed').length} prenotazioni</span>
+          <span className="biz-stat-label">Check-in oggi</span>
+          <strong className="biz-stat-value">{todayCheckins}</strong>
+          <span className="biz-stat-sub">ingressi registrati</span>
         </div>
         <div className="biz-stat-card">
-          <span className="biz-stat-label">Prenotazioni mese</span>
-          <strong className="biz-stat-value">{thisMonthBookings}</strong>
-          <span className="biz-stat-sub">questo mese</span>
+          <span className="biz-stat-label">Prenotazioni (7gg)</span>
+          <strong className="biz-stat-value">{weekBookings.length}</strong>
+          <span className="biz-stat-sub">ultima settimana</span>
+        </div>
+        <div className="biz-stat-card">
+          <span className="biz-stat-label">Entrate (7gg)</span>
+          <strong className="biz-stat-value">EUR {totalRevenue.toFixed(2)}</strong>
+          <span className="biz-stat-sub">ultima settimana</span>
         </div>
         <div className="biz-stat-card">
           <span className="biz-stat-label">Eventi attivi</span>
@@ -182,11 +215,7 @@ export default function BusinessDashboard() {
                   <div className="auth-field">
                     <label>Categoria</label>
                     <select value={newEvent.category} onChange={e => setNewEvent({...newEvent, category: e.target.value})}>
-                      <option>Discoteca</option>
-                      <option>Universitario</option>
-                      <option>Cena Show</option>
-                      <option>VIP</option>
-                      <option>Aperitivo</option>
+                      {CATS_NO_TUTTI.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
                   <div className="auth-field">
@@ -246,15 +275,22 @@ export default function BusinessDashboard() {
               <div className="dash-empty"><p>Nessuna prenotazione ancora.</p></div>
             ) : (
               <div className="biz-bookings-list">
-                {bookings.slice(0,10).map(b => (
+                {bookings.slice(0,20).map(b => (
                   <div key={b.id} className="biz-booking-item">
                     <div>
                       <h4>{b.events?.title}</h4>
-                      <span>{b.profiles?.full_name} - {b.profiles?.phone || 'no tel'}</span>
+                      <span>{b.profiles?.full_name || 'Utente'} - {b.profiles?.phone || 'no tel'}</span>
                     </div>
                     <div className="biz-booking-right">
                       <strong>EUR {b.total_price}</strong>
-                      <span className={'dash-status dash-status-' + b.status}>{b.status}</span>
+                      <button
+                        onClick={() => handleCheckIn(b.id, b.checked_in)}
+                        disabled={b.checked_in}
+                        className={'biz-toggle ' + (b.checked_in ? 'active' : '')}
+                        style={{ marginTop: 6 }}
+                      >
+                        {b.checked_in ? '✓ Entrato' : 'Check-in'}
+                      </button>
                     </div>
                   </div>
                 ))}

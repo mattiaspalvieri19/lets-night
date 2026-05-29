@@ -9,7 +9,27 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [city, setCity] = useState('Milano');
+
+  function handleBirthDateChange(text) {
+    const digits = text.replace(/\D/g, '');
+    let formatted = digits;
+    if (digits.length > 2) formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+    if (digits.length > 4) formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4, 8);
+    setBirthDate(formatted);
+  }
+
+  function parseBirthDate(str) {
+    const match = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return null;
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    if (month < 1 || month > 12 || day < 1) return null;
+    if (day > new Date(year, month, 0).getDate()) return null;
+    return `${match[3]}-${match[2]}-${match[1]}`;
+  }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
@@ -20,6 +40,11 @@ export default function RegisterScreen() {
       setError('La password deve essere di almeno 6 caratteri.');
       return;
     }
+    const birthDateISO = parseBirthDate(birthDate);
+    if (!birthDateISO) {
+      setError('Inserisci una data di nascita valida (GG/MM/AAAA).');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -27,6 +52,7 @@ export default function RegisterScreen() {
       email,
       password,
       options: {
+        emailRedirectTo: 'letsnight://auth/callback',
         data: { full_name: fullName, role: 'user' },
       },
     });
@@ -46,6 +72,7 @@ export default function RegisterScreen() {
           role: 'user',
           phone: phone || null,
           city,
+          birth_date: birthDateISO,
         });
       if (profileError) console.error('Errore profilo:', profileError);
     }
@@ -151,6 +178,19 @@ export default function RegisterScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+              />
+            </View>
+
+            <View>
+              <Text className="text-gray-400 text-sm mb-2">Data di nascita</Text>
+              <TextInput
+                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                placeholder="GG/MM/AAAA"
+                placeholderTextColor="#555577"
+                value={birthDate}
+                onChangeText={handleBirthDateChange}
+                keyboardType="number-pad"
+                maxLength={10}
               />
             </View>
 

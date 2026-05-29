@@ -21,10 +21,12 @@ export default function Home() {
   useEffect(() => {
     async function loadEvents() {
       setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('events')
         .select('*, venues(name, zona, city, is_partner)')
         .eq('is_active', true)
+        .gte('event_date', today)
         .order('event_date', { ascending: true });
       if (error) console.error('Errore caricamento eventi:', error);
       else setEvents(data || []);

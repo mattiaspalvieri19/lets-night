@@ -6,12 +6,14 @@ export function useSession() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoading(false);
+      if (!cancelled) { setSession(s); setLoading(false); }
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!cancelled) { setSession(s); setLoading(false); }
+    });
+    return () => { cancelled = true; subscription.unsubscribe(); };
   }, []);
 
   return { session, loading };

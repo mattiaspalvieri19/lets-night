@@ -40,6 +40,7 @@ export default function BusinessLogin() {
       return;
     }
 
+    setLoading(false);
     router.push('/business/dashboard');
   }
 

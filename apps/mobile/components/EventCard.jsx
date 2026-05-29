@@ -4,7 +4,7 @@ import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-nigh
 
 export default function EventCard({ event, onPress }) {
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
-  const accent = accent || '#c084fc';
+  const accent = colors[2] || '#c084fc';
 
   return (
     <Pressable

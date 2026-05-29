@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-const ADMIN_EMAIL = 'mattia.spalvieri19@gmail.com';
-
 export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -23,7 +21,12 @@ export default function AdminPage() {
       router.push('/login');
       return;
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    const { data: adminRow } = await supabase
+      .from('admins')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if (!adminRow) {
       setAuthorized(false);
       setLoading(false);
       return;

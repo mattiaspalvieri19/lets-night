@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { COLORS_BY_CAT, formatDate, formatTime } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 
 
 export default function VenueDetailPage({ params }) {
@@ -269,7 +269,7 @@ export default function VenueDetailPage({ params }) {
                           <div className="ev-zona">{venue.zona}, {venue.city}</div>
                         </div>
                         <div className="ev-footer">
-                          <span className="ev-price">{ev.price > 0 ? 'EUR ' + ev.price : 'Lista'}</span>
+                          <span className="ev-price">{getPriceLabel(ev.price)}</span>
                           <span className="ev-cta">Prenota &rarr;</span>
                         </div>
                       </Link>
@@ -318,7 +318,7 @@ export default function VenueDetailPage({ params }) {
                         <strong>{e.title}</strong>
                         <span>{formatDate(e.event_date)} - {formatTime(e.event_time)}</span>
                       </div>
-                      <span className="vn-past-price">{e.price > 0 ? 'EUR ' + e.price : 'Lista'}</span>
+                      <span className="vn-past-price">{getPriceLabel(e.price)}</span>
                     </Link>
                   ))}
                 </div>

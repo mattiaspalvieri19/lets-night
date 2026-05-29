@@ -11,6 +11,7 @@ node_modules
 # Next.js
 apps/web/.next/
 apps/web/out/
+/.next/
 
 # Expo / React Native
 apps/mobile/.expo/
@@ -47,3 +48,4 @@ yarn-error.log*
 # claude local overrides (non condividere)
 .claude/settings.local.json
 .claude/CLAUDE.local.md
+.claude/worktrees/

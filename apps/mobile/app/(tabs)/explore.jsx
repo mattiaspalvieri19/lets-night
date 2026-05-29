@@ -38,6 +38,7 @@ export default function ExploreScreen() {
   const [selectedCats, setSelectedCats] = useState([]);
   const [selectedZone, setSelectedZone] = useState('all');
   const [dateRange, setDateRange] = useState('all');
+  const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(200);
   const [sortBy, setSortBy] = useState('date_asc');
 
@@ -46,6 +47,7 @@ export default function ExploreScreen() {
   const [pendingCats, setPendingCats] = useState([]);
   const [pendingZone, setPendingZone] = useState('all');
   const [pendingDateRange, setPendingDateRange] = useState('all');
+  const [pendingPriceMin, setPendingPriceMin] = useState(0);
   const [pendingPriceMax, setPendingPriceMax] = useState(200);
 
   async function loadData() {
@@ -77,6 +79,7 @@ export default function ExploreScreen() {
     setPendingCats(selectedCats);
     setPendingZone(selectedZone);
     setPendingDateRange(dateRange);
+    setPendingPriceMin(priceMin);
     setPendingPriceMax(priceMax);
     setFiltersOpen(true);
   }
@@ -86,6 +89,7 @@ export default function ExploreScreen() {
     setSelectedCats(pendingCats);
     setSelectedZone(pendingZone);
     setDateRange(pendingDateRange);
+    setPriceMin(pendingPriceMin);
     setPriceMax(pendingPriceMax);
     setFiltersOpen(false);
   }
@@ -96,12 +100,14 @@ export default function ExploreScreen() {
     setSelectedCats([]);
     setSelectedZone('all');
     setDateRange('all');
+    setPriceMin(0);
     setPriceMax(200);
     setSortBy('date_asc');
     setPendingCities(['Milano', 'Roma']);
     setPendingCats([]);
     setPendingZone('all');
     setPendingDateRange('all');
+    setPendingPriceMin(0);
     setPendingPriceMax(200);
   }
 
@@ -111,8 +117,9 @@ export default function ExploreScreen() {
     if (selectedZone !== 'all' && e.venues?.zona !== selectedZone) return false;
     if (!isInDateRange(e.event_date, dateRange)) return false;
     const price = e.price == null ? null : parseFloat(e.price);
-    if (priceMax === 0 && (price == null || price > 0)) return false;
-    if (price != null && price > priceMax) return false;
+    if (priceMax === 0 && priceMin === 0 && (price == null || price > 0)) return false;
+    if (priceMin > 0 && (price == null || price < priceMin)) return false;
+    if (priceMax > 0 && priceMax < 200 && price != null && price > priceMax) return false;
     if (search) {
       const q = search.toLowerCase();
       if (
@@ -137,6 +144,7 @@ export default function ExploreScreen() {
     selectedCats.length +
     (selectedZone !== 'all' ? 1 : 0) +
     (dateRange !== 'all' ? 1 : 0) +
+    (priceMin > 0 ? 1 : 0) +
     (priceMax < 200 ? 1 : 0);
 
   return (
@@ -272,6 +280,7 @@ export default function ExploreScreen() {
                 setPendingCats([]);
                 setPendingZone('all');
                 setPendingDateRange('all');
+                setPendingPriceMin(0);
                 setPendingPriceMax(200);
               }}>
                 <Text style={{ color: '#A855F7', fontSize: 14, fontWeight: '600' }}>Reset</Text>
@@ -326,6 +335,27 @@ export default function ExploreScreen() {
                     >
                       <Text style={{ color: active ? '#fff' : '#9CA3AF', fontWeight: active ? '700' : '400' }}>{d.label}</Text>
                       {active && <Text style={{ color: '#A855F7' }}>✓</Text>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Prezzo minimo */}
+              <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+                Prezzo minimo: {pendingPriceMin === 0 ? 'Nessuno' : `EUR ${pendingPriceMin}+`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                {[0, 10, 20, 30, 50].map(v => {
+                  const active = pendingPriceMin === v;
+                  return (
+                    <Pressable
+                      key={v}
+                      onPress={() => setPendingPriceMin(v)}
+                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: active ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}
+                    >
+                      <Text style={{ color: active ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: active ? '700' : '400' }}>
+                        {v === 0 ? 'Nessuno' : `EUR ${v}+`}
+                      </Text>
                     </Pressable>
                   );
                 })}

@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import * as ScreenCapture from 'expo-screen-capture';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
 
-function TicketCard({ booking, onPress }) {
+function TicketCard({ booking, onPress, onShowQR }) {
   const event = booking.events;
   const past = event ? isPastDate(event.event_date) : false;
 
@@ -78,9 +80,19 @@ function TicketCard({ booking, onPress }) {
           <Text style={{ color: '#64748B', fontSize: 12 }}>
             {event?.venues?.zona}, {event?.venues?.city}
           </Text>
-          <Text style={{ color: past ? '#6B7280' : '#A855F7', fontWeight: '700', fontSize: 14 }}>
-            {event ? getPriceLabel(event.price) : '—'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ color: past ? '#6B7280' : '#A855F7', fontWeight: '700', fontSize: 14 }}>
+              {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
+            </Text>
+            {!past && booking.qr_code && onShowQR && (
+              <Pressable
+                onPress={onShowQR}
+                style={{ backgroundColor: 'rgba(124,58,237,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
+              >
+                <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>QR</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
     </Pressable>
@@ -94,6 +106,16 @@ export default function TicketsScreen() {
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [qrModal, setQrModal] = useState(null);
+
+  useEffect(() => {
+    if (qrModal) {
+      ScreenCapture.preventScreenCaptureAsync();
+    } else {
+      ScreenCapture.allowScreenCaptureAsync();
+    }
+    return () => { ScreenCapture.allowScreenCaptureAsync(); };
+  }, [qrModal]);
 
   async function fetchBookings(userId) {
     setFetchError(false);
@@ -174,7 +196,8 @@ export default function TicketsScreen() {
     );
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && b.status !== 'cancelled');
   const past = bookings.filter(b => b.events && (b.events.event_date < today || b.status === 'cancelled'));
 
@@ -247,6 +270,7 @@ export default function TicketsScreen() {
                   key={b.id}
                   booking={b}
                   onPress={() => b.events?.id && router.push(`/event/${b.events.id}`)}
+                  onShowQR={b.qr_code ? () => setQrModal({ qr_code: b.qr_code, eventTitle: b.events?.title, eventDate: b.events ? formatDateFull(b.events.event_date) : '' }) : null}
                 />
               ))}
             </View>
@@ -268,6 +292,29 @@ export default function TicketsScreen() {
           )}
         </ScrollView>
       )}
+      {/* QR Modal */}
+      <Modal visible={!!qrModal} transparent animationType="fade" onRequestClose={() => setQrModal(null)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}
+          onPress={() => setQrModal(null)}
+        >
+          <Pressable style={{ backgroundColor: '#111118', borderRadius: 24, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', width: '100%' }}>
+            <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Il tuo biglietto</Text>
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>{qrModal?.eventTitle}</Text>
+            <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{qrModal?.eventDate}</Text>
+            <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 20 }}>
+              {qrModal?.qr_code ? <QRCode value={qrModal.qr_code} size={200} /> : null}
+            </View>
+            <Text style={{ color: '#64748B', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>Mostra questo QR code all&apos;ingresso</Text>
+            <Pressable
+              onPress={() => setQrModal(null)}
+              style={({ pressed }) => ({ paddingVertical: 12, paddingHorizontal: 40, borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)', borderRadius: 10, opacity: pressed ? 0.7 : 1 })}
+            >
+              <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>Chiudi</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import QRCode from 'react-qr-code';
 import { supabase } from '../../lib/supabase';
+import { formatDateFull, formatTime } from '@lets-night/shared';
+
+function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -11,6 +18,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [openQR, setOpenQR] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -79,31 +87,64 @@ export default function DashboardPage() {
 
       <div className="dash-grid">
         <div className="dash-main">
-          <div className="dash-section">
-            <h2 className="dash-section-title">Le tue prenotazioni</h2>
-            {bookings.length === 0 ? (
-              <div className="dash-empty">
-                <p>Non hai ancora prenotazioni.</p>
-                <Link href="/explore" className="ln-btn-primary">Scopri gli eventi</Link>
-              </div>
-            ) : (
-              <div className="dash-bookings">
-                {bookings.map(b => (
-                  <div key={b.id} className="dash-booking">
-                    <div className="dash-booking-info">
-                      <h3>{b.events?.title}</h3>
-                      <p>{b.events?.venues?.name} - {b.events?.venues?.city}</p>
-                      <span className="dash-booking-date">{b.events?.event_date} alle {b.events?.event_time?.substring(0,5)}</span>
+          {(() => {
+            const today = todayLocal();
+            const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && b.status !== 'cancelled');
+            const past = bookings.filter(b => b.events && (b.events.event_date < today || b.status === 'cancelled'));
+            return (
+              <>
+                <div className="dash-section">
+                  <h2 className="dash-section-title">Prossimi ({upcoming.length})</h2>
+                  {upcoming.length === 0 ? (
+                    <div className="dash-empty">
+                      <p>Nessuna prenotazione in arrivo.</p>
+                      <Link href="/explore" className="ln-btn-primary">Scopri gli eventi</Link>
                     </div>
-                    <div className="dash-booking-status">
-                      <span className={'dash-status dash-status-' + b.status}>{b.status}</span>
-                      <strong>EUR {b.total_price}</strong>
+                  ) : (
+                    <div className="dash-bookings">
+                      {upcoming.map(b => (
+                        <div key={b.id} className="dash-booking">
+                          <div className="dash-booking-info">
+                            <h3>{b.events?.title}</h3>
+                            <p>{b.events?.venues?.name} - {b.events?.venues?.city}</p>
+                            <span className="dash-booking-date">{formatDateFull(b.events?.event_date)} alle {formatTime(b.events?.event_time)}</span>
+                          </div>
+                          <div className="dash-booking-status">
+                            <span className={'dash-status dash-status-' + b.status}>{b.status}</span>
+                            <strong>EUR {b.total_price}</strong>
+                            {b.qr_code && (
+                              <button onClick={() => setOpenQR(b)} className="ln-btn-ghost" style={{ marginTop: 8, fontSize: 12 }}>Mostra QR</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {past.length > 0 && (
+                  <div className="dash-section">
+                    <h2 className="dash-section-title">Passati ({past.length})</h2>
+                    <div className="dash-bookings">
+                      {past.map(b => (
+                        <div key={b.id} className="dash-booking" style={{ opacity: 0.65 }}>
+                          <div className="dash-booking-info">
+                            <h3>{b.events?.title}</h3>
+                            <p>{b.events?.venues?.name} - {b.events?.venues?.city}</p>
+                            <span className="dash-booking-date">{formatDateFull(b.events?.event_date)}</span>
+                          </div>
+                          <div className="dash-booking-status">
+                            <span className={'dash-status dash-status-' + b.status}>{b.status === 'cancelled' ? 'annullato' : 'passato'}</span>
+                            <strong>EUR {b.total_price}</strong>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <aside className="dash-aside">
@@ -132,6 +173,27 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
+
+      {openQR && (
+        <div className="book-modal-overlay" onClick={() => setOpenQR(null)}>
+          <div className="book-modal" onClick={e => e.stopPropagation()}>
+            <div className="book-modal-head">
+              <div>
+                <div className="book-modal-eyebrow">Il tuo biglietto</div>
+                <h2 className="book-modal-title">{openQR.events?.title}</h2>
+                <p className="book-modal-venue">{formatDateFull(openQR.events?.event_date)}</p>
+              </div>
+              <button onClick={() => setOpenQR(null)} className="book-modal-close" aria-label="Chiudi">×</button>
+            </div>
+            <div className="ticket-qr-wrap">
+              <div className="ticket-qr-inner">
+                <QRCode value={openQR.qr_code} size={220} />
+              </div>
+              <p className="ticket-qr-hint">Mostra questo QR code all&apos;ingresso</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

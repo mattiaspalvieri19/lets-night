@@ -102,8 +102,9 @@ export default function ExplorePage() {
     if (selectedCats.length > 0 && !selectedCats.includes(e.category)) return false;
     if (selectedZone !== 'all' && e.venues?.zona !== selectedZone) return false;
     if (!isInDateRange(e.event_date, dateRange)) return false;
-    const price = parseFloat(e.price) || 0;
-    if (price < priceMin || price > priceMax) return false;
+    const price = e.price == null ? null : parseFloat(e.price);
+    if (price == null && (priceMax === 0 || priceMin > 0)) return false;
+    if (price != null && (price < priceMin || price > priceMax)) return false;
     if (search) {
       const q = search.toLowerCase();
       const matchTitle = e.title.toLowerCase().includes(q);

@@ -27,7 +27,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Let's Night ha bisogno della fotocamera per scannerizzare i QR code dei biglietti."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
