@@ -48,6 +48,19 @@ export default function RegisterScreen() {
     setLoading(true);
     setError('');
 
+    // Pre-check telefono già usato (se compilato)
+    if (phone) {
+      const [{ data: vPhone }, { data: pPhone }] = await Promise.all([
+        supabase.from('venues').select('id').eq('phone', phone).maybeSingle(),
+        supabase.from('profiles').select('id').eq('phone', phone).maybeSingle(),
+      ]);
+      if (vPhone || pPhone) {
+        setError('Questo numero di telefono è già associato a un account.');
+        setLoading(false);
+        return;
+      }
+    }
+
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -59,6 +72,12 @@ export default function RegisterScreen() {
 
     if (authError) {
       setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      setError('Questa email è già registrata. Accedi oppure usa un\'altra email.');
       setLoading(false);
       return;
     }

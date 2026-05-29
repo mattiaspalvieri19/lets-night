@@ -36,7 +36,18 @@ export default function BusinessRegister() {
 
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signUp({
+    // Pre-check: telefono già usato
+    const [{ data: existingVenue }, { data: existingProfile }] = await Promise.all([
+      supabase.from('venues').select('id').eq('phone', form.phone).maybeSingle(),
+      supabase.from('profiles').select('id').eq('phone', form.phone).maybeSingle(),
+    ]);
+    if (existingVenue || existingProfile) {
+      setError('Questo numero di telefono è già associato a un account. Usane un altro.');
+      setLoading(false);
+      return;
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -59,6 +70,12 @@ export default function BusinessRegister() {
 
     if (authError) {
       setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (authData?.user && (!authData.user.identities || authData.user.identities.length === 0)) {
+      setError('Questa email è già registrata. Accedi oppure usa un\'altra email.');
       setLoading(false);
       return;
     }
