@@ -228,6 +228,13 @@ export default function RegisterScreen() {
             </Link>
           </View>
 
+          <View className="mt-8 pt-6 border-t border-gray-800 items-center">
+            <Text className="text-gray-500 text-sm mb-2">Sei un locale?</Text>
+            <Link href="/auth/business-register">
+              <Text className="text-brand font-semibold text-sm">Registra il tuo locale →</Text>
+            </Link>
+          </View>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
