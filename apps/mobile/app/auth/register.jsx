@@ -48,13 +48,10 @@ export default function RegisterScreen() {
     setLoading(true);
     setError('');
 
-    // Pre-check telefono già usato (se compilato)
+    // Pre-check telefono via RPC (bypassa RLS profiles per utente non autenticato)
     if (phone) {
-      const [{ data: vPhone }, { data: pPhone }] = await Promise.all([
-        supabase.from('venues').select('id').eq('phone', phone).maybeSingle(),
-        supabase.from('profiles').select('id').eq('phone', phone).maybeSingle(),
-      ]);
-      if (vPhone || pPhone) {
+      const { data: available } = await supabase.rpc('check_phone_available', { p_phone: phone });
+      if (available === false) {
         setError('Questo numero di telefono è già associato a un account.');
         setLoading(false);
         return;
@@ -66,7 +63,13 @@ export default function RegisterScreen() {
       password,
       options: {
         emailRedirectTo: 'letsnight://auth/callback',
-        data: { full_name: fullName, role: 'user' },
+        data: {
+          full_name: fullName,
+          role: 'user',
+          phone: phone || null,
+          city,
+          birth_date: birthDateISO,
+        },
       },
     });
 
@@ -82,20 +85,7 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: data.user.id,
-          full_name: fullName,
-          role: 'user',
-          phone: phone || null,
-          city,
-          birth_date: birthDateISO,
-        });
-      if (profileError) console.error('Errore profilo:', profileError);
-    }
-
+    // Profilo gestito dal trigger SQL handle_new_user
     setLoading(false);
     setSent(true);
   }

@@ -38,7 +38,7 @@ export default function BusinessDashboard() {
 
       setTodayEvents(eventsToday || []);
 
-      const checkins = (eventsToday || []).flatMap(e => e.bookings || []).filter(b => b.checked_in).length;
+      const checkins = (eventsToday || []).flatMap(e => e.bookings || []).filter(b => b.checked_in && b.status !== 'cancelled').length;
       const revenue = (bookings || []).filter(b => b.status === 'confirmed').reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
 
       setStats({

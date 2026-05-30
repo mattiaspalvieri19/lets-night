@@ -18,7 +18,7 @@ export default function AdminPage() {
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push('/login');
+      router.push('/login?next=/admin');
       return;
     }
     const { data: adminRow } = await supabase

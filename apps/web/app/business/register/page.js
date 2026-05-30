@@ -36,12 +36,9 @@ export default function BusinessRegister() {
 
     setLoading(true);
 
-    // Pre-check: telefono già usato
-    const [{ data: existingVenue }, { data: existingProfile }] = await Promise.all([
-      supabase.from('venues').select('id').eq('phone', form.phone).maybeSingle(),
-      supabase.from('profiles').select('id').eq('phone', form.phone).maybeSingle(),
-    ]);
-    if (existingVenue || existingProfile) {
+    // Pre-check: telefono già usato (RPC bypassa RLS profiles per utenti non autenticati)
+    const { data: phoneAvailable } = await supabase.rpc('check_phone_available', { p_phone: form.phone });
+    if (phoneAvailable === false) {
       setError('Questo numero di telefono è già associato a un account. Usane un altro.');
       setLoading(false);
       return;

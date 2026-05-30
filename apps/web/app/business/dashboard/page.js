@@ -4,12 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { CATS_NO_TUTTI, formatDateFull, formatTime } from '@lets-night/shared';
-
-function todayLocal() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+import { CATS_NO_TUTTI, formatDateFull, formatTime, getPriceLabel, todayLocal } from '@lets-night/shared';
 
 export default function BusinessDashboard() {
   const router = useRouter();
@@ -92,7 +87,14 @@ export default function BusinessDashboard() {
   async function handleCreateEvent(e) {
     e.preventDefault();
     if (!venue || !venue.is_verified) return;
+    if (newEvent.event_date && newEvent.event_date < todayLocal()) {
+      alert('Non puoi creare un evento per una data passata.');
+      return;
+    }
     setCreatingEvent(true);
+
+    const priceNum = parseFloat(String(newEvent.price).replace(',', '.'));
+    const capacityNum = newEvent.capacity ? parseInt(String(newEvent.capacity).replace(/\D/g, ''), 10) : null;
 
     const { error } = await supabase.from('events').insert({
       venue_id: venue.id,
@@ -101,8 +103,8 @@ export default function BusinessDashboard() {
       category: newEvent.category,
       event_date: newEvent.event_date,
       event_time: newEvent.event_time,
-      price: parseFloat(newEvent.price) || 0,
-      capacity: parseInt(newEvent.capacity) || 100,
+      price: isNaN(priceNum) ? 0 : priceNum,
+      capacity: capacityNum || null,
       is_active: true,
     });
 
@@ -220,7 +222,7 @@ export default function BusinessDashboard() {
                   </div>
                   <div className="auth-field">
                     <label>Data</label>
-                    <input type="date" value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})} required />
+                    <input type="date" min={todayLocal()} value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})} required />
                   </div>
                 </div>
                 <div className="auth-row">
@@ -234,7 +236,7 @@ export default function BusinessDashboard() {
                   </div>
                   <div className="auth-field">
                     <label>Capienza</label>
-                    <input type="number" value={newEvent.capacity} onChange={e => setNewEvent({...newEvent, capacity: e.target.value})} required />
+                    <input type="number" placeholder="Lascia vuoto per illimitata" min="1" value={newEvent.capacity} onChange={e => setNewEvent({...newEvent, capacity: e.target.value})} />
                   </div>
                 </div>
                 <button type="submit" className="biz-submit" disabled={creatingEvent}>
@@ -253,8 +255,8 @@ export default function BusinessDashboard() {
                       <h3>{ev.title}</h3>
                       <div className="biz-event-meta">
                         <span>{ev.event_date} - {ev.event_time?.substring(0,5)}</span>
-                        <span>EUR {ev.price}</span>
-                        <span>{ev.booked_count || 0}/{ev.capacity} posti</span>
+                        <span>{getPriceLabel(ev.price)}</span>
+                        <span>{ev.booked_count || 0}{ev.capacity ? `/${ev.capacity}` : ''} posti</span>
                       </div>
                     </div>
                     <button 

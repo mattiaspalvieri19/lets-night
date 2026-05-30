@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_FEE } from '@lets-night/shared';
 
 function isPastEvent(dateStr) {
   if (!dateStr) return false;
@@ -12,14 +12,6 @@ function isPastEvent(dateStr) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return new Date(y, m - 1, d) < today;
-}
-
-function generateUUID() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
 }
 
 export default function EventDetailPage({ params }) {
@@ -115,37 +107,32 @@ export default function EventDetailPage({ params }) {
     setBookingLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      setBookingError('Sessione scaduta. Effettua di nuovo il login.');
+      setBookingError('Sessione scaduta. Torno al login...');
       setBookingLoading(false);
+      setTimeout(() => router.push('/login?next=' + encodeURIComponent('/event/' + id)), 1500);
       return;
     }
-    const { data: existing } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('event_id', event.id)
-      .neq('status', 'cancelled')
-      .maybeSingle();
-    if (existing) {
-      setBookingError('Hai già prenotato questo evento.');
-      setBookingLoading(false);
-      return;
-    }
-    const isFree = !event.price || event.price === 0;
+    const safePrice = Math.max(0, Number(event.price) || 0);
+    const isFree = safePrice === 0;
     const qty = isFree ? 1 : bookingQty;
     const { error } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
       quantity: qty,
-      total_price: isFree ? 0 : event.price * qty,
-      fee: isFree ? 0 : 1.50,
-      qr_code: generateUUID(),
+      total_price: isFree ? 0 : safePrice * qty,
+      fee: isFree ? 0 : BOOKING_FEE,
+      qr_code: generateBookingQR(),
     });
     setBookingLoading(false);
     if (error) {
-      setBookingError('Prenotazione non riuscita. Riprova.');
-      console.error('Errore booking:', error);
+      // 23505 = unique_violation: gestito dal nuovo UNIQUE (user_id, event_id) WHERE status != cancelled
+      if (error.code === '23505') {
+        setBookingError('Hai già prenotato questo evento.');
+      } else {
+        setBookingError('Prenotazione non riuscita. Riprova.');
+        console.error('Errore booking:', error);
+      }
       return;
     }
     setBookingSuccess(true);

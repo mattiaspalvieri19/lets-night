@@ -1,14 +1,7 @@
 import { useState, useRef } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { formatDateFull, formatTime, getPriceLabel } from '@lets-night/shared';
-
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
-}
+import { formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_FEE } from '@lets-night/shared';
 
 export default function BookingModal({ visible, onClose, event, session }) {
   const [quantity, setQuantity] = useState(1);
@@ -17,8 +10,9 @@ export default function BookingModal({ visible, onClose, event, session }) {
   const [error, setError] = useState('');
   const submitting = useRef(false);
 
-  const isFree = !event?.price || event.price === 0;
-  const total = isFree ? 0 : event.price * quantity;
+  const safePrice = Math.max(0, Number(event?.price) || 0);
+  const isFree = safePrice === 0;
+  const total = isFree ? 0 : safePrice * quantity;
 
   function handleClose() {
     setQuantity(1);
@@ -37,36 +31,25 @@ export default function BookingModal({ visible, onClose, event, session }) {
     setError('');
     setLoading(true);
 
-    const { data: existing } = await supabase
-      .from('bookings')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('event_id', event.id)
-      .neq('status', 'cancelled')
-      .maybeSingle();
-
-    if (existing) {
-      setError('Hai già prenotato questo evento.');
-      setLoading(false);
-      submitting.current = false;
-      return;
-    }
-
     const qty = isFree ? 1 : quantity;
     const { error: err } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
       quantity: qty,
-      total_price: isFree ? 0 : event.price * qty,
-      fee: isFree ? 0 : 1.50,
-      qr_code: generateUUID(),
+      total_price: isFree ? 0 : safePrice * qty,
+      fee: isFree ? 0 : BOOKING_FEE,
+      qr_code: generateBookingQR(),
     });
     setLoading(false);
     submitting.current = false;
     if (err) {
-      setError('Prenotazione non riuscita. Riprova.');
-      console.error('Errore booking:', err);
+      if (err.code === '23505') {
+        setError('Hai già prenotato questo evento.');
+      } else {
+        setError('Prenotazione non riuscita. Riprova.');
+        console.error('Errore booking:', err);
+      }
     } else {
       setSuccess(true);
     }

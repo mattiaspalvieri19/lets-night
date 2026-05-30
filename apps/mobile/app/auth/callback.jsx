@@ -16,19 +16,25 @@ export default function AuthCallback() {
         return;
       }
       if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           setErrorMsg('Conferma non riuscita. Il link potrebbe essere scaduto o già usato.');
           setStatus('error');
           return;
         }
+        setStatus('success');
+        // Routing role-aware: business va in (business), user in (tabs)
+        const userId = data?.session?.user?.id;
+        if (userId) {
+          const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single();
+          router.replace(profile?.role === 'business' ? '/(business)' : '/(tabs)');
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         setErrorMsg('Link di conferma non valido. Prova a registrarti di nuovo.');
         setStatus('error');
-        return;
       }
-      setStatus('success');
-      router.replace('/(tabs)');
     }
     handle();
   }, []);

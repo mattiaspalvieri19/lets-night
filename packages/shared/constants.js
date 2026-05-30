@@ -14,3 +14,6 @@ export const COLORS_BY_CAT = {
 };
 
 export const BRAND_COLOR = '#12A0D7';
+
+// Commissione per prenotazione (EUR). Centralizzata per non avere drift web/mobile.
+export const BOOKING_FEE = 1.50;

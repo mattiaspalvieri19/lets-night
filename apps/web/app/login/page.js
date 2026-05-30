@@ -1,12 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-export default function LoginPage() {
+function safeNext(next) {
+  if (!next || typeof next !== 'string') return null;
+  return next.startsWith('/') && !next.startsWith('//') ? next : null;
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,10 +38,11 @@ export default function LoginPage() {
       return;
     }
 
-    // Controlla il ruolo dell utente
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
 
-    if (profile?.role === 'business') {
+    if (next) {
+      router.push(next);
+    } else if (profile?.role === 'business') {
       router.push('/business/dashboard');
     } else {
       router.push('/dashboard');
@@ -68,7 +76,7 @@ export default function LoginPage() {
         </form>
 
         <div className="auth-footer">
-          Non hai ancora un account? <Link href="/register">Iscriviti gratis</Link>
+          Non hai ancora un account? <Link href={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}>Iscriviti gratis</Link>
         </div>
 
         <div className="auth-business-link">
@@ -76,5 +84,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="auth-page"><div className="auth-card"><p>Caricamento...</p></div></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

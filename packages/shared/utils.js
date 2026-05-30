@@ -41,6 +41,21 @@ export function isPastDate(dateStr) {
   return parseLocalDate(dateStr) < today;
 }
 
+// Data di oggi in fuso locale come 'YYYY-MM-DD' (non UTC).
+export function todayLocal() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// UUID v4 generato con Math.random — sufficiente per QR ticket (entropy 122 bit).
+// Hermes/RN compatibile (non usa crypto.randomUUID che non sempre esiste).
+export function generateBookingQR() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 export function isInDateRange(dateStr, range) {
   if (!dateStr || range === 'all') return true;
   const d = parseLocalDate(dateStr);

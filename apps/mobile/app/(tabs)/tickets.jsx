@@ -109,11 +109,8 @@ export default function TicketsScreen() {
   const [qrModal, setQrModal] = useState(null);
 
   useEffect(() => {
-    if (qrModal) {
-      ScreenCapture.preventScreenCaptureAsync();
-    } else {
-      ScreenCapture.allowScreenCaptureAsync();
-    }
+    if (!qrModal) return;
+    ScreenCapture.preventScreenCaptureAsync();
     return () => { ScreenCapture.allowScreenCaptureAsync(); };
   }, [qrModal]);
 
