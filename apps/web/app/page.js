@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { CATS, COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { CATS, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 
 export default function Home() {
   const scrollerRef = useRef(null);
   const [city, setCity] = useState('Milano');
   const [cat, setCat] = useState('Tutti');
+  const [quickTag, setQuickTag] = useState(null);
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [events, setEvents] = useState([]);
@@ -62,6 +63,14 @@ export default function Home() {
   const filtered = events.filter(e => {
     if (e.venues?.city !== city) return false;
     if (cat !== 'Tutti' && e.category !== cat) return false;
+    if (quickTag) {
+      const tags = (e.tags || []).map(t => t.toLowerCase());
+      if (quickTag === 'Gratis') {
+        if (e.price && e.price > 0) return false;
+      } else if (!tags.includes(quickTag.toLowerCase())) {
+        return false;
+      }
+    }
     if (search && !e.title.toLowerCase().includes(search.toLowerCase()) && !(e.venues?.name || '').toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -97,6 +106,7 @@ export default function Home() {
         <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
         <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
           <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
+          <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
           <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
           <button className="ln-city-pill" onClick={() => { setCity(c => c === 'Milano' ? 'Roma' : 'Milano'); setMenuOpen(false); }}>
             {city}
@@ -157,6 +167,17 @@ export default function Home() {
         <div className="cat-filters" data-anim="up" data-delay="100">
           {CATS.map(c => (
             <button key={c} className={'cat-btn '+(cat===c?'active':'')} onClick={() => setCat(c)}>{c}</button>
+          ))}
+        </div>
+
+        <div className="quick-tags" data-anim="up" data-delay="150">
+          {QUICK_TAGS.map(t => (
+            <button
+              key={t}
+              className={'quick-tag ' + (quickTag === t ? 'active' : '')}
+              onClick={() => setQuickTag(quickTag === t ? null : t)}>
+              {t}
+            </button>
           ))}
         </div>
 

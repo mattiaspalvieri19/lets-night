@@ -3,7 +3,19 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
-import { CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT, formatDate, formatTime, isInDateRange, getPriceLabel } from '@lets-night/shared';
+import {
+  CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT,
+  QUICK_TAGS, MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, TIME_SLOTS,
+  formatDate, formatTime, isInDateRange, getPriceLabel,
+} from '@lets-night/shared';
+
+const ENTRY_OPTIONS = [
+  { id: 'any', label: 'Tutti' },
+  { id: 'free', label: 'Gratis' },
+  { id: 'paid', label: 'A pagamento' },
+  { id: 'guestlist', label: 'Lista' },
+  { id: 'table', label: 'Tavolo' },
+];
 
 const DATE_RANGES = [
   { id: 'all', label: 'Tutte le date' },
@@ -35,6 +47,12 @@ export default function ExplorePage() {
   const [priceMin, setPriceMin] = useState(0);
   const [priceMax, setPriceMax] = useState(200);
   const [sortBy, setSortBy] = useState('date_asc');
+  const [quickTag, setQuickTag] = useState(null);
+  const [musicTypes, setMusicTypes] = useState([]);
+  const [dressCode, setDressCode] = useState(null);
+  const [ageTarget, setAgeTarget] = useState(null);
+  const [entryType, setEntryType] = useState('any');
+  const [timeSlot, setTimeSlot] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -95,6 +113,27 @@ export default function ExplorePage() {
     setPriceMin(0);
     setPriceMax(200);
     setSortBy('date_asc');
+    setQuickTag(null);
+    setMusicTypes([]);
+    setDressCode(null);
+    setAgeTarget(null);
+    setEntryType('any');
+    setTimeSlot(null);
+  }
+
+  function toggleMusic(m) {
+    setMusicTypes(musicTypes.includes(m) ? musicTypes.filter(x => x !== m) : [...musicTypes, m]);
+  }
+
+  function timeSlotMatch(slot, eventTime) {
+    if (!slot || !eventTime) return true;
+    const h = parseInt(String(eventTime).slice(0, 2), 10);
+    if (isNaN(h)) return true;
+    if (slot === 'aperitivo') return h >= 18 && h < 21;
+    if (slot === 'cena')      return h >= 20 && h < 23;
+    if (slot === 'serata')    return h >= 22 || h < 2;
+    if (slot === 'after')     return h >= 2 && h < 6;
+    return true;
   }
 
   const filtered = events.filter(e => {
@@ -102,9 +141,23 @@ export default function ExplorePage() {
     if (selectedCats.length > 0 && !selectedCats.includes(e.category)) return false;
     if (selectedZone !== 'all' && e.venues?.zona !== selectedZone) return false;
     if (!isInDateRange(e.event_date, dateRange)) return false;
+    if (!timeSlotMatch(timeSlot, e.event_time)) return false;
     const price = e.price == null ? null : parseFloat(e.price);
+    if (entryType === 'free' && !(price === 0 || price == null)) return false;
+    if (entryType === 'paid' && !(price > 0)) return false;
+    const tags = (e.tags || []).map(t => t.toLowerCase());
+    if (entryType === 'guestlist' && !tags.includes('guestlist')) return false;
+    if (entryType === 'table' && !tags.includes('tavoli')) return false;
     if (price == null && (priceMax === 0 || priceMin > 0)) return false;
     if (price != null && (price < priceMin || price > priceMax)) return false;
+    if (quickTag) {
+      if (quickTag === 'Gratis') {
+        if (price && price > 0) return false;
+      } else if (!tags.includes(quickTag.toLowerCase())) return false;
+    }
+    if (musicTypes.length && !musicTypes.includes(e.music_type)) return false;
+    if (dressCode && e.dress_code && e.dress_code !== dressCode) return false;
+    if (ageTarget && e.age_target && e.age_target !== ageTarget) return false;
     if (search) {
       const q = search.toLowerCase();
       const matchTitle = e.title.toLowerCase().includes(q);
@@ -123,13 +176,19 @@ export default function ExplorePage() {
     return 0;
   });
 
-  const activeFiltersCount = 
-    (search ? 1 : 0) + 
+  const activeFiltersCount =
+    (search ? 1 : 0) +
     (selectedCities.length < 2 ? 1 : 0) +
     selectedCats.length +
     (selectedZone !== 'all' ? 1 : 0) +
     (dateRange !== 'all' ? 1 : 0) +
-    ((priceMin > 0 || priceMax < 200) ? 1 : 0);
+    ((priceMin > 0 || priceMax < 200) ? 1 : 0) +
+    (quickTag ? 1 : 0) +
+    musicTypes.length +
+    (dressCode ? 1 : 0) +
+    (ageTarget ? 1 : 0) +
+    (entryType !== 'any' ? 1 : 0) +
+    (timeSlot ? 1 : 0);
 
   return (
     <>
@@ -140,6 +199,7 @@ export default function ExplorePage() {
         <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
         <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
           <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
+          <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
           <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
           <Link href="/login" className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
           <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
@@ -255,6 +315,89 @@ export default function ExplorePage() {
                 }}
                 className="xp-slider"
               />
+            </div>
+          </div>
+
+          {/* Quick tags */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Tag rapidi</label>
+            <div className="adv-filter-row">
+              {QUICK_TAGS.map(t => (
+                <button key={t} type="button"
+                  className={'adv-filter-chip ' + (quickTag === t ? 'active' : '')}
+                  onClick={() => setQuickTag(quickTag === t ? null : t)}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Fascia oraria */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Fascia oraria</label>
+            <div className="adv-filter-row">
+              <button type="button"
+                className={'adv-filter-chip ' + (!timeSlot ? 'active' : '')}
+                onClick={() => setTimeSlot(null)}>Qualsiasi</button>
+              {TIME_SLOTS.map(t => (
+                <button key={t.id} type="button"
+                  className={'adv-filter-chip ' + (timeSlot === t.id ? 'active' : '')}
+                  onClick={() => setTimeSlot(t.id)}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ingresso */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Ingresso</label>
+            <div className="adv-filter-row">
+              {ENTRY_OPTIONS.map(e => (
+                <button key={e.id} type="button"
+                  className={'adv-filter-chip ' + (entryType === e.id ? 'active' : '')}
+                  onClick={() => setEntryType(e.id)}>{e.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Musica */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Musica</label>
+            <div className="adv-filter-row">
+              {MUSIC_TYPES.map(m => (
+                <button key={m} type="button"
+                  className={'adv-filter-chip ' + (musicTypes.includes(m) ? 'active' : '')}
+                  onClick={() => toggleMusic(m)}>{m}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dress code */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Dress code</label>
+            <div className="adv-filter-row">
+              <button type="button"
+                className={'adv-filter-chip ' + (!dressCode ? 'active' : '')}
+                onClick={() => setDressCode(null)}>Qualsiasi</button>
+              {DRESS_CODES.map(d => (
+                <button key={d} type="button"
+                  className={'adv-filter-chip ' + (dressCode === d ? 'active' : '')}
+                  onClick={() => setDressCode(d)}>{d}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Età */}
+          <div className="xp-filter-group">
+            <label className="xp-filter-label">Età target</label>
+            <div className="adv-filter-row">
+              <button type="button"
+                className={'adv-filter-chip ' + (!ageTarget ? 'active' : '')}
+                onClick={() => setAgeTarget(null)}>Qualsiasi</button>
+              {AGE_TARGETS.map(a => (
+                <button key={a} type="button"
+                  className={'adv-filter-chip ' + (ageTarget === a ? 'active' : '')}
+                  onClick={() => setAgeTarget(a)}>{a}</button>
+              ))}
             </div>
           </div>
 

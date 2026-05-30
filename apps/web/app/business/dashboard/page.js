@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { CATS_NO_TUTTI, formatDateFull, formatTime, getPriceLabel, todayLocal } from '@lets-night/shared';
+import {
+  CATS_NO_TUTTI, formatDateFull, formatTime, getPriceLabel, todayLocal,
+  MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, QUICK_TAGS,
+} from '@lets-night/shared';
 
 export default function BusinessDashboard() {
   const router = useRouter();
@@ -20,8 +23,14 @@ export default function BusinessDashboard() {
     category: 'Discoteca',
     event_date: '',
     event_time: '',
+    end_time: '',
     price: '',
     capacity: '',
+    area: '',
+    music_type: '',
+    dress_code: '',
+    age_target: '',
+    tags: [],
   });
   const [creatingEvent, setCreatingEvent] = useState(false);
 
@@ -103,6 +112,12 @@ export default function BusinessDashboard() {
       category: newEvent.category,
       event_date: newEvent.event_date,
       event_time: newEvent.event_time,
+      end_time: newEvent.end_time || null,
+      area: newEvent.area || null,
+      music_type: newEvent.music_type || null,
+      dress_code: newEvent.dress_code || null,
+      age_target: newEvent.age_target || null,
+      tags: newEvent.tags || [],
       price: isNaN(priceNum) ? 0 : priceNum,
       capacity: capacityNum || null,
       is_active: true,
@@ -115,9 +130,21 @@ export default function BusinessDashboard() {
     }
 
     setShowNewEvent(false);
-    setNewEvent({ title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', price: '', capacity: '' });
+    setNewEvent({
+      title: '', description: '', category: 'Discoteca',
+      event_date: '', event_time: '', end_time: '',
+      price: '', capacity: '', area: '',
+      music_type: '', dress_code: '', age_target: '', tags: [],
+    });
     setCreatingEvent(false);
     loadData();
+  }
+
+  function toggleNewTag(t) {
+    setNewEvent(s => ({
+      ...s,
+      tags: s.tags.includes(t) ? s.tags.filter(x => x !== t) : [...s.tags, t],
+    }));
   }
 
   async function toggleEventActive(eventId, currentStatus) {
@@ -239,6 +266,56 @@ export default function BusinessDashboard() {
                     <input type="number" placeholder="Lascia vuoto per illimitata" min="1" value={newEvent.capacity} onChange={e => setNewEvent({...newEvent, capacity: e.target.value})} />
                   </div>
                 </div>
+
+                <div className="auth-row">
+                  <div className="auth-field">
+                    <label>Orario fine (opzionale)</label>
+                    <input type="time" value={newEvent.end_time} onChange={e => setNewEvent({...newEvent, end_time: e.target.value})} />
+                  </div>
+                  <div className="auth-field">
+                    <label>Zona / Quartiere</label>
+                    <input type="text" placeholder="Es. Navigli" value={newEvent.area} onChange={e => setNewEvent({...newEvent, area: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="auth-row">
+                  <div className="auth-field">
+                    <label>Tipo musica</label>
+                    <select value={newEvent.music_type} onChange={e => setNewEvent({...newEvent, music_type: e.target.value})}>
+                      <option value="">Non specificato</option>
+                      {MUSIC_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="auth-field">
+                    <label>Dress code</label>
+                    <select value={newEvent.dress_code} onChange={e => setNewEvent({...newEvent, dress_code: e.target.value})}>
+                      <option value="">Non specificato</option>
+                      {DRESS_CODES.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                  <div className="auth-field">
+                    <label>Età target</label>
+                    <select value={newEvent.age_target} onChange={e => setNewEvent({...newEvent, age_target: e.target.value})}>
+                      <option value="">Non specificato</option>
+                      {AGE_TARGETS.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="auth-field">
+                  <label>Tag evento</label>
+                  <div className="adv-filter-row" style={{ marginTop: 6 }}>
+                    {QUICK_TAGS.map(t => (
+                      <button key={t} type="button"
+                        className={'adv-filter-chip ' + (newEvent.tags.includes(t) ? 'active' : '')}
+                        onClick={() => toggleNewTag(t)}>{t}</button>
+                    ))}
+                  </div>
+                  <p style={{ color: 'var(--text2)', fontSize: 11, marginTop: 8 }}>
+                    Aiutano gli utenti a trovare il tuo evento (Live Music / Gratis / Tavoli / ecc.)
+                  </p>
+                </div>
+
                 <button type="submit" className="biz-submit" disabled={creatingEvent}>
                   {creatingEvent ? 'Pubblicazione...' : 'Pubblica evento'}
                 </button>
