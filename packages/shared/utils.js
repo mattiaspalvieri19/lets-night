@@ -47,6 +47,37 @@ export function todayLocal() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// =================== LOYALTY ===================
+// Livelli ordinati per soglia punti crescente
+export const LOYALTY_LEVELS = [
+  { name: 'Rookie',         threshold: 0,    icon: '🌱', color: '#64748B' },
+  { name: 'Night Explorer', threshold: 200,  icon: '🌃', color: '#60A5FA' },
+  { name: 'Party Insider',  threshold: 600,  icon: '🎉', color: '#A855F7' },
+  { name: 'VIP Member',     threshold: 1500, icon: '👑', color: '#FBBF24' },
+];
+
+// Restituisce { level, next, progress (0-1), pointsToNext, threshold } dato il totale punti.
+export function getLoyaltyLevel(points = 0) {
+  const safe = Math.max(0, Number(points) || 0);
+  let current = LOYALTY_LEVELS[0];
+  let next = null;
+  for (let i = 0; i < LOYALTY_LEVELS.length; i++) {
+    if (safe >= LOYALTY_LEVELS[i].threshold) {
+      current = LOYALTY_LEVELS[i];
+      next = LOYALTY_LEVELS[i + 1] || null;
+    }
+  }
+  const span = next ? next.threshold - current.threshold : 0;
+  const earned = next ? safe - current.threshold : 0;
+  return {
+    level: current,
+    next,
+    progress: next ? Math.min(1, earned / span) : 1,
+    pointsToNext: next ? Math.max(0, next.threshold - safe) : 0,
+    points: safe,
+  };
+}
+
 // UUID v4 generato con Math.random — sufficiente per QR ticket (entropy 122 bit).
 // Hermes/RN compatibile (non usa crypto.randomUUID che non sempre esiste).
 export function generateBookingQR() {

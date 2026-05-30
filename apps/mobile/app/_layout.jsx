@@ -29,6 +29,9 @@ export default function RootLayout() {
         <Stack.Screen name="event/[id]" options={{ title: 'Evento', headerBackTitle: 'Indietro' }} />
         <Stack.Screen name="venue/[id]" options={{ title: 'Locale', headerBackTitle: 'Indietro' }} />
         <Stack.Screen name="user/[id]" options={{ title: 'Profilo', headerBackTitle: 'Indietro' }} />
+        <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà', headerBackTitle: 'Indietro' }} />
+        <Stack.Screen name="profile/edit" options={{ title: 'Modifica profilo', headerBackTitle: 'Indietro' }} />
+        <Stack.Screen name="profile/privacy" options={{ title: 'Privacy', headerBackTitle: 'Indietro' }} />
       </Stack>
     </>
   );

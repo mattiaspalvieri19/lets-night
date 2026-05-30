@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
+import LoyaltyBlock from '../../components/LoyaltyBlock';
 
 function TicketCard({ booking, onPress, onShowQR }) {
   const event = booking.events;
@@ -107,6 +108,7 @@ export default function TicketsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [qrModal, setQrModal] = useState(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
   useEffect(() => {
     if (!qrModal) return;
@@ -116,17 +118,25 @@ export default function TicketsScreen() {
 
   async function fetchBookings(userId) {
     setFetchError(false);
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    const [{ data, error }, { data: prof }] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('profiles')
+        .select('loyalty_points')
+        .eq('id', userId)
+        .maybeSingle(),
+    ]);
     if (error) {
       console.error('Errore bookings:', error);
       setFetchError(true);
       return;
     }
     setBookings(data || []);
+    setLoyaltyPoints(prof?.loyalty_points || 0);
   }
 
   useEffect(() => {
@@ -254,9 +264,13 @@ export default function TicketsScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
         >
+          {/* Loyalty card sempre in evidenza */}
+          <LoyaltyBlock points={loyaltyPoints} />
+
+          <View style={{ paddingHorizontal: 20 }}>
           {upcoming.length > 0 && (
             <View style={{ marginBottom: 28 }}>
               <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 14 }}>
@@ -287,6 +301,7 @@ export default function TicketsScreen() {
               ))}
             </View>
           )}
+          </View>
         </ScrollView>
       )}
       {/* QR Modal */}
