@@ -28,6 +28,7 @@ export default function RootLayout() {
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="event/[id]" options={{ title: 'Evento', headerBackTitle: 'Indietro' }} />
         <Stack.Screen name="venue/[id]" options={{ title: 'Locale', headerBackTitle: 'Indietro' }} />
+        <Stack.Screen name="user/[id]" options={{ title: 'Profilo', headerBackTitle: 'Indietro' }} />
       </Stack>
     </>
   );

@@ -1,0 +1,398 @@
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { supabase } from '../../lib/supabase';
+import { useSession } from '../../lib/useSession';
+import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import ActivityCard from '../../components/ActivityCard';
+import EmptyState from '../../components/EmptyState';
+
+const TABS = [
+  { id: 'activities', label: 'Attività' },
+  { id: 'going',      label: 'Andrà a' },
+  { id: 'past',       label: 'È stato a' },
+  { id: 'favorites',  label: 'Locali' },
+];
+
+function initialOf(name) {
+  return (name || '?').trim().charAt(0).toUpperCase();
+}
+
+export default function PublicProfileScreen() {
+  const { id } = useLocalSearchParams();
+  const { session } = useSession();
+  const myId = session?.user?.id;
+  const isOwn = myId === id;
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [stats, setStats] = useState({ followers: 0, following: 0, badges: 0 });
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
+  const [tab, setTab] = useState('activities');
+  const [activities, setActivities] = useState([]);
+  const [futureBookings, setFutureBookings] = useState([]);
+  const [pastBookings, setPastBookings] = useState([]);
+  const [favoriteVenues, setFavoriteVenues] = useState([]);
+
+  async function loadAll() {
+    // Profilo
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('id, display_name, full_name, username, bio, avatar_url, city, interests, loyalty_level, loyalty_points, privacy_settings, role')
+      .eq('id', id)
+      .maybeSingle();
+    setProfile(p);
+    if (!p) return;
+
+    // Followers/Following counts
+    const [{ count: followersCount }, { count: followingCount }, { count: badgesCount }] = await Promise.all([
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id),
+      supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', id),
+      supabase.from('user_milestones').select('*', { count: 'exact', head: true }).eq('user_id', id).not('unlocked_at', 'is', null),
+    ]);
+    setStats({
+      followers: followersCount || 0,
+      following: followingCount || 0,
+      badges: badgesCount || 0,
+    });
+
+    // Sto seguendo?
+    if (myId && myId !== id) {
+      const { data: f } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', myId)
+        .eq('following_id', id)
+        .maybeSingle();
+      setIsFollowing(!!f);
+    }
+
+    // Attività (RLS filtra in base a visibility/follow)
+    const { data: acts } = await supabase
+      .from('activities')
+      .select('*, events(id, title, event_date), venues(id, name, zona, city)')
+      .eq('user_id', id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setActivities(acts || []);
+
+    // Eventi futuri (solo se privacy lo consente)
+    const ps = p.privacy_settings || {};
+    const today = new Date().toISOString().split('T')[0];
+    if (ps.show_future_events !== false || isOwn) {
+      const { data: future } = await supabase
+        .from('bookings')
+        .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
+        .eq('user_id', id)
+        .neq('status', 'cancelled')
+        .gte('events.event_date', today)
+        .order('created_at', { ascending: false });
+      setFutureBookings((future || []).filter(b => b.events));
+    } else {
+      setFutureBookings([]);
+    }
+
+    if (ps.show_past_events !== false || isOwn) {
+      const { data: past } = await supabase
+        .from('bookings')
+        .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
+        .eq('user_id', id)
+        .neq('status', 'cancelled')
+        .lt('events.event_date', today)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setPastBookings((past || []).filter(b => b.events));
+    } else {
+      setPastBookings([]);
+    }
+
+    // Locali preferiti
+    if (ps.show_favorite_venues !== false || isOwn) {
+      const { data: favs } = await supabase
+        .from('favorite_venues')
+        .select('venue_id, venues(id, name, zona, city, category)')
+        .eq('user_id', id);
+      setFavoriteVenues((favs || []).filter(f => f.venues));
+    } else {
+      setFavoriteVenues([]);
+    }
+  }
+
+  useFocusEffect(useCallback(() => {
+    setLoading(true);
+    loadAll().finally(() => setLoading(false));
+  }, [id, myId]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
+  }, [id, myId]);
+
+  async function toggleFollow() {
+    if (!myId) { router.push('/auth/login'); return; }
+    setFollowBusy(true);
+    if (isFollowing) {
+      await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', id);
+      setIsFollowing(false);
+      setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+    } else {
+      await supabase.from('follows').insert({ follower_id: myId, following_id: id });
+      setIsFollowing(true);
+      setStats(s => ({ ...s, followers: s.followers + 1 }));
+    }
+    setFollowBusy(false);
+  }
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color="#A855F7" size="large" />
+      </View>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+        <EmptyState
+          icon="🔍"
+          title="Utente non trovato"
+          subtitle="Il profilo che cerchi non esiste o è stato rimosso."
+          actionLabel="Indietro"
+          onAction={() => router.back()}
+        />
+      </View>
+    );
+  }
+
+  const ps = profile.privacy_settings || {};
+  const isPrivate = ps.profile_visibility === 'private';
+  const display = profile.display_name || profile.full_name || profile.username || 'Utente';
+  const handle = profile.username ? `@${profile.username}` : null;
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#09090f' }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+    >
+      {/* Header */}
+      <View style={{ padding: 20, paddingTop: 24, alignItems: 'center' }}>
+        <View style={{
+          width: 88, height: 88, borderRadius: 44,
+          backgroundColor: 'rgba(168,85,247,0.18)',
+          alignItems: 'center', justifyContent: 'center',
+          borderWidth: 2, borderColor: 'rgba(168,85,247,0.35)',
+          marginBottom: 14,
+        }}>
+          <Text style={{ color: '#A855F7', fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
+        </View>
+        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{display}</Text>
+        {handle && <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>{handle}</Text>}
+        {profile.bio && (
+          <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10, paddingHorizontal: 20 }}>
+            {profile.bio}
+          </Text>
+        )}
+        {profile.city && (
+          <Text style={{ color: '#A855F7', fontSize: 12, marginTop: 8, fontWeight: '600' }}>📍 {profile.city}</Text>
+        )}
+
+        {/* Interests pills */}
+        {Array.isArray(profile.interests) && profile.interests.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14, justifyContent: 'center' }}>
+            {profile.interests.map(t => (
+              <View key={t} style={{
+                backgroundColor: 'rgba(168,85,247,0.12)',
+                borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
+              }}>
+                <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '600' }}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Stats */}
+        <View style={{ flexDirection: 'row', gap: 28, marginTop: 20 }}>
+          {(ps.show_followers !== false || isOwn) && (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
+            </View>
+          )}
+          {(ps.show_following !== false || isOwn) && (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>seguiti</Text>
+            </View>
+          )}
+          {(ps.show_badges !== false || isOwn) && (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
+              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>badge</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Follow button */}
+        {!isOwn && (
+          <Pressable
+            onPress={toggleFollow}
+            disabled={followBusy}
+            style={({ pressed }) => ({
+              marginTop: 18,
+              paddingHorizontal: 36, paddingVertical: 12,
+              borderRadius: 22,
+              backgroundColor: isFollowing ? 'transparent' : '#7C3AED',
+              borderWidth: 1.5,
+              borderColor: isFollowing ? 'rgba(168,85,247,0.4)' : '#7C3AED',
+              opacity: followBusy || pressed ? 0.75 : 1,
+              minWidth: 140,
+              alignItems: 'center',
+            })}
+          >
+            {followBusy ? (
+              <ActivityIndicator color={isFollowing ? '#A855F7' : '#fff'} />
+            ) : (
+              <Text style={{
+                color: isFollowing ? '#A855F7' : '#fff',
+                fontWeight: '700', fontSize: 14,
+              }}>
+                {isFollowing ? 'Segui già' : 'Segui'}
+              </Text>
+            )}
+          </Pressable>
+        )}
+      </View>
+
+      {/* Profilo privato */}
+      {isPrivate && !isOwn && !isFollowing && (
+        <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+          <EmptyState
+            icon="🔒"
+            title="Profilo privato"
+            subtitle="Solo i follower approvati possono vedere le attività di questo utente."
+            compact
+          />
+        </View>
+      )}
+
+      {/* Tabs + contenuto */}
+      {(!isPrivate || isOwn || isFollowing) && (
+        <>
+          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
+            {TABS.map(t => {
+              const active = tab === t.id;
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => setTab(t.id)}
+                  style={{
+                    flex: 1, paddingVertical: 14, alignItems: 'center',
+                    borderBottomWidth: 2,
+                    borderBottomColor: active ? '#A855F7' : 'transparent',
+                  }}
+                >
+                  <Text style={{
+                    color: active ? '#fff' : '#64748B',
+                    fontSize: 13, fontWeight: active ? '800' : '500',
+                  }}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={{ padding: 20 }}>
+            {tab === 'activities' && (
+              activities.length === 0 ? (
+                <EmptyState compact icon="✨" title="Nessuna attività ancora" subtitle="Le attività condivise appariranno qui." />
+              ) : (
+                activities.map(a => <ActivityCard key={a.id} activity={a} hideAuthor />)
+              )
+            )}
+
+            {tab === 'going' && (
+              futureBookings.length === 0 ? (
+                <EmptyState compact icon="📅" title="Niente in calendario" subtitle="Niente eventi futuri condivisi." />
+              ) : (
+                futureBookings.map(b => <BookingRow key={b.id} booking={b} />)
+              )
+            )}
+
+            {tab === 'past' && (
+              pastBookings.length === 0 ? (
+                <EmptyState compact icon="🌙" title="Nessuna serata passata" subtitle="Niente eventi passati condivisi." />
+              ) : (
+                pastBookings.map(b => <BookingRow key={b.id} booking={b} />)
+              )
+            )}
+
+            {tab === 'favorites' && (
+              favoriteVenues.length === 0 ? (
+                <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
+              ) : (
+                favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
+              )
+            )}
+          </View>
+        </>
+      )}
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+}
+
+function BookingRow({ booking }) {
+  const ev = booking.events;
+  if (!ev) return null;
+  return (
+    <Pressable
+      onPress={() => router.push(`/event/${ev.id}`)}
+      style={({ pressed }) => ({
+        backgroundColor: '#111118',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(168,85,247,0.12)',
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+        {ev.venues?.name || 'Locale'}
+      </Text>
+      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{ev.title}</Text>
+      <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+        {formatDate(ev.event_date)} · {formatTime(ev.event_time) || '—'} · {getPriceLabel(ev.price)}
+      </Text>
+    </Pressable>
+  );
+}
+
+function VenueRow({ venue }) {
+  if (!venue) return null;
+  return (
+    <Pressable
+      onPress={() => router.push(`/venue/${venue.id}`)}
+      style={({ pressed }) => ({
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        backgroundColor: '#111118', borderRadius: 12, padding: 14, marginBottom: 10,
+        borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>{venue.name}</Text>
+        <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>
+          {venue.category} · {venue.zona}, {venue.city}
+        </Text>
+      </View>
+      <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>
+    </Pressable>
+  );
+}

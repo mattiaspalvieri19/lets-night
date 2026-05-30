@@ -30,10 +30,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Esplora',
+          title: 'Cerca',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+            <Ionicons name="people" size={size} color={color} />
           ),
         }}
       />
