@@ -67,9 +67,8 @@ export default function EditProfilePage() {
     }
     setSaving(true);
     if (username && username !== originalUsername.toLowerCase()) {
-      const { data: existing } = await supabase
-        .from('profiles').select('id').ilike('username', username).neq('id', myId).maybeSingle();
-      if (existing) {
+      const { data: available } = await supabase.rpc('check_username_available', { p_username: username });
+      if (available === false) {
         setUsernameError('Username già in uso.');
         setSaving(false);
         return;

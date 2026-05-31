@@ -3,7 +3,7 @@ import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator } from 
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { CATS, CITIES, QUICK_TAGS, TIME_SLOTS } from '@lets-night/shared';
+import { CATS, CITIES, QUICK_TAGS } from '@lets-night/shared';
 import EventCard from '../../components/EventCard';
 import FeaturedCard from '../../components/FeaturedCard';
 import EmptyState from '../../components/EmptyState';
@@ -29,7 +29,6 @@ function timeSlotMatch(slot, eventTime) {
   if (!slot || !eventTime) return true;
   const h = parseInt(String(eventTime).slice(0, 2), 10);
   if (isNaN(h)) return true;
-  const map = TIME_SLOTS.reduce((acc, t) => ({ ...acc, [t.id]: t.id }), {});
   if (slot === 'aperitivo') return h >= 18 && h < 21;
   if (slot === 'cena')      return h >= 20 && h < 23;
   if (slot === 'serata')    return h >= 22 || h < 2;

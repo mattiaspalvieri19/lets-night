@@ -40,8 +40,8 @@ export default function SearchUsersPage() {
 
       let query = supabase
         .from('profiles')
-        .select('id, display_name, full_name, username, bio, city, interests, privacy_settings')
-        .eq('role', 'user')
+        .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
+        .in('role', ['user', 'business'])  // include i business ma esclude eventuali role NULL
         .limit(80);
       if (uid) query = query.neq('id', uid);
       const { data } = await query;
@@ -108,7 +108,9 @@ export default function SearchUsersPage() {
 
         <div className="search-chips">
           {SOCIAL_FILTERS.map(f => {
-            const disabled = (f.id === 'following' || f.id === 'same_city') && !myId;
+            const disabled =
+              ((f.id === 'following' || f.id === 'same_city') && !myId) ||
+              (f.id === 'same_city' && !myCity);
             return (
               <button key={f.id} disabled={disabled}
                 onClick={() => !disabled && setFilter(f.id)}

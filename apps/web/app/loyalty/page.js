@@ -141,7 +141,7 @@ export default function LoyaltyPage() {
             );
           })}
           <p style={{ color: 'var(--text2)', fontSize: 11, textAlign: 'center', fontStyle: 'italic', marginTop: 10 }}>
-            Sistema premi in arrivo — punti già attivi.
+            Sistema riscatto premi in arrivo
           </p>
         </section>
 

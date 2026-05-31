@@ -40,7 +40,7 @@ export default function PublicProfileScreen() {
     // Profilo
     const { data: p } = await supabase
       .from('profiles')
-      .select('id, display_name, full_name, username, bio, avatar_url, city, interests, loyalty_level, loyalty_points, privacy_settings, role')
+      .select('id, display_name, full_name, username, bio, avatar_url, city, interests, loyalty_points, privacy_settings, role')
       .eq('id', id)
       .maybeSingle();
     setProfile(p);
@@ -78,33 +78,23 @@ export default function PublicProfileScreen() {
       .limit(30);
     setActivities(acts || []);
 
-    // Eventi futuri (solo se privacy lo consente)
+    // Eventi (filtra client-side: PostgREST non supporta filter su joined column)
     const ps = p.privacy_settings || {};
     const today = new Date().toISOString().split('T')[0];
-    if (ps.show_future_events !== false || isOwn) {
-      const { data: future } = await supabase
+    const wantsFuture = ps.show_future_events !== false || isOwn;
+    const wantsPast = ps.show_past_events !== false || isOwn;
+    if (wantsFuture || wantsPast) {
+      const { data: all } = await supabase
         .from('bookings')
         .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', id)
         .neq('status', 'cancelled')
-        .gte('events.event_date', today)
         .order('created_at', { ascending: false });
-      setFutureBookings((future || []).filter(b => b.events));
+      const list = (all || []).filter(b => b.events);
+      setFutureBookings(wantsFuture ? list.filter(b => b.events.event_date >= today) : []);
+      setPastBookings(wantsPast ? list.filter(b => b.events.event_date < today).slice(0, 20) : []);
     } else {
       setFutureBookings([]);
-    }
-
-    if (ps.show_past_events !== false || isOwn) {
-      const { data: past } = await supabase
-        .from('bookings')
-        .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
-        .eq('user_id', id)
-        .neq('status', 'cancelled')
-        .lt('events.event_date', today)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      setPastBookings((past || []).filter(b => b.events));
-    } else {
       setPastBookings([]);
     }
 

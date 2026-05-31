@@ -156,8 +156,8 @@ export default function ExplorePage() {
       } else if (!tags.includes(quickTag.toLowerCase())) return false;
     }
     if (musicTypes.length && !musicTypes.includes(e.music_type)) return false;
-    if (dressCode && e.dress_code && e.dress_code !== dressCode) return false;
-    if (ageTarget && e.age_target && e.age_target !== ageTarget) return false;
+    if (dressCode && e.dress_code !== dressCode) return false;
+    if (ageTarget && e.age_target !== ageTarget) return false;
     if (search) {
       const q = search.toLowerCase();
       const matchTitle = e.title.toLowerCase().includes(q);

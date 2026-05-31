@@ -41,7 +41,7 @@ export default function LoyaltyScreen() {
 
   async function loadAll() {
     if (!myId) return;
-    const [{ data: prof }, { data: cat }, { data: um }, { data: bk }] = await Promise.all([
+    const [{ data: prof }, { data: cat, error: catErr }, { data: um }, { data: bk }] = await Promise.all([
       supabase.from('profiles').select('loyalty_points').eq('id', myId).maybeSingle(),
       supabase.from('loyalty_milestones').select('*').order('category').order('points'),
       supabase.from('user_milestones').select('*').eq('user_id', myId),
@@ -52,6 +52,7 @@ export default function LoyaltyScreen() {
         .order('created_at', { ascending: false })
         .limit(10),
     ]);
+    if (catErr) console.error('Errore loyalty_milestones:', catErr);
     setPoints(prof?.loyalty_points || 0);
     setMilestones(cat || []);
     const map = {};
@@ -253,7 +254,7 @@ export default function LoyaltyScreen() {
           );
         })}
         <Text style={{ color: '#64748B', fontSize: 11, fontStyle: 'italic', marginTop: 4, textAlign: 'center' }}>
-          Sistema premi in arrivo — punti già attivi!
+          Sistema riscatto premi in arrivo
         </Text>
       </Section>
 

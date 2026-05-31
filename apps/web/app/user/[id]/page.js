@@ -57,22 +57,17 @@ export default function PublicProfilePage({ params }) {
       const ps = p.privacy_settings || {};
       const today = new Date().toISOString().split('T')[0];
       const isOwn = uid === id;
-
-      if (ps.show_future_events !== false || isOwn) {
-        const { data: future } = await supabase
+      const wantsFuture = ps.show_future_events !== false || isOwn;
+      const wantsPast = ps.show_past_events !== false || isOwn;
+      // PostgREST non supporta filter su joined column: filtra client-side
+      if (wantsFuture || wantsPast) {
+        const { data: all } = await supabase
           .from('bookings')
           .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
-          .eq('user_id', id).neq('status', 'cancelled')
-          .gte('events.event_date', today);
-        setFutureBookings((future || []).filter(b => b.events));
-      }
-      if (ps.show_past_events !== false || isOwn) {
-        const { data: past } = await supabase
-          .from('bookings')
-          .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
-          .eq('user_id', id).neq('status', 'cancelled')
-          .lt('events.event_date', today).limit(20);
-        setPastBookings((past || []).filter(b => b.events));
+          .eq('user_id', id).neq('status', 'cancelled');
+        const list = (all || []).filter(b => b.events);
+        if (wantsFuture) setFutureBookings(list.filter(b => b.events.event_date >= today));
+        if (wantsPast) setPastBookings(list.filter(b => b.events.event_date < today).slice(0, 20));
       }
       if (ps.show_favorite_venues !== false || isOwn) {
         const { data: favs } = await supabase
@@ -112,7 +107,10 @@ export default function PublicProfilePage({ params }) {
 
   const ps = profile.privacy_settings || {};
   const isOwn = myId === id;
-  const isPrivate = ps.profile_visibility === 'private' && !isOwn && !isFollowing;
+  // Profilo bloccato sia per "private" che per "followers" (se non lo segui)
+  const isPrivate = !isOwn && !isFollowing && (
+    ps.profile_visibility === 'private' || ps.profile_visibility === 'followers'
+  );
   const display = profile.display_name || profile.full_name || profile.username || 'Utente';
   const handle = profile.username ? `@${profile.username}` : null;
 

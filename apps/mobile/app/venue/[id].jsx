@@ -14,6 +14,9 @@ export default function VenueDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showPast, setShowPast] = useState(false);
+  const [myId, setMyId] = useState(null);
+  const [isFav, setIsFav] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -53,11 +56,38 @@ export default function VenueDetailScreen() {
       if (!mounted) return;
       setUpcomingEvents(upcoming || []);
       setPastEvents(past || []);
+
+      // Carica stato favorite
+      const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id || null;
+      if (!mounted) return;
+      setMyId(uid);
+      if (uid) {
+        const { data: fav } = await supabase
+          .from('favorite_venues')
+          .select('venue_id')
+          .eq('user_id', uid).eq('venue_id', id).maybeSingle();
+        if (mounted) setIsFav(!!fav);
+      }
+
       setLoading(false);
     }
     load();
     return () => { mounted = false; };
   }, [id]);
+
+  async function toggleFavorite() {
+    if (!myId) { router.push('/auth/login'); return; }
+    setFavBusy(true);
+    if (isFav) {
+      await supabase.from('favorite_venues').delete().eq('user_id', myId).eq('venue_id', id);
+      setIsFav(false);
+    } else {
+      await supabase.from('favorite_venues').insert({ user_id: myId, venue_id: id });
+      setIsFav(true);
+    }
+    setFavBusy(false);
+  }
 
   function handleMaps() {
     if (!venue) return;
@@ -118,8 +148,30 @@ export default function VenueDetailScreen() {
             </View>
           )}
         </View>
-        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', lineHeight: 30 }}>{venue.name}</Text>
-        <Text style={{ color: '#A855F7', fontSize: 13, marginTop: 4 }}>{venue.zona}, {venue.city}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', lineHeight: 30 }}>{venue.name}</Text>
+            <Text style={{ color: '#A855F7', fontSize: 13, marginTop: 4 }}>{venue.zona}, {venue.city}</Text>
+          </View>
+          <Pressable
+            onPress={toggleFavorite}
+            disabled={favBusy}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 44, height: 44, borderRadius: 22,
+              backgroundColor: isFav ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.08)',
+              borderWidth: 1.5,
+              borderColor: isFav ? '#EF4444' : 'rgba(255,255,255,0.18)',
+              alignItems: 'center', justifyContent: 'center',
+              opacity: favBusy || pressed ? 0.7 : 1,
+            })}
+          >
+            {favBusy
+              ? <ActivityIndicator color={isFav ? '#EF4444' : '#fff'} size="small" />
+              : <Text style={{ fontSize: 20 }}>{isFav ? '❤️' : '🤍'}</Text>
+            }
+          </Pressable>
+        </View>
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}>

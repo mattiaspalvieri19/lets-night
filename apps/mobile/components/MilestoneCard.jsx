@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native';
 
 export default function MilestoneCard({ milestone, progress = 0, unlocked }) {
-  const goal = milestone.goal || 1;
+  const goal = Math.max(1, milestone.goal || 1);
   const pct = Math.min(1, (progress || 0) / goal);
 
   return (

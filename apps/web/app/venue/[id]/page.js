@@ -18,7 +18,8 @@ export default function VenueDetailPage({ params }) {
   const [notFound, setNotFound] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [user, setUser] = useState(null);
-  const [following, setFollowing] = useState(false);
+  const [isFav, setIsFav] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   useEffect(() => {
     async function loadVenue() {
@@ -46,7 +47,16 @@ export default function VenueDetailPage({ params }) {
       setPastEvents(past || []);
 
       const { data: { session } } = await supabase.auth.getSession();
+      const uid = session?.user?.id || null;
       setUser(session?.user || null);
+
+      if (uid) {
+        const { data: fav } = await supabase
+          .from('favorite_venues')
+          .select('venue_id')
+          .eq('user_id', uid).eq('venue_id', id).maybeSingle();
+        setIsFav(!!fav);
+      }
 
       setLoading(false);
     }
@@ -85,13 +95,20 @@ export default function VenueDetailPage({ params }) {
     el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
   }
 
-  function handleFollow() {
+  async function toggleFavorite() {
     if (!user) {
-      alert('Accedi per seguire questo locale e ricevere notifiche sui nuovi eventi.');
+      window.location.href = '/login?next=/venue/' + id;
       return;
     }
-    setFollowing(!following);
-    alert(following ? 'Non segui piu questo locale' : 'Ora segui ' + venue.name + '! Riceverai notifiche sui nuovi eventi.');
+    setFavBusy(true);
+    if (isFav) {
+      await supabase.from('favorite_venues').delete().eq('user_id', user.id).eq('venue_id', id);
+      setIsFav(false);
+    } else {
+      await supabase.from('favorite_venues').insert({ user_id: user.id, venue_id: id });
+      setIsFav(true);
+    }
+    setFavBusy(false);
   }
 
   if (loading) {
@@ -215,8 +232,8 @@ export default function VenueDetailPage({ params }) {
               </a>
             )}
           </div>
-          <button className={'vn-follow-btn ' + (following ? 'active' : '')} onClick={handleFollow}>
-            {following ? '✓ Seguito' : '+ Segui'}
+          <button className={'vn-follow-btn ' + (isFav ? 'active' : '')} onClick={toggleFavorite} disabled={favBusy}>
+            {favBusy ? '...' : (isFav ? '❤️ Preferito' : '🤍 Aggiungi ai preferiti')}
           </button>
         </div>
       </div>

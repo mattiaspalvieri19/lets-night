@@ -56,8 +56,14 @@ export default function PrivacySettingsPage() {
   async function persist(next) {
     setS(next);
     setSaving(true);
-    await supabase.from('profiles').update({ privacy_settings: next }).eq('id', myId);
-    setSaving(false);
+    // Debounce: salva solo l'ultimo stato dopo 400ms di inattività
+    if (typeof window !== 'undefined') {
+      if (window.__privacySaveTimer) clearTimeout(window.__privacySaveTimer);
+      window.__privacySaveTimer = setTimeout(async () => {
+        await supabase.from('profiles').update({ privacy_settings: next }).eq('id', myId);
+        setSaving(false);
+      }, 400);
+    }
   }
 
   if (loading) return <div className="dash-loading">Caricamento...</div>;

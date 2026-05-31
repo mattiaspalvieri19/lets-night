@@ -33,7 +33,7 @@ export default function MyProfileScreen() {
   async function loadData() {
     const { data: { session: s } } = await supabase.auth.getSession();
     setSession(s);
-    if (!s) { setLoading(false); return; }
+    if (!s) return;
 
     const today = new Date().toISOString().split('T')[0];
     const myId = s.user.id;
@@ -72,13 +72,13 @@ export default function MyProfileScreen() {
     });
     setFavorites((favs || []).filter(f => f.venues));
     setUnlockedBadges((ums || []).map(r => r.loyalty_milestones).filter(Boolean));
-
-    setLoading(false);
   }
 
   useFocusEffect(useCallback(() => {
+    let cancelled = false;
     setLoading(true);
-    loadData();
+    loadData().finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []));
 
   const onRefresh = useCallback(async () => {

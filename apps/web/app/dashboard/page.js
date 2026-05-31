@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { supabase } from '../../lib/supabase';
-import { formatDateFull, formatTime, getLoyaltyLevel } from '@lets-night/shared';
-
-function todayLocal() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
+import { formatDateFull, formatTime, getLoyaltyLevel, todayLocal } from '@lets-night/shared';
 
 const TABS = [
   { id: 'going',     label: 'Andrò a' },
@@ -48,7 +43,7 @@ export default function DashboardPage() {
         { data: favs },
         { data: ums },
       ] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', uid).single(),
+        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
         supabase.from('bookings')
           .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
           .eq('user_id', uid).order('created_at', { ascending: false }),
