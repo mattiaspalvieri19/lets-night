@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 import { CATS, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import Navbar from '../components/Navbar';
 
 export default function Home() {
   const scrollerRef = useRef(null);
@@ -102,23 +103,7 @@ export default function Home() {
 
   return (
     <>
-      <nav className="lnav" id="lnav">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
-          <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
-          <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
-          <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
-          <button className="ln-city-pill" onClick={() => { setCity(c => c === 'Milano' ? 'Roma' : 'Milano'); setMenuOpen(false); }}>
-            {city}
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </button>
-          <Link href="/login" className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
-          <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
-        </div>
-        <button className="ln-burger" onClick={() => setMenuOpen(!menuOpen)}>
-          <span /><span /><span />
-        </button>
-      </nav>
+      <Navbar />
 
       <div className="hero">
         <div className="hero-bg" />

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, use } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import Navbar from '../../../components/Navbar';
 
 
 export default function VenueDetailPage({ params }) {
@@ -137,15 +138,7 @@ export default function VenueDetailPage({ params }) {
       <div className="cur-dot" ref={cursorRef} />
       <div className="cur-ring" ref={innerRef} />
 
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/business">Per i Locali</Link>
-          <Link href="/login" className="ln-btn-ghost">Accedi</Link>
-          <Link href="/register" className="ln-btn-primary">Iscriviti</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="vn-hero" style={{ background: 'linear-gradient(135deg,' + colors[0] + ' 0%,' + colors[1] + ' 100%)' }}>
         <div className="vn-hero-overlay" />

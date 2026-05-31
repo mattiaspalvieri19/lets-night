@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_FEE } from '@lets-night/shared';
+import Navbar from '../../../components/Navbar';
 
 function isPastEvent(dateStr) {
   if (!dateStr) return false;
@@ -188,15 +189,7 @@ export default function EventDetailPage({ params }) {
       <div className="cur-dot" ref={cursorRef} />
       <div className="cur-ring" ref={innerRef} />
 
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/business">Per i Locali</Link>
-          <Link href="/login" className="ln-btn-ghost">Accedi</Link>
-          <Link href="/register" className="ln-btn-primary">Iscriviti</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="ev-hero" style={{ background: 'linear-gradient(135deg,' + colors[0] + ' 0%, ' + colors[1] + ' 100%)' }}>
         <div className="ev-hero-overlay" />

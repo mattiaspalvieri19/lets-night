@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import { getLoyaltyLevel, LOYALTY_LEVELS, formatDate } from '@lets-night/shared';
+import Navbar from '../../components/Navbar';
 
 const REWARDS = [
   { id: 'r1', title: 'Sconto 10% prossimo biglietto', cost: 200, icon: '🎟️' },
@@ -56,14 +57,7 @@ export default function LoyaltyPage() {
 
   return (
     <div className="loyalty-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/search">Cerca</Link>
-          <Link href="/dashboard">Profilo</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="loyalty-container">
         {/* Hero card */}

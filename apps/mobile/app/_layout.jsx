@@ -18,20 +18,23 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: '#0a0a0f' },
-          headerTintColor: '#ffffff',
-          headerTitleStyle: { fontWeight: 'bold' },
+          headerTintColor: '#A855F7',
+          headerTitleStyle: { fontWeight: 'bold', color: '#ffffff' },
           contentStyle: { backgroundColor: '#0a0a0f' },
+          headerBackVisible: true,
+          headerBackTitleVisible: false,
+          headerShadowVisible: false,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(business)" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="event/[id]" options={{ title: 'Evento', headerBackTitle: 'Indietro' }} />
-        <Stack.Screen name="venue/[id]" options={{ title: 'Locale', headerBackTitle: 'Indietro' }} />
-        <Stack.Screen name="user/[id]" options={{ title: 'Profilo', headerBackTitle: 'Indietro' }} />
-        <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà', headerBackTitle: 'Indietro' }} />
-        <Stack.Screen name="profile/edit" options={{ title: 'Modifica profilo', headerBackTitle: 'Indietro' }} />
-        <Stack.Screen name="profile/privacy" options={{ title: 'Privacy', headerBackTitle: 'Indietro' }} />
+        <Stack.Screen name="event/[id]" options={{ title: 'Evento' }} />
+        <Stack.Screen name="venue/[id]" options={{ title: 'Locale' }} />
+        <Stack.Screen name="user/[id]" options={{ title: 'Profilo' }} />
+        <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà' }} />
+        <Stack.Screen name="profile/edit" options={{ title: 'Modifica profilo' }} />
+        <Stack.Screen name="profile/privacy" options={{ title: 'Privacy' }} />
       </Stack>
     </>
   );

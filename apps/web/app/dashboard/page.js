@@ -6,6 +6,7 @@ import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { supabase } from '../../lib/supabase';
 import { formatDateFull, formatTime, getLoyaltyLevel, todayLocal } from '@lets-night/shared';
+import Navbar from '../../components/Navbar';
 
 const TABS = [
   { id: 'going',     label: 'Andrò a' },
@@ -81,14 +82,7 @@ export default function DashboardPage() {
 
   return (
     <div className="dash-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/search">Cerca</Link>
-          <Link href="/loyalty">Fedeltà</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero social */}
       <div className="dash-hero" style={{ textAlign: 'center', paddingTop: '5rem' }}>

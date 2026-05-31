@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import Navbar from '../../../components/Navbar';
 
 const TABS = [
   { id: 'going',     label: 'Andrà a' },
@@ -116,14 +117,7 @@ export default function PublicProfilePage({ params }) {
 
   return (
     <div className="profile-pub">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/search">Cerca</Link>
-          <Link href="/dashboard">Profilo</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="profile-pub-container">
         <div className="profile-pub-head">

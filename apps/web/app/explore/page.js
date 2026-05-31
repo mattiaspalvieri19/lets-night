@@ -8,6 +8,7 @@ import {
   QUICK_TAGS, MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, TIME_SLOTS,
   formatDate, formatTime, isInDateRange, getPriceLabel,
 } from '@lets-night/shared';
+import Navbar from '../../components/Navbar';
 
 const ENTRY_OPTIONS = [
   { id: 'any', label: 'Tutti' },
@@ -195,19 +196,7 @@ export default function ExplorePage() {
       <div className="cur-dot" ref={cursorRef} />
       <div className="cur-ring" ref={innerRef} />
 
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
-          <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
-          <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
-          <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
-          <Link href="/login" className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
-          <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
-        </div>
-        <button className="ln-burger" onClick={() => setMenuOpen(!menuOpen)}>
-          <span /><span /><span />
-        </button>
-      </nav>
+      <Navbar />
 
       <div className="xp-header">
         <div className="xp-header-inner">

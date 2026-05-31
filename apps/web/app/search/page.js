@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import Navbar from '../../components/Navbar';
 
 const SOCIAL_FILTERS = [
   { id: 'all',         label: 'Tutti' },
@@ -83,14 +84,7 @@ export default function SearchUsersPage() {
 
   return (
     <div className="search-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/explore">Esplora</Link>
-          <Link href="/search">Cerca</Link>
-          <Link href="/dashboard">Profilo</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="search-container">
         <div className="search-hero">

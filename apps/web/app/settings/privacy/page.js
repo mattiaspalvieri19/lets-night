@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
+import Navbar from '../../../components/Navbar';
 
 const DEFAULT = {
   searchable: true,
@@ -70,12 +71,7 @@ export default function PrivacySettingsPage() {
 
   return (
     <div className="settings-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/dashboard">Profilo</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="settings-container">
         <h1 className="settings-title">Privacy</h1>

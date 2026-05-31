@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import { CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
+import Navbar from '../../../components/Navbar';
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -93,12 +94,7 @@ export default function EditProfilePage() {
 
   return (
     <div className="settings-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/dashboard">Profilo</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="settings-container">
         <h1 className="settings-title">Modifica profilo</h1>
