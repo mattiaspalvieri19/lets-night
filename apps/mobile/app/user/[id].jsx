@@ -7,11 +7,17 @@ import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import ActivityCard from '../../components/ActivityCard';
 import EmptyState from '../../components/EmptyState';
 
-const TABS = [
+const USER_TABS = [
   { id: 'activities', label: 'Attività' },
   { id: 'going',      label: 'Andrà a' },
   { id: 'past',       label: 'È stato a' },
   { id: 'favorites',  label: 'Locali' },
+];
+const BUSINESS_TABS = [
+  { id: 'future',   label: 'Prossimi' },
+  { id: 'past_ev',  label: 'Storico' },
+  { id: 'venue',    label: 'Il locale' },
+  { id: 'contact',  label: 'Contatti' },
 ];
 
 function initialOf(name) {
@@ -35,6 +41,11 @@ export default function PublicProfileScreen() {
   const [futureBookings, setFutureBookings] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
   const [favoriteVenues, setFavoriteVenues] = useState([]);
+  // Business-specific
+  const [bizVenue, setBizVenue] = useState(null);
+  const [bizFutureEvents, setBizFutureEvents] = useState([]);
+  const [bizPastEvents, setBizPastEvents] = useState([]);
+  const [bizEventsCount, setBizEventsCount] = useState(0);
 
   async function loadAll() {
     // Profilo
@@ -45,6 +56,8 @@ export default function PublicProfileScreen() {
       .maybeSingle();
     setProfile(p);
     if (!p) return;
+    // Tab di default coerente con il ruolo
+    setTab(p.role === 'business' ? 'future' : 'activities');
 
     // Followers/Following counts
     const [{ count: followersCount }, { count: followingCount }, { count: badgesCount }] = await Promise.all([
@@ -98,7 +111,7 @@ export default function PublicProfileScreen() {
       setPastBookings([]);
     }
 
-    // Locali preferiti
+    // Locali preferiti (utenti normali)
     if (ps.show_favorite_venues !== false || isOwn) {
       const { data: favs } = await supabase
         .from('favorite_venues')
@@ -107,6 +120,28 @@ export default function PublicProfileScreen() {
       setFavoriteVenues((favs || []).filter(f => f.venues));
     } else {
       setFavoriteVenues([]);
+    }
+
+    // Dati venue + eventi (solo per business)
+    if (p.role === 'business') {
+      const { data: venue } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('owner_id', id)
+        .maybeSingle();
+      setBizVenue(venue);
+      if (venue) {
+        const { data: allEvents, count } = await supabase
+          .from('events')
+          .select('id, title, event_date, event_time, price, category, venues(name, zona, city)', { count: 'exact' })
+          .eq('venue_id', venue.id)
+          .eq('is_active', true)
+          .order('event_date', { ascending: false });
+        const list = allEvents || [];
+        setBizEventsCount(count || 0);
+        setBizFutureEvents(list.filter(e => e.event_date >= today).reverse());
+        setBizPastEvents(list.filter(e => e.event_date < today).slice(0, 30));
+      }
     }
   }
 
@@ -162,6 +197,8 @@ export default function PublicProfileScreen() {
   const isPrivate = ps.profile_visibility === 'private';
   const display = profile.display_name || profile.full_name || profile.username || 'Utente';
   const handle = profile.username ? `@${profile.username}` : null;
+  const isBusiness = profile.role === 'business';
+  const TABS = isBusiness ? BUSINESS_TABS : USER_TABS;
 
   return (
     <ScrollView
@@ -206,23 +243,44 @@ export default function PublicProfileScreen() {
 
         {/* Stats */}
         <View style={{ flexDirection: 'row', gap: 28, marginTop: 20 }}>
-          {(ps.show_followers !== false || isOwn) && (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
-            </View>
-          )}
-          {(ps.show_following !== false || isOwn) && (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>seguiti</Text>
-            </View>
-          )}
-          {(ps.show_badges !== false || isOwn) && (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>badge</Text>
-            </View>
+          {isBusiness ? (
+            <>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{bizEventsCount}</Text>
+                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>eventi</Text>
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
+                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
+              </View>
+              {bizVenue?.is_verified && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#4ADE80', fontSize: 17, fontWeight: '900' }}>✓</Text>
+                  <Text style={{ color: '#4ADE80', fontSize: 11, marginTop: 2 }}>verificato</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              {(ps.show_followers !== false || isOwn) && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
+                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
+                </View>
+              )}
+              {(ps.show_following !== false || isOwn) && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
+                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>seguiti</Text>
+                </View>
+              )}
+              {(ps.show_badges !== false || isOwn) && (
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
+                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>badge</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
 
@@ -297,36 +355,48 @@ export default function PublicProfileScreen() {
           </View>
 
           <View style={{ padding: 20 }}>
-            {tab === 'activities' && (
-              activities.length === 0 ? (
-                <EmptyState compact icon="✨" title="Nessuna attività ancora" subtitle="Le attività condivise appariranno qui." />
-              ) : (
-                activities.map(a => <ActivityCard key={a.id} activity={a} hideAuthor />)
-              )
+            {/* USER TABS */}
+            {!isBusiness && tab === 'activities' && (
+              activities.length === 0
+                ? <EmptyState compact icon="✨" title="Nessuna attività ancora" subtitle="Le attività condivise appariranno qui." />
+                : activities.map(a => <ActivityCard key={a.id} activity={a} hideAuthor />)
+            )}
+            {!isBusiness && tab === 'going' && (
+              futureBookings.length === 0
+                ? <EmptyState compact icon="📅" title="Niente in calendario" subtitle="Niente eventi futuri condivisi." />
+                : futureBookings.map(b => <BookingRow key={b.id} booking={b} />)
+            )}
+            {!isBusiness && tab === 'past' && (
+              pastBookings.length === 0
+                ? <EmptyState compact icon="🌙" title="Nessuna serata passata" subtitle="Niente eventi passati condivisi." />
+                : pastBookings.map(b => <BookingRow key={b.id} booking={b} />)
+            )}
+            {!isBusiness && tab === 'favorites' && (
+              favoriteVenues.length === 0
+                ? <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
+                : favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
             )}
 
-            {tab === 'going' && (
-              futureBookings.length === 0 ? (
-                <EmptyState compact icon="📅" title="Niente in calendario" subtitle="Niente eventi futuri condivisi." />
-              ) : (
-                futureBookings.map(b => <BookingRow key={b.id} booking={b} />)
-              )
+            {/* BUSINESS TABS */}
+            {isBusiness && tab === 'future' && (
+              bizFutureEvents.length === 0
+                ? <EmptyState compact icon="🎉" title="Nessun evento in arrivo" subtitle="Questo locale non ha eventi futuri pubblicati." />
+                : bizFutureEvents.map(e => <EventRow key={e.id} event={e} />)
             )}
-
-            {tab === 'past' && (
-              pastBookings.length === 0 ? (
-                <EmptyState compact icon="🌙" title="Nessuna serata passata" subtitle="Niente eventi passati condivisi." />
-              ) : (
-                pastBookings.map(b => <BookingRow key={b.id} booking={b} />)
-              )
+            {isBusiness && tab === 'past_ev' && (
+              bizPastEvents.length === 0
+                ? <EmptyState compact icon="📅" title="Nessuno storico" subtitle="Nessun evento passato." />
+                : bizPastEvents.map(e => <EventRow key={e.id} event={e} past />)
             )}
-
-            {tab === 'favorites' && (
-              favoriteVenues.length === 0 ? (
-                <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
-              ) : (
-                favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
-              )
+            {isBusiness && tab === 'venue' && (
+              bizVenue
+                ? <VenuePreview venue={bizVenue} />
+                : <EmptyState compact icon="📍" title="Nessun locale associato" subtitle="Questo account non ha ancora un locale registrato." />
+            )}
+            {isBusiness && tab === 'contact' && (
+              bizVenue
+                ? <ContactInfo venue={bizVenue} />
+                : <EmptyState compact icon="📞" title="Nessun contatto" subtitle="Informazioni di contatto non disponibili." />
             )}
           </View>
         </>
@@ -384,5 +454,98 @@ function VenueRow({ venue }) {
       </View>
       <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>
     </Pressable>
+  );
+}
+
+function EventRow({ event, past }) {
+  if (!event) return null;
+  return (
+    <Pressable
+      onPress={() => router.push(`/event/${event.id}`)}
+      style={({ pressed }) => ({
+        backgroundColor: '#111118',
+        borderRadius: 12, padding: 14, marginBottom: 10,
+        borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+        opacity: past ? 0.65 : (pressed ? 0.85 : 1),
+      })}
+    >
+      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+        {event.category}
+      </Text>
+      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }} numberOfLines={2}>{event.title}</Text>
+      <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+        {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'} · {getPriceLabel(event.price)}
+      </Text>
+    </Pressable>
+  );
+}
+
+function VenuePreview({ venue }) {
+  return (
+    <Pressable
+      onPress={() => router.push(`/venue/${venue.id}`)}
+      style={({ pressed }) => ({
+        backgroundColor: '#111118', borderRadius: 14, padding: 18,
+        borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)',
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        {venue.is_partner && (
+          <View style={{ backgroundColor: 'rgba(124,58,237,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+            <Text style={{ color: '#A855F7', fontSize: 10, fontWeight: '800' }}>★ PARTNER</Text>
+          </View>
+        )}
+        {venue.is_verified && (
+          <View style={{ backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(74,222,128,0.4)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+            <Text style={{ color: '#4ADE80', fontSize: 10, fontWeight: '800' }}>✓ VERIFICATO</Text>
+          </View>
+        )}
+      </View>
+      <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{venue.name}</Text>
+      <Text style={{ color: '#A855F7', fontSize: 13, marginTop: 4 }}>{venue.category}</Text>
+      <Text style={{ color: '#9CA3AF', fontSize: 13, marginTop: 8 }}>📍 {venue.zona}, {venue.city}</Text>
+      {venue.address && <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>{venue.address}</Text>}
+      {venue.description && (
+        <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, marginTop: 12 }}>
+          {venue.description}
+        </Text>
+      )}
+      <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.12)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 13 }}>Apri pagina locale</Text>
+        <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function ContactInfo({ venue }) {
+  const items = [
+    venue.phone        && { icon: '📞', label: 'Telefono', value: venue.phone },
+    venue.contact_email&& { icon: '✉️', label: 'Email',    value: venue.contact_email },
+    venue.address      && { icon: '📍', label: 'Indirizzo', value: `${venue.address}\n${venue.zona}, ${venue.city}` },
+    venue.website      && { icon: '🌐', label: 'Sito web',  value: venue.website },
+    venue.instagram    && { icon: '📷', label: 'Instagram', value: venue.instagram },
+  ].filter(Boolean);
+
+  if (items.length === 0) {
+    return <EmptyState compact icon="📞" title="Nessun contatto pubblico" subtitle="Il locale non ha condiviso informazioni di contatto." />;
+  }
+  return (
+    <View>
+      {items.map((it, i) => (
+        <View key={i} style={{
+          backgroundColor: '#111118', borderRadius: 12, padding: 14, marginBottom: 10,
+          borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+          flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+        }}>
+          <Text style={{ fontSize: 22 }}>{it.icon}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{it.label}</Text>
+            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }} selectable>{it.value}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
