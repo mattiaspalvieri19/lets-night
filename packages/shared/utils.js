@@ -48,12 +48,12 @@ export function todayLocal() {
 }
 
 // =================== LOYALTY ===================
-// Livelli ordinati per soglia punti crescente
+// Livelli professionali. icon usata solo come optional small accent, non come hero.
 export const LOYALTY_LEVELS = [
-  { name: 'Rookie',         threshold: 0,    icon: '🌱', color: '#64748B' },
-  { name: 'Night Explorer', threshold: 200,  icon: '🌃', color: '#60A5FA' },
-  { name: 'Party Insider',  threshold: 600,  icon: '🎉', color: '#A855F7' },
-  { name: 'VIP Member',     threshold: 1500, icon: '👑', color: '#FBBF24' },
+  { name: 'Member',  threshold: 0,    color: '#94A3B8' },
+  { name: 'Insider', threshold: 200,  color: '#A855F7' },
+  { name: 'Elite',   threshold: 600,  color: '#C084FC' },
+  { name: 'VIP',     threshold: 1500, color: '#F59E0B' },
 ];
 
 // Restituisce { level, next, progress (0-1), pointsToNext, threshold } dato il totale punti.

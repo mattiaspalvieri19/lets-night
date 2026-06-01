@@ -77,9 +77,9 @@ export default function BusinessDashboard() {
         <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }}>{venue?.name}</Text>
         <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>{venue?.zona}, {venue?.city}</Text>
         {!venue?.is_verified && (
-          <View style={{ marginTop: 12, backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', borderRadius: 10, padding: 12 }}>
-            <Text style={{ color: '#FBBF24', fontWeight: '700', fontSize: 13 }}>⏳ In attesa di approvazione</Text>
-            <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>Il team Let's Night verificherà il tuo locale entro 24-48 ore.</Text>
+          <View style={{ marginTop: 12, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 8, padding: 12 }}>
+            <Text style={{ color: '#F59E0B', fontWeight: '600', fontSize: 12 }}>In attesa di approvazione</Text>
+            <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 4, lineHeight: 16 }}>Il tuo locale verrà verificato entro 24-48 ore.</Text>
           </View>
         )}
       </View>
@@ -87,21 +87,21 @@ export default function BusinessDashboard() {
       {/* Stats */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, marginBottom: 24 }}>
         {[
-          { label: 'Check-in oggi', value: stats.todayCheckins, color: '#4ADE80' },
-          { label: 'Prenotazioni (7gg)', value: stats.weekBookings, color: '#A855F7' },
-          { label: 'Entrate (7gg)', value: `€${stats.totalRevenue.toFixed(0)}`, color: '#FBBF24' },
-          { label: 'Eventi attivi', value: stats.activeEvents, color: '#60A5FA' },
+          { label: 'Check-in oggi', value: stats.todayCheckins },
+          { label: 'Prenotazioni (7gg)', value: stats.weekBookings },
+          { label: 'Entrate (7gg)', value: `€${stats.totalRevenue.toFixed(0)}` },
+          { label: 'Eventi attivi', value: stats.activeEvents },
         ].map(s => (
-          <View key={s.label} style={{ width: '47%', backgroundColor: '#111118', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
-            <Text style={{ color: s.color, fontSize: 26, fontWeight: '900', marginBottom: 4 }}>{s.value}</Text>
-            <Text style={{ color: '#64748B', fontSize: 12 }}>{s.label}</Text>
+          <View key={s.label} style={{ width: '47%', backgroundColor: '#111118', borderRadius: 10, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.3, marginBottom: 4 }}>{s.value}</Text>
+            <Text style={{ color: '#64748B', fontSize: 11 }}>{s.label}</Text>
           </View>
         ))}
       </View>
 
       {/* Today's events */}
       <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 12 }}>Oggi</Text>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 12, letterSpacing: -0.2 }}>Oggi</Text>
         {todayEvents.length === 0 ? (
           <View style={{ backgroundColor: '#111118', borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.1)' }}>
             <Text style={{ color: '#64748B', fontSize: 14 }}>Nessun evento oggi</Text>
@@ -112,12 +112,12 @@ export default function BusinessDashboard() {
             const total = (ev.bookings || []).filter(b => b.status !== 'cancelled').length;
             return (
               <View key={ev.id} style={{ backgroundColor: '#111118', borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.15)' }}>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 }}>{ev.title}</Text>
-                <Text style={{ color: '#A855F7', fontSize: 13, marginBottom: 8 }}>{formatTime(ev.event_time)}</Text>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14, marginBottom: 4 }}>{ev.title}</Text>
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginBottom: 10 }}>{formatTime(ev.event_time)}</Text>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: '#64748B', fontSize: 12 }}>Check-in: <Text style={{ color: '#4ADE80', fontWeight: '700' }}>{checkedIn}/{total}</Text></Text>
+                  <Text style={{ color: '#64748B', fontSize: 11 }}>Check-in <Text style={{ color: '#fff', fontWeight: '600' }}>{checkedIn}/{total}</Text></Text>
                   <Pressable onPress={() => router.push('/(business)/scanner')}>
-                    <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>Apri scanner →</Text>
+                    <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '600' }}>Scanner →</Text>
                   </Pressable>
                 </View>
               </View>
@@ -128,24 +128,26 @@ export default function BusinessDashboard() {
 
       {/* Quick actions */}
       <View style={{ paddingHorizontal: 20, marginBottom: 40 }}>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 12 }}>Azioni rapide</Text>
-        <View style={{ gap: 10 }}>
+        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 12, letterSpacing: -0.2 }}>Azioni rapide</Text>
+        <View style={{ gap: 8 }}>
           {[
-            { label: 'Scannerizza QR', sub: 'Fai check-in all\'ingresso', icon: '📷', path: '/(business)/scanner', color: '#7C3AED' },
-            { label: 'Gestisci eventi', sub: 'Attiva, disattiva, crea nuovi', icon: '🎉', path: '/(business)/events', color: '#1D4ED8' },
-            { label: 'Vedi prenotazioni', sub: 'Lista completa con filtri', icon: '📋', path: '/(business)/bookings', color: '#065F46' },
+            { label: 'Scanner QR', sub: 'Check-in all\'ingresso', path: '/(business)/scanner' },
+            { label: 'Gestione eventi', sub: 'Crea, modifica, archivia', path: '/(business)/events' },
+            { label: 'Prenotazioni', sub: 'Lista ospiti con filtri', path: '/(business)/bookings' },
           ].map(a => (
             <Pressable key={a.path} onPress={() => router.push(a.path)}
-              style={({ pressed }) => ({ backgroundColor: '#111118', borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)', opacity: pressed ? 0.8 : 1 })}
+              style={({ pressed }) => ({
+                backgroundColor: '#111118', borderRadius: 10, padding: 16,
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+                opacity: pressed ? 0.8 : 1,
+              })}
             >
-              <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: a.color + '30', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22 }}>{a.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{a.label}</Text>
+                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 3 }}>{a.sub}</Text>
               </View>
-              <View>
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{a.label}</Text>
-                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>{a.sub}</Text>
-              </View>
-              <Text style={{ color: '#A855F7', fontSize: 18, marginLeft: 'auto' }}>›</Text>
+              <Text style={{ color: '#475569', fontSize: 18 }}>›</Text>
             </Pressable>
           ))}
         </View>

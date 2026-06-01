@@ -1776,36 +1776,189 @@ em { font-style:normal; background:var(--grad); -webkit-background-clip:text; -w
 }
 .profile-pub-tab.active { color: #fff; font-weight: 800; border-bottom-color: var(--purple-light); }
 
-/* Loyalty */
+/* Loyalty page */
 .loyalty-page { min-height: 100vh; background: var(--dark); padding-top: 5rem; }
-.loyalty-container { max-width: 980px; margin: 0 auto; padding: 2rem; }
-.loyalty-hero {
-  background: linear-gradient(135deg, rgba(124,58,237,.22), rgba(192,38,211,.12));
-  border: 1.5px solid rgba(168,85,247,.4); border-radius: 18px;
-  padding: 2rem; margin-bottom: 1.5rem;
+.loyalty-container { max-width: 880px; margin: 0 auto; padding: 2rem; }
+
+/* Wallet-style card */
+.wallet-card {
+  background: #0f0f17;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
 }
-.loyalty-hero .eyebrow { color: var(--purple-light); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
-.loyalty-points { color: #fff; font-size: 3rem; font-weight: 900; letter-spacing: -1px; line-height: 1; margin-top: 10px; }
-.loyalty-points small { font-size: 14px; color: #9ca3af; font-weight: 600; margin-left: 8px; }
-.loyalty-level { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-weight: 900; font-size: 18px; }
-.loyalty-progress { height: 8px; border-radius: 4px; background: rgba(168,85,247,.18); overflow: hidden; margin-top: 1.5rem; }
-.loyalty-progress-bar { height: 100%; background: var(--purple-light); transition: width .4s; }
-.loyalty-progress-text { color: #9ca3af; font-size: 12px; margin-top: 8px; }
-.loyalty-ladder {
-  display: flex; justify-content: space-between; padding: 1.2rem 1.5rem;
-  background: var(--dark2); border: 1px solid var(--border);
-  border-radius: 14px; margin-bottom: 2rem;
+.wallet-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 22px 22px 0;
 }
-.loyalty-ladder-step { text-align: center; flex: 1; }
-.loyalty-ladder-step .icon { font-size: 26px; }
-.loyalty-ladder-step .name { font-size: 11px; font-weight: 700; margin-top: 4px; }
-.loyalty-ladder-step .threshold { font-size: 10px; color: var(--text2); margin-top: 2px; }
-.loyalty-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 2rem; }
-.loyalty-stat-card {
-  background: var(--dark2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+.wallet-brand {
+  color: #64748B; font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; font-weight: 600;
 }
-.loyalty-stat-card strong { color: #fff; font-size: 22px; font-weight: 900; display: block; }
-.loyalty-stat-card span { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.wallet-level { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+.wallet-points {
+  padding: 0 22px;
+  color: #fff; font-size: 2.4rem; font-weight: 700;
+  letter-spacing: -1px; line-height: 1.1;
+  margin-top: 28px;
+}
+.wallet-points span {
+  display: block; font-size: 12px; color: #64748B;
+  font-weight: 400; letter-spacing: 0; margin-top: 2px;
+}
+.wallet-progress {
+  margin: 22px 22px 0;
+  height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.wallet-progress-bar { height: 100%; transition: width .4s; }
+.wallet-progress-info {
+  display: flex; justify-content: space-between;
+  padding: 8px 22px 22px;
+  color: #64748B; font-size: 11px;
+}
+.wallet-progress-points { color: #94A3B8; font-weight: 600; }
+.wallet-ladder {
+  display: flex; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.wallet-ladder-step {
+  flex: 1; padding: 14px 0; text-align: center;
+  border-left: 1px solid rgba(255,255,255,0.06);
+}
+.wallet-ladder-step:first-child { border-left: 0; }
+.wallet-ladder-step.current { background: rgba(168,85,247,0.06); }
+.wallet-ladder-step .ladder-name {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.3px;
+}
+.wallet-ladder-step.current .ladder-name { font-weight: 700; }
+.wallet-ladder-step .ladder-threshold {
+  font-size: 10px; color: #475569; margin-top: 3px;
+}
+
+.loyalty-stats-minimal {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin-bottom: 26px;
+}
+.stat-mini {
+  background: var(--dark2); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; padding: 14px;
+}
+.stat-mini-value {
+  color: #fff; font-size: 20px; font-weight: 700; letter-spacing: -0.3px;
+}
+.stat-mini-label { color: #64748B; font-size: 11px; margin-top: 3px; }
+
+.loyalty-section { margin-bottom: 26px; }
+.loyalty-section h2 {
+  color: #fff; font-size: 15px; font-weight: 600;
+  letter-spacing: -0.2px; margin: 0 0 12px;
+}
+.loyalty-empty-note {
+  color: #64748B; font-size: 12px; text-align: center;
+  padding: 16px 0; margin: 0;
+}
+
+/* Milestone row minimal */
+.milestone-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: var(--dark2);
+  margin-bottom: 8px;
+}
+.milestone-marker {
+  width: 28px; height: 28px; border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.02);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.milestone-marker.unlocked {
+  background: #A855F7; border-color: #A855F7;
+  color: #fff; font-size: 13px; font-weight: 700;
+}
+.milestone-marker .dot {
+  width: 6px; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.25);
+}
+.milestone-row-body { flex: 1; min-width: 0; }
+.milestone-row-head {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.milestone-title-active { color: #fff; font-weight: 600; font-size: 14px; }
+.milestone-title-muted { color: #9CA3AF; font-weight: 500; font-size: 14px; }
+.milestone-points {
+  color: #64748B; font-size: 11px; font-weight: 600;
+}
+.milestone-desc { color: #64748B; font-size: 11px; margin-top: 3px; }
+.milestone-progress-mini {
+  height: 2px; border-radius: 1px; background: rgba(255,255,255,0.05);
+  overflow: hidden; margin-top: 8px;
+}
+.milestone-progress-mini > div {
+  height: 100%; background: #A855F7;
+}
+.milestone-progress-text-mini { color: #475569; font-size: 10px; margin-top: 4px; }
+
+/* Reward row pulito */
+.reward-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: var(--dark2);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; margin-bottom: 8px;
+}
+.reward-row-body { flex: 1; }
+.reward-row-title { color: #fff; font-size: 13px; font-weight: 600; }
+.reward-row-title.muted { color: #9CA3AF; }
+.reward-row-cost { color: #64748B; font-size: 11px; margin-top: 3px; }
+.reward-row-btn {
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #475569; font-size: 11px; font-weight: 600;
+}
+.reward-row-btn.active {
+  border-color: rgba(168,85,247,0.5);
+  color: #A855F7;
+}
+
+/* Movement row */
+.movement-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: var(--dark2);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; margin-bottom: 6px;
+}
+.movement-title { color: #fff; font-size: 13px; font-weight: 500; }
+.movement-date { color: #64748B; font-size: 11px; margin-top: 2px; }
+.movement-points { color: #A855F7; font-weight: 600; font-size: 13px; }
+
+/* Business event detail guest rows */
+.guest-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--dark3); border-radius: 10px; padding: 14px;
+  border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 6px;
+}
+.guest-tag {
+  padding: 2px 6px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+  border: 1px solid;
+}
+.guest-tag.ticket { color: #A855F7; border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.08); }
+.guest-tag.table  { color: #F59E0B; border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); }
+.guest-checkin {
+  padding: 7px 12px; border-radius: 6px;
+  background: #A855F7; color: #fff;
+  border: 1px solid #A855F7;
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; min-width: 78px;
+}
+.guest-checkin.done {
+  background: transparent; color: #94A3B8;
+  border-color: rgba(255,255,255,0.18);
+}
 
 /* Milestone card */
 .milestone {

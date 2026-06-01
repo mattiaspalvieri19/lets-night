@@ -135,15 +135,15 @@ export default function BusinessEventDetailScreen() {
         </Text>
       </View>
 
-      {/* Stats grid */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, marginBottom: 16 }}>
-        <StatCard label="Biglietti" value={stats.tickets} color="#A855F7" />
-        <StatCard label="Tavoli" value={stats.tables} color="#FBBF24" />
-        <StatCard label="Check-in" value={`${stats.checkedIn}/${bookings.length}`} color="#4ADE80" />
-        <StatCard label="Entrate" value={`EUR ${stats.revenue.toFixed(0)}`} color="#60A5FA" />
-        <StatCard label="Ospiti tot." value={stats.totalGuests} color="#C084FC" />
+      {/* Stats grid uniforme */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 8, marginBottom: 16 }}>
+        <StatCard label="Biglietti" value={stats.tickets} />
+        <StatCard label="Tavoli" value={stats.tables} />
+        <StatCard label="Check-in" value={`${stats.checkedIn}/${bookings.length}`} />
+        <StatCard label="Entrate" value={`€${stats.revenue.toFixed(0)}`} />
+        <StatCard label="Ospiti" value={stats.totalGuests} />
         {event.capacity && (
-          <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} color="#F87171" />
+          <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} />
         )}
       </View>
 
@@ -175,17 +175,16 @@ export default function BusinessEventDetailScreen() {
 
         {filtered.length === 0 ? (
           <View style={{
-            backgroundColor: '#111118', borderRadius: 12, padding: 28,
-            alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+            backgroundColor: '#111118', borderRadius: 10, padding: 28,
+            alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
           }}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>👥</Text>
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 }}>
-              Nessun ospite per questo filtro
+            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+              Nessun ospite
             </Text>
             <Text style={{ color: '#64748B', fontSize: 12, textAlign: 'center' }}>
               {bookings.length === 0
-                ? 'Nessuna prenotazione ancora per questo evento.'
-                : 'Cambia il filtro per vedere altri ospiti.'}
+                ? 'Nessuna prenotazione per questo evento.'
+                : 'Cambia filtro per vedere altri ospiti.'}
             </Text>
           </View>
         ) : filtered.map(b => {
@@ -199,33 +198,38 @@ export default function BusinessEventDetailScreen() {
               borderColor: b.checked_in ? 'rgba(74,222,128,0.3)' : 'rgba(168,85,247,0.12)',
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{
-                  width: 40, height: 40, borderRadius: 20,
-                  backgroundColor: isTable ? 'rgba(251,191,36,0.18)' : 'rgba(168,85,247,0.18)',
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Text style={{ fontSize: 18 }}>{isTable ? '🍾' : '🎟️'}</Text>
-                </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }} numberOfLines={1}>
-                    {b.profiles?.full_name || 'Utente'}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                    {b.profiles?.gender && (
-                      <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '700' }}>
-                        {GENDER_LABEL[b.profiles.gender]}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
+                      {b.profiles?.full_name || 'Utente'}
+                    </Text>
+                    <View style={{
+                      paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+                      backgroundColor: isTable ? 'rgba(245,158,11,0.12)' : 'rgba(168,85,247,0.12)',
+                      borderWidth: 1,
+                      borderColor: isTable ? 'rgba(245,158,11,0.3)' : 'rgba(168,85,247,0.3)',
+                    }}>
+                      <Text style={{
+                        color: isTable ? '#F59E0B' : '#A855F7',
+                        fontSize: 9, fontWeight: '700', letterSpacing: 0.5,
+                      }}>
+                        {isTable ? 'TAV' : 'ING'}
                       </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                    {b.profiles?.gender && (
+                      <Text style={{ color: '#94A3B8', fontSize: 11 }}>{GENDER_LABEL[b.profiles.gender]}</Text>
                     )}
                     {age != null && (
-                      <Text style={{ color: '#9CA3AF', fontSize: 11 }}>{age} anni</Text>
+                      <Text style={{ color: '#94A3B8', fontSize: 11 }}>· {age} anni</Text>
                     )}
-                    <Text style={{ color: '#64748B', fontSize: 11 }}>·</Text>
                     <Text style={{ color: '#64748B', fontSize: 11 }}>
-                      {isTable ? `Tavolo (${b.quantity})` : `${b.quantity} ingresso${b.quantity > 1 ? 'i' : ''}`}
+                      · {isTable ? `Tavolo ${b.quantity}` : `${b.quantity} ${b.quantity > 1 ? 'ingressi' : 'ingresso'}`}
                     </Text>
                   </View>
                   {b.profiles?.phone && (
-                    <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }} selectable>
+                    <Text style={{ color: '#475569', fontSize: 11, marginTop: 3 }} selectable>
                       {b.profiles.phone}
                     </Text>
                   )}
@@ -233,16 +237,20 @@ export default function BusinessEventDetailScreen() {
                 <Pressable
                   onPress={() => toggleCheckIn(b.id, b.checked_in)}
                   disabled={checkingIn === b.id}
-                  style={{
-                    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-                    backgroundColor: b.checked_in ? 'rgba(74,222,128,0.15)' : '#7C3AED',
+                  style={({ pressed }) => ({
+                    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 6,
+                    backgroundColor: b.checked_in ? 'transparent' : '#A855F7',
                     borderWidth: 1,
-                    borderColor: b.checked_in ? 'rgba(74,222,128,0.4)' : '#7C3AED',
-                    minWidth: 64, alignItems: 'center',
-                  }}>
+                    borderColor: b.checked_in ? 'rgba(255,255,255,0.18)' : '#A855F7',
+                    minWidth: 78, alignItems: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  })}>
                   {checkingIn === b.id ? <ActivityIndicator color="#fff" size="small" /> : (
-                    <Text style={{ color: b.checked_in ? '#4ADE80' : '#fff', fontSize: 11, fontWeight: '800' }}>
-                      {b.checked_in ? '✓ Entrato' : 'Check-in'}
+                    <Text style={{
+                      color: b.checked_in ? '#94A3B8' : '#fff',
+                      fontSize: 11, fontWeight: '600',
+                    }}>
+                      {b.checked_in ? 'Entrato' : 'Check-in'}
                     </Text>
                   )}
                 </Pressable>
@@ -255,14 +263,14 @@ export default function BusinessEventDetailScreen() {
   );
 }
 
-function StatCard({ label, value, color }) {
+function StatCard({ label, value }) {
   return (
     <View style={{
-      width: '47%', backgroundColor: '#111118',
-      borderRadius: 12, padding: 14,
-      borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+      width: '31.5%', backgroundColor: '#111118',
+      borderRadius: 10, padding: 14,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
     }}>
-      <Text style={{ color, fontSize: 22, fontWeight: '900' }}>{value}</Text>
+      <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>{value}</Text>
       <Text style={{ color: '#64748B', fontSize: 11, marginTop: 4 }}>{label}</Text>
     </View>
   );

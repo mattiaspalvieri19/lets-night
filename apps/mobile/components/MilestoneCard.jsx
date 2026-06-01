@@ -8,51 +8,56 @@ export default function MilestoneCard({ milestone, progress = 0, unlocked }) {
     <View style={{
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      padding: 14,
-      borderRadius: 14,
+      gap: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 10,
       borderWidth: 1,
-      borderColor: unlocked ? 'rgba(168,85,247,0.4)' : 'rgba(168,85,247,0.12)',
-      backgroundColor: unlocked ? 'rgba(124,58,237,0.1)' : '#111118',
-      marginBottom: 10,
-      opacity: unlocked ? 1 : 0.78,
+      borderColor: 'rgba(255,255,255,0.06)',
+      backgroundColor: '#111118',
+      marginBottom: 8,
     }}>
-      {/* Icon */}
+      {/* Marker minimal */}
       <View style={{
-        width: 48, height: 48, borderRadius: 24,
-        backgroundColor: unlocked ? 'rgba(168,85,247,0.25)' : '#18181f',
+        width: 32, height: 32, borderRadius: 16,
+        backgroundColor: unlocked ? '#A855F7' : 'rgba(255,255,255,0.04)',
         alignItems: 'center', justifyContent: 'center',
-        borderWidth: 1, borderColor: unlocked ? 'rgba(168,85,247,0.4)' : 'rgba(168,85,247,0.12)',
+        borderWidth: unlocked ? 0 : 1,
+        borderColor: 'rgba(255,255,255,0.08)',
       }}>
-        <Text style={{ fontSize: 22 }}>{milestone.icon || '🏆'}</Text>
+        {unlocked ? (
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginTop: -1 }}>✓</Text>
+        ) : (
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+        )}
       </View>
 
-      {/* Body */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, flex: 1 }} numberOfLines={1}>
+          <Text style={{
+            color: unlocked ? '#fff' : '#9CA3AF',
+            fontWeight: '600',
+            fontSize: 14,
+            flex: 1,
+          }} numberOfLines={1}>
             {milestone.title}
           </Text>
-          <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '800', marginLeft: 6 }}>
+          <Text style={{ color: '#64748B', fontSize: 11, fontWeight: '600', marginLeft: 6 }}>
             +{milestone.points}
           </Text>
         </View>
         {milestone.description && (
-          <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 2, lineHeight: 15 }} numberOfLines={2}>
+          <Text style={{ color: '#64748B', fontSize: 11, marginTop: 3, lineHeight: 15 }} numberOfLines={2}>
             {milestone.description}
           </Text>
         )}
-
-        {/* Progress / unlocked label */}
-        {unlocked ? (
-          <Text style={{ color: '#4ADE80', fontSize: 11, fontWeight: '700', marginTop: 6 }}>
-            ✓ Sbloccato
-          </Text>
-        ) : goal > 1 ? (
+        {!unlocked && goal > 1 && (
           <View style={{ marginTop: 8 }}>
             <View style={{
-              height: 4, backgroundColor: 'rgba(168,85,247,0.15)',
-              borderRadius: 2, overflow: 'hidden',
+              height: 2,
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: 1,
+              overflow: 'hidden',
             }}>
               <View style={{
                 width: `${Math.round(pct * 100)}%`,
@@ -60,12 +65,10 @@ export default function MilestoneCard({ milestone, progress = 0, unlocked }) {
                 backgroundColor: '#A855F7',
               }} />
             </View>
-            <Text style={{ color: '#64748B', fontSize: 10, marginTop: 4 }}>
+            <Text style={{ color: '#475569', fontSize: 10, marginTop: 4 }}>
               {progress || 0}/{goal}
             </Text>
           </View>
-        ) : (
-          <Text style={{ color: '#64748B', fontSize: 11, marginTop: 6 }}>Bloccato</Text>
         )}
       </View>
     </View>

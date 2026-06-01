@@ -131,15 +131,15 @@ export default function BusinessEventDetailPage({ params }) {
           </p>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats grid uniforme */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 24 }}>
-          <StatCard label="Biglietti" value={stats.tickets} color="#A855F7" />
-          <StatCard label="Tavoli" value={stats.tables} color="#FBBF24" />
-          <StatCard label="Check-in" value={`${stats.checkedIn}/${bookings.length}`} color="#4ADE80" />
-          <StatCard label="Entrate" value={`EUR ${stats.revenue.toFixed(0)}`} color="#60A5FA" />
-          <StatCard label="Ospiti tot." value={stats.totalGuests} color="#C084FC" />
+          <StatCard label="Biglietti" value={stats.tickets} />
+          <StatCard label="Tavoli" value={stats.tables} />
+          <StatCard label="Check-in" value={`${stats.checkedIn}/${bookings.length}`} />
+          <StatCard label="Entrate" value={`€${stats.revenue.toFixed(0)}`} />
+          <StatCard label="Ospiti" value={stats.totalGuests} />
           {event.capacity && (
-            <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} color="#F87171" />
+            <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} />
           )}
         </div>
 
@@ -159,12 +159,11 @@ export default function BusinessEventDetailPage({ params }) {
 
           {filtered.length === 0 ? (
             <div className="empty">
-              <div className="empty-icon">👥</div>
-              <div className="empty-title">Nessun ospite per questo filtro</div>
+              <div className="empty-title">Nessun ospite</div>
               <div className="empty-sub">
                 {bookings.length === 0
-                  ? 'Nessuna prenotazione ancora per questo evento.'
-                  : 'Cambia il filtro per vedere altri ospiti.'}
+                  ? 'Nessuna prenotazione per questo evento.'
+                  : 'Cambia filtro per vedere altri ospiti.'}
               </div>
             </div>
           ) : (
@@ -173,38 +172,30 @@ export default function BusinessEventDetailPage({ params }) {
                 const age = calcAge(b.profiles?.birth_date);
                 const isTable = b.booking_type === 'table';
                 return (
-                  <div key={b.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    background: 'var(--dark3)', borderRadius: 12, padding: 14,
-                    border: '1px solid ' + (b.checked_in ? 'rgba(74,222,128,0.3)' : 'rgba(168,85,247,0.12)'),
-                  }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 20,
-                      background: isTable ? 'rgba(251,191,36,0.18)' : 'rgba(168,85,247,0.18)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 18, flexShrink: 0,
-                    }}>
-                      {isTable ? '🍾' : '🎟️'}
-                    </div>
+                  <div key={b.id} className="guest-row">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>
-                        {b.profiles?.full_name || 'Utente'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>
+                          {b.profiles?.full_name || 'Utente'}
+                        </span>
+                        <span className={'guest-tag ' + (isTable ? 'table' : 'ticket')}>
+                          {isTable ? 'TAV' : 'ING'}
+                        </span>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 3, fontSize: 11, color: '#9ca3af' }}>
-                        {b.profiles?.gender && <span style={{ color: 'var(--purple-light)', fontWeight: 700 }}>{GENDER_LABEL[b.profiles.gender]}</span>}
-                        {age != null && <span>{age} anni</span>}
-                        <span>·</span>
-                        <span>{isTable ? `Tavolo (${b.quantity})` : `${b.quantity} ingresso${b.quantity > 1 ? 'i' : ''}`}</span>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 11, color: '#94a3b8' }}>
+                        {b.profiles?.gender && <span>{GENDER_LABEL[b.profiles.gender]}</span>}
+                        {age != null && <span>· {age} anni</span>}
+                        <span>· {isTable ? `Tavolo ${b.quantity}` : `${b.quantity} ${b.quantity > 1 ? 'ingressi' : 'ingresso'}`}</span>
                       </div>
                       {b.profiles?.phone && (
-                        <div style={{ color: 'var(--text2)', fontSize: 11, marginTop: 2 }}>{b.profiles.phone}</div>
+                        <div style={{ color: '#475569', fontSize: 11, marginTop: 3 }}>{b.profiles.phone}</div>
                       )}
                     </div>
                     <button
                       onClick={() => toggleCheckIn(b.id, b.checked_in)}
                       disabled={checkingIn === b.id}
-                      className={'biz-toggle ' + (b.checked_in ? 'active' : '')}>
-                      {checkingIn === b.id ? '...' : (b.checked_in ? '✓ Entrato' : 'Check-in')}
+                      className={'guest-checkin ' + (b.checked_in ? 'done' : '')}>
+                      {checkingIn === b.id ? '...' : (b.checked_in ? 'Entrato' : 'Check-in')}
                     </button>
                   </div>
                 );
@@ -217,13 +208,13 @@ export default function BusinessEventDetailPage({ params }) {
   );
 }
 
-function StatCard({ label, value, color }) {
+function StatCard({ label, value }) {
   return (
     <div style={{
-      background: 'var(--dark2)', border: '1px solid var(--border)',
-      borderRadius: 12, padding: 16,
+      background: 'var(--dark2)', border: '1px solid rgba(255,255,255,0.06)',
+      borderRadius: 10, padding: 16,
     }}>
-      <div style={{ color, fontSize: 24, fontWeight: 900 }}>{value}</div>
+      <div style={{ color: '#fff', fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px' }}>{value}</div>
       <div style={{ color: 'var(--text2)', fontSize: 11, marginTop: 4 }}>{label}</div>
     </div>
   );
