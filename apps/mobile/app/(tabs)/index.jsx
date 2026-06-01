@@ -239,20 +239,29 @@ export default function HomeScreen() {
         </View>
 
         {/* Category chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, paddingBottom: 6 }}>
           {CATS.map(c => (
             <Pressable
               key={c}
               onPress={() => setCat(c)}
-              style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: cat === c ? 'transparent' : 'rgba(168,85,247,0.2)', backgroundColor: cat === c ? '#7C3AED' : 'transparent' }}
+              style={{
+                paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+                borderWidth: 1,
+                borderColor: cat === c ? '#A855F7' : 'rgba(255,255,255,0.08)',
+                backgroundColor: cat === c ? 'rgba(168,85,247,0.15)' : 'transparent',
+              }}
             >
-              <Text style={{ color: cat === c ? '#fff' : '#64748B', fontWeight: cat === c ? '700' : '500', fontSize: 13 }}>{c}</Text>
+              <Text style={{
+                color: cat === c ? '#fff' : '#94A3B8',
+                fontWeight: cat === c ? '600' : '500',
+                fontSize: 12,
+              }}>{c}</Text>
             </Pressable>
           ))}
         </ScrollView>
 
         {/* Quick tags chips (Live Music, Gratis, Tavoli, Guestlist, After dinner) */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, paddingTop: 6 }}>
           {QUICK_TAGS.map(t => {
             const active = quickTag === t;
             return (
@@ -260,13 +269,17 @@ export default function HomeScreen() {
                 key={t}
                 onPress={() => setQuickTag(active ? null : t)}
                 style={{
-                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
-                  backgroundColor: active ? 'rgba(168,85,247,0.18)' : '#111118',
+                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+                  backgroundColor: 'transparent',
                   borderWidth: 1,
-                  borderColor: active ? '#A855F7' : 'rgba(168,85,247,0.15)',
+                  borderColor: active ? '#A855F7' : 'rgba(255,255,255,0.06)',
                 }}
               >
-                <Text style={{ color: active ? '#A855F7' : '#9CA3AF', fontSize: 12, fontWeight: active ? '700' : '500' }}>
+                <Text style={{
+                  color: active ? '#A855F7' : '#64748B',
+                  fontSize: 11,
+                  fontWeight: active ? '600' : '500',
+                }}>
                   {t}
                 </Text>
               </Pressable>

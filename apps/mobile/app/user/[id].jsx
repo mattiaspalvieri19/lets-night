@@ -330,7 +330,7 @@ export default function PublicProfileScreen() {
       {/* Tabs + contenuto */}
       {(!isPrivate || isOwn || isFollowing) && (
         <>
-          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
+          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
             {TABS.map(t => {
               const active = tab === t.id;
               return (
@@ -338,14 +338,15 @@ export default function PublicProfileScreen() {
                   key={t.id}
                   onPress={() => setTab(t.id)}
                   style={{
-                    flex: 1, paddingVertical: 14, alignItems: 'center',
-                    borderBottomWidth: 2,
+                    flex: 1, paddingVertical: 12, alignItems: 'center',
+                    borderBottomWidth: 1,
                     borderBottomColor: active ? '#A855F7' : 'transparent',
                   }}
                 >
                   <Text style={{
                     color: active ? '#fff' : '#64748B',
-                    fontSize: 13, fontWeight: active ? '800' : '500',
+                    fontSize: 11, fontWeight: active ? '600' : '500',
+                    letterSpacing: 0.2,
                   }}>
                     {t.label}
                   </Text>

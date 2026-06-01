@@ -12,39 +12,42 @@ export default function EventCard({ event, onPress }) {
       style={({ pressed }) => ({
         width: '100%',
         backgroundColor: '#111118',
-        borderRadius: 16,
+        borderRadius: 12,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.14)',
-        opacity: pressed ? 0.88 : 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+        opacity: pressed ? 0.85 : 1,
       })}
     >
       <LinearGradient
         colors={[colors[0], colors[1]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ height: 110, padding: 10, justifyContent: 'space-between' }}
+        style={{ height: 96, padding: 10, justifyContent: 'space-between' }}
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ backgroundColor: accent + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: accent, fontSize: 9, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+          <View style={{
+            backgroundColor: 'rgba(0,0,0,0.35)',
+            paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
+          }}>
+            <Text style={{
+              color: '#fff', fontSize: 9, fontWeight: '700',
+              letterSpacing: 1, textTransform: 'uppercase',
+            }}>
               {event.category}
             </Text>
           </View>
           {event.is_sponsored && (
-            <View style={{ backgroundColor: 'rgba(245,158,11,0.22)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(245,158,11,0.5)' }}>
-              <Text style={{ color: '#fbbf24', fontSize: 9, fontWeight: '800', letterSpacing: 1 }}>★ SPONSOR</Text>
+            <View style={{
+              backgroundColor: 'rgba(0,0,0,0.45)',
+              paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4,
+              borderWidth: 1, borderColor: 'rgba(245,158,11,0.5)',
+            }}>
+              <Text style={{ color: '#fbbf24', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 }}>
+                SPONSOR
+              </Text>
             </View>
           )}
-        </View>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingHorizontal: 4, paddingBottom: 2 }}>
-          {[0.75, 0.35, 0.6, 0.25, 0.5, 0.4].map((op, i) => (
-            <View
-              key={i}
-              style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: `rgba(255,255,255,${op})` }}
-            />
-          ))}
         </View>
       </LinearGradient>
 
@@ -52,10 +55,14 @@ export default function EventCard({ event, onPress }) {
         <Text numberOfLines={1} style={{ color: '#64748B', fontSize: 11, marginBottom: 3 }}>
           {event.venues?.name || 'Locale'}
         </Text>
-        <Text numberOfLines={2} style={{ color: '#fff', fontSize: 14, fontWeight: '700', lineHeight: 19, marginBottom: 6, minHeight: 38 }}>
+        <Text numberOfLines={2} style={{
+          color: '#fff', fontSize: 14, fontWeight: '600',
+          lineHeight: 18, marginBottom: 6, minHeight: 36,
+          letterSpacing: -0.2,
+        }}>
           {event.title}
         </Text>
-        <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '500', marginBottom: 2 }}>
+        <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '500', marginBottom: 2 }}>
           {formatDate(event.event_date)} · {formatTime(event.event_time)}
         </Text>
         <Text numberOfLines={1} style={{ color: '#64748B', fontSize: 11 }}>
@@ -63,11 +70,15 @@ export default function EventCard({ event, onPress }) {
         </Text>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.12)' }}>
-        <Text style={{ color: event.price > 0 ? accent : '#fff', fontWeight: '700', fontSize: 13 }}>
+      <View style={{
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingHorizontal: 12, paddingVertical: 10,
+        borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)',
+      }}>
+        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>
           {getPriceLabel(event.price)}
         </Text>
-        <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>Prenota →</Text>
+        <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '600' }}>Prenota</Text>
       </View>
     </Pressable>
   );
