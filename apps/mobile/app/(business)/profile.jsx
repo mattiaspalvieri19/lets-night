@@ -31,6 +31,14 @@ export default function BusinessProfile() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#09090f' }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 24 }}>
+        <Pressable
+          onPress={() => router.push('/(business)')}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={{ color: '#A855F7', fontSize: 16 }}>‹</Text>
+          <Text style={{ color: '#A855F7', fontSize: 13, fontWeight: '600' }}>Dashboard</Text>
+        </Pressable>
         <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Il tuo locale</Text>
         <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }}>{venue?.name || 'Locale'}</Text>
       </View>

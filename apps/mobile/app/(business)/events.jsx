@@ -104,6 +104,14 @@ export default function BusinessEvents() {
   return (
     <View style={{ flex: 1, backgroundColor: '#09090f' }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 }}>
+        <Pressable
+          onPress={() => router.push('/(business)')}
+          hitSlop={10}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Text style={{ color: '#A855F7', fontSize: 16 }}>‹</Text>
+          <Text style={{ color: '#A855F7', fontSize: 13, fontWeight: '600' }}>Dashboard</Text>
+        </Pressable>
         <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>I tuoi eventi</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }}>Eventi</Text>
