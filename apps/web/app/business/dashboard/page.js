@@ -17,6 +17,8 @@ export default function BusinessDashboard() {
   const [events, setEvents] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [showNewEvent, setShowNewEvent] = useState(false);
+  const [eventsFilter, setEventsFilter] = useState('all');
+  const [eventsSearch, setEventsSearch] = useState('');
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
@@ -346,20 +348,111 @@ export default function BusinessDashboard() {
               </form>
             )}
 
-            {events.length === 0 ? (
-              <div className="dash-empty"><p>Non hai ancora pubblicato eventi.</p></div>
-            ) : (
+            {(() => {
+              const today = todayLocal();
+              const counts = {
+                all: events.length,
+                upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
+                draft: events.filter(e => !e.is_active).length,
+                past: events.filter(e => e.event_date < today).length,
+                soldout: events.filter(e => e.capacity && (e.booked_count || 0) >= e.capacity).length,
+              };
+              const filtered = events.filter(e => {
+                if (eventsFilter === 'upcoming') { if (!(e.event_date >= today && e.is_active)) return false; }
+                else if (eventsFilter === 'draft') { if (e.is_active) return false; }
+                else if (eventsFilter === 'past') { if (!(e.event_date < today)) return false; }
+                else if (eventsFilter === 'soldout') { if (!(e.capacity && (e.booked_count || 0) >= e.capacity)) return false; }
+                if (eventsSearch) {
+                  const q = eventsSearch.toLowerCase();
+                  const hay = `${e.title || ''} ${e.category || ''}`.toLowerCase();
+                  if (!hay.includes(q)) return false;
+                }
+                return true;
+              });
+              return (
+                <>
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <input
+                      type="text" placeholder="Cerca per titolo o categoria..."
+                      value={eventsSearch} onChange={e => setEventsSearch(e.target.value)}
+                      style={{
+                        flex: '1 1 200px',
+                        background: 'var(--dark3)', border: '1px solid var(--border-subtle)',
+                        borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 13, outline: 'none',
+                      }} />
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {[
+                        ['all', 'Tutti'],
+                        ['upcoming', 'Pubblicati'],
+                        ['draft', 'Bozze'],
+                        ['past', 'Passati'],
+                        ['soldout', 'Sold out'],
+                      ].map(([id, label]) => {
+                        const active = eventsFilter === id;
+                        return (
+                          <button key={id} onClick={() => setEventsFilter(id)}
+                            style={{
+                              padding: '6px 12px', borderRadius: 12,
+                              background: active ? 'rgba(168,85,247,0.15)' : 'transparent',
+                              border: '1px solid ' + (active ? 'var(--purple-light)' : 'var(--border-subtle)'),
+                              color: active ? '#fff' : 'var(--text-secondary)',
+                              fontSize: 11, fontWeight: active ? 600 : 500,
+                              cursor: 'pointer', fontFamily: 'inherit',
+                            }}>
+                            {label} <span style={{ color: 'var(--text-disabled)' }}>({counts[id]})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {filtered.length === 0 ? (
+                    <div className="empty">
+                      <div className="empty-title">
+                        {events.length === 0 ? 'Non hai ancora creato eventi' : 'Nessun evento per questo filtro'}
+                      </div>
+                      <div className="empty-sub">
+                        {events.length === 0
+                          ? 'Crea il tuo primo evento per iniziare ad accettare prenotazioni.'
+                          : 'Cambia filtro o resetta la ricerca.'}
+                      </div>
+                      {events.length === 0 && venue?.is_verified && (
+                        <button className="ln-btn-primary" onClick={() => setShowNewEvent(true)}>
+                          Crea evento
+                        </button>
+                      )}
+                    </div>
+                  ) : (
               <div className="biz-events-list">
-                {events.map(ev => (
+                {filtered.map(ev => {
+                  const isPast = ev.event_date < today;
+                  const soldOut = ev.capacity && (ev.booked_count || 0) >= ev.capacity;
+                  const statusLabel = !ev.is_active ? 'Bozza'
+                    : isPast ? 'Passato'
+                    : soldOut ? 'Sold out'
+                    : 'Pubblicato';
+                  const statusColor = !ev.is_active ? '#94A3B8'
+                    : isPast ? '#64748B'
+                    : soldOut ? '#F87171'
+                    : '#4ADE80';
+                  return (
                   <Link
                     key={ev.id}
                     href={`/business/event/${ev.id}`}
                     className={'biz-event-item ' + (ev.is_active ? '' : 'inactive')}
                     style={{ textDecoration: 'none', cursor: 'pointer' }}>
                     <div className="biz-event-info">
-                      <h3>{ev.title}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <h3 style={{ margin: 0 }}>{ev.title}</h3>
+                        <span style={{
+                          padding: '2px 7px', borderRadius: 4,
+                          border: '1px solid ' + statusColor + '40',
+                          background: statusColor + '15',
+                          color: statusColor, fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                        }}>{statusLabel}</span>
+                      </div>
                       <div className="biz-event-meta">
-                        <span>{ev.event_date} - {ev.event_time?.substring(0,5)}</span>
+                        <span>{ev.event_date} · {ev.event_time?.substring(0,5)}</span>
                         <span>{getPriceLabel(ev.price)}</span>
                         <span>{ev.booked_count || 0}{ev.capacity ? `/${ev.capacity}` : ''} posti</span>
                       </div>
@@ -374,9 +467,13 @@ export default function BusinessDashboard() {
                       {ev.is_active ? 'Attivo' : 'Nascosto'}
                     </button>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
-            )}
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           <div className="dash-section">

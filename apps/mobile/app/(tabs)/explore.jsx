@@ -6,119 +6,125 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
+import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import UserCard from '../../components/UserCard';
 import EmptyState from '../../components/EmptyState';
 
-const SOCIAL_FILTERS = [
-  { id: 'all',         label: 'Tutti' },
-  { id: 'following',   label: 'Già segui' },
-  { id: 'same_city',   label: 'Vicino a te' },
-  { id: 'university',  label: 'Universitari' },
-  { id: 'aperitivo',   label: 'Ama aperitivi' },
-  { id: 'vip',         label: 'VIP' },
+const ENTITY_TABS = [
+  { id: 'users',  label: 'Utenti' },
+  { id: 'venues', label: 'Locali' },
+  { id: 'events', label: 'Eventi' },
 ];
 
-export default function SearchUsersScreen() {
+function normalize(s) {
+  return (s || '').trim().toLowerCase();
+}
+
+export default function SearchScreen() {
   const { session } = useSession();
   const myId = session?.user?.id;
 
-  const [users, setUsers] = useState([]);
-  const [followingIds, setFollowingIds] = useState(new Set());
-  const [busyId, setBusyId] = useState(null);
+  const [tab, setTab] = useState('users');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [myCity, setMyCity] = useState(null);
 
-  async function loadFollowing(uid) {
-    if (!uid) return new Set();
-    const { data } = await supabase
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', uid);
-    return new Set((data || []).map(r => r.following_id));
-  }
+  const [users, setUsers] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [followingIds, setFollowingIds] = useState(new Set());
+  const [busyId, setBusyId] = useState(null);
 
-  async function loadUsers() {
-    let query = supabase
-      .from('profiles')
-      .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings')
-      .eq('role', 'user')
-      .limit(60);
-    if (myId) query = query.neq('id', myId);
-    const { data } = await query;
-    // Filtra utenti non searchable
-    const visible = (data || []).filter(u => {
-      const ps = u.privacy_settings || {};
-      return ps.searchable !== false;
-    });
-    setUsers(visible);
-  }
+  async function loadAll() {
+    const today = new Date().toISOString().split('T')[0];
+    const [usersRes, venuesRes, eventsRes, followsRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
+        .eq('role', 'user')
+        .limit(60),
+      supabase
+        .from('venues')
+        .select('id, name, category, city, zona, description, is_verified, is_partner')
+        .eq('is_verified', true)
+        .order('name', { ascending: true })
+        .limit(60),
+      supabase
+        .from('events')
+        .select('id, title, category, event_date, event_time, price, venues(name, zona, city)')
+        .eq('is_active', true)
+        .gte('event_date', today)
+        .order('event_date', { ascending: true })
+        .limit(60),
+      myId
+        ? supabase.from('follows').select('following_id').eq('follower_id', myId)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-  async function loadMyProfile() {
-    if (!myId) { setMyCity(null); return; }
-    const { data } = await supabase
-      .from('profiles')
-      .select('city')
-      .eq('id', myId)
-      .maybeSingle();
-    setMyCity(data?.city || null);
+    const usersList = (usersRes.data || []).filter(u =>
+      u.id !== myId && (u.privacy_settings || {}).searchable !== false
+    );
+    setUsers(usersList);
+    setVenues(venuesRes.data || []);
+    setEvents(eventsRes.data || []);
+    setFollowingIds(new Set((followsRes.data || []).map(r => r.following_id)));
   }
 
   useFocusEffect(useCallback(() => {
     setLoading(true);
-    Promise.all([
-      loadUsers(),
-      loadFollowing(myId).then(setFollowingIds),
-      loadMyProfile(),
-    ]).finally(() => setLoading(false));
+    loadAll().finally(() => setLoading(false));
   }, [myId]));
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      loadUsers(),
-      loadFollowing(myId).then(setFollowingIds),
-    ]);
+    await loadAll();
     setRefreshing(false);
   }, [myId]);
 
   async function toggleFollow(targetId) {
     if (!myId) { router.push('/auth/login'); return; }
     setBusyId(targetId);
-    const isFollowing = followingIds.has(targetId);
-    if (isFollowing) {
-      await supabase.from('follows')
-        .delete()
-        .eq('follower_id', myId)
-        .eq('following_id', targetId);
+    if (followingIds.has(targetId)) {
+      await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', targetId);
       setFollowingIds(prev => { const n = new Set(prev); n.delete(targetId); return n; });
     } else {
-      await supabase.from('follows')
-        .insert({ follower_id: myId, following_id: targetId });
+      await supabase.from('follows').insert({ follower_id: myId, following_id: targetId });
       setFollowingIds(prev => new Set(prev).add(targetId));
     }
     setBusyId(null);
   }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  const q = normalize(query);
+
+  const filteredUsers = useMemo(() => {
+    if (!q) return users;
     return users.filter(u => {
-      // Query: nome / username / bio
-      if (q) {
-        const hay = `${u.display_name || ''} ${u.full_name || ''} ${u.username || ''} ${u.bio || ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      // Filtri chip
-      if (filter === 'following' && !followingIds.has(u.id)) return false;
-      if (filter === 'same_city' && myCity && u.city !== myCity) return false;
-      if (filter === 'university' && !(u.interests || []).map(s => s.toLowerCase()).includes('universitario')) return false;
-      if (filter === 'aperitivo' && !(u.interests || []).map(s => s.toLowerCase()).includes('aperitivo')) return false;
-      if (filter === 'vip' && !(u.interests || []).map(s => s.toLowerCase()).includes('vip')) return false;
-      return true;
+      const hay = `${u.display_name || ''} ${u.full_name || ''} ${u.username || ''} ${u.bio || ''} ${u.city || ''} ${(u.interests || []).join(' ')}`.toLowerCase();
+      return hay.includes(q);
     });
-  }, [users, query, filter, followingIds, myCity]);
+  }, [users, q]);
+
+  const filteredVenues = useMemo(() => {
+    if (!q) return venues;
+    return venues.filter(v => {
+      const hay = `${v.name || ''} ${v.category || ''} ${v.city || ''} ${v.zona || ''} ${v.description || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [venues, q]);
+
+  const filteredEvents = useMemo(() => {
+    if (!q) return events;
+    return events.filter(e => {
+      const hay = `${e.title || ''} ${e.category || ''} ${e.venues?.name || ''} ${e.venues?.zona || ''} ${e.venues?.city || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [events, q]);
+
+  const counts = {
+    users: filteredUsers.length,
+    venues: filteredVenues.length,
+    events: filteredEvents.length,
+  };
 
   if (loading) {
     return (
@@ -132,12 +138,14 @@ export default function SearchUsersScreen() {
     <View style={{ flex: 1, backgroundColor: '#09090f' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12 }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
-          Social
+        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4, fontWeight: '600' }}>
+          Cerca
         </Text>
-        <Text style={{ color: '#fff', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }}>Cerca</Text>
-        <Text style={{ color: '#64748B', fontSize: 14, marginTop: 4 }}>
-          Trova persone con cui vivere la serata
+        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: -0.5 }}>
+          Trova nella community
+        </Text>
+        <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>
+          Utenti, locali ed eventi a Milano e Roma
         </Text>
       </View>
 
@@ -145,16 +153,16 @@ export default function SearchUsersScreen() {
       <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
         <View style={{
           flexDirection: 'row', alignItems: 'center', gap: 8,
-          backgroundColor: '#18181f', borderRadius: 12,
-          borderWidth: 1, borderColor: 'rgba(168,85,247,0.18)',
+          backgroundColor: '#18181f', borderRadius: 10,
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
           paddingHorizontal: 14, paddingVertical: 10,
         }}>
-          <Text style={{ fontSize: 16 }}>🔍</Text>
+          <Text style={{ fontSize: 14 }}>🔍</Text>
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Cerca utenti..."
-            placeholderTextColor="#4B5563"
+            placeholder={tab === 'users' ? 'Cerca utenti...' : tab === 'venues' ? 'Cerca locali...' : 'Cerca eventi...'}
+            placeholderTextColor="#475569"
             autoCapitalize="none"
             style={{ flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 }}
           />
@@ -166,73 +174,171 @@ export default function SearchUsersScreen() {
         </View>
       </View>
 
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
-      >
-        {SOCIAL_FILTERS.map(f => {
-          const active = filter === f.id;
-          const disabled = (f.id === 'following' || f.id === 'same_city') && !myId;
+      {/* Tabs entity */}
+      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+        {ENTITY_TABS.map(t => {
+          const active = tab === t.id;
           return (
             <Pressable
-              key={f.id}
-              onPress={() => !disabled && setFilter(f.id)}
-              disabled={disabled}
+              key={t.id}
+              onPress={() => setTab(t.id)}
               style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18,
-                backgroundColor: active ? '#7C3AED' : '#18181f',
-                borderWidth: 1,
-                borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)',
-                opacity: disabled ? 0.4 : 1,
+                flex: 1, paddingVertical: 12, alignItems: 'center',
+                borderBottomWidth: 1,
+                borderBottomColor: active ? '#A855F7' : 'transparent',
               }}
             >
               <Text style={{
-                color: active ? '#fff' : '#9CA3AF',
-                fontSize: 12,
-                fontWeight: active ? '700' : '500',
+                color: active ? '#fff' : '#64748B',
+                fontSize: 12, fontWeight: active ? '600' : '500',
+                letterSpacing: 0.2,
               }}>
-                {f.label}
+                {t.label} <Text style={{ color: '#475569', fontWeight: '500' }}>({counts[t.id]})</Text>
               </Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       {/* Results */}
-      {filtered.length === 0 ? (
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
-        >
-          <EmptyState
-            icon="🌃"
-            title={query ? 'Nessun utente trovato' : 'Nessuno qui per ora'}
-            subtitle={query
-              ? 'Prova un altro nome o username.'
-              : 'Torna più tardi: la community è in crescita.'}
-            actionLabel={query ? 'Resetta ricerca' : null}
-            onAction={() => setQuery('')}
-          />
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={u => u.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 80 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
-          renderItem={({ item }) => (
-            <UserCard
-              user={item}
-              isFollowing={followingIds.has(item.id)}
-              busy={busyId === item.id}
-              onToggleFollow={() => toggleFollow(item.id)}
-              hideFollow={!myId}
+      {tab === 'users' && (
+        filteredUsers.length === 0 ? (
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+            <EmptyState
+              title={query ? 'Nessun utente trovato' : 'Nessun utente'}
+              subtitle={query ? 'Modifica la ricerca o prova un altro nome.' : 'La community è in crescita.'}
+              actionLabel={query ? 'Reset' : null}
+              onAction={() => setQuery('')}
             />
-          )}
-        />
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={u => u.id}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            renderItem={({ item }) => (
+              <UserCard
+                user={item}
+                isFollowing={followingIds.has(item.id)}
+                busy={busyId === item.id}
+                onToggleFollow={() => toggleFollow(item.id)}
+                hideFollow={!myId}
+              />
+            )}
+          />
+        )
+      )}
+
+      {tab === 'venues' && (
+        filteredVenues.length === 0 ? (
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+            <EmptyState
+              title={query ? 'Nessun locale trovato' : 'Nessun locale'}
+              subtitle={query ? 'Prova un altro nome, zona o categoria.' : 'Nessun locale verificato.'}
+              actionLabel={query ? 'Reset' : null}
+              onAction={() => setQuery('')}
+            />
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={filteredVenues}
+            keyExtractor={v => v.id}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            renderItem={({ item }) => <VenueCard venue={item} />}
+          />
+        )
+      )}
+
+      {tab === 'events' && (
+        filteredEvents.length === 0 ? (
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+            <EmptyState
+              title={query ? 'Nessun evento trovato' : 'Nessun evento'}
+              subtitle={query ? 'Prova un altro nome di evento o locale.' : 'Nessun evento in programma.'}
+              actionLabel={query ? 'Reset' : null}
+              onAction={() => setQuery('')}
+            />
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={filteredEvents}
+            keyExtractor={e => e.id}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            renderItem={({ item }) => <EventResultCard event={item} />}
+          />
+        )
       )}
     </View>
+  );
+}
+
+function VenueCard({ venue }) {
+  return (
+    <Pressable
+      onPress={() => router.push(`/venue/${venue.id}`)}
+      style={({ pressed }) => ({
+        backgroundColor: '#111118',
+        borderRadius: 10, padding: 14, marginBottom: 8,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600' }}>
+          {venue.category}
+        </Text>
+        {venue.is_partner && (
+          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' }}>
+            <Text style={{ color: '#A855F7', fontSize: 9, fontWeight: '700' }}>PARTNER</Text>
+          </View>
+        )}
+      </View>
+      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, marginBottom: 4, letterSpacing: -0.2 }} numberOfLines={1}>
+        {venue.name}
+      </Text>
+      <Text style={{ color: '#94A3B8', fontSize: 12 }}>
+        {venue.zona}, {venue.city}
+      </Text>
+      {venue.description && (
+        <Text style={{ color: '#64748B', fontSize: 12, marginTop: 6, lineHeight: 17 }} numberOfLines={2}>
+          {venue.description}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+function EventResultCard({ event }) {
+  return (
+    <Pressable
+      onPress={() => router.push(`/event/${event.id}`)}
+      style={({ pressed }) => ({
+        backgroundColor: '#111118',
+        borderRadius: 10, padding: 14, marginBottom: 8,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>
+        {event.category}
+      </Text>
+      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, marginBottom: 4, letterSpacing: -0.2 }} numberOfLines={2}>
+        {event.title}
+      </Text>
+      <Text style={{ color: '#94A3B8', fontSize: 12 }}>
+        {event.venues?.name} · {event.venues?.zona}, {event.venues?.city}
+      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <Text style={{ color: '#64748B', fontSize: 11 }}>
+          {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'}
+        </Text>
+        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+          {getPriceLabel(event.price)}
+        </Text>
+      </View>
+    </Pressable>
   );
 }

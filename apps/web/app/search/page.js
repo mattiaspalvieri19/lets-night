@@ -3,28 +3,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import Navbar from '../../components/Navbar';
 
-const SOCIAL_FILTERS = [
-  { id: 'all',         label: 'Tutti' },
-  { id: 'following',   label: 'Già segui' },
-  { id: 'same_city',   label: 'Vicino a te' },
-  { id: 'university',  label: 'Universitari' },
-  { id: 'aperitivo',   label: 'Ama aperitivi' },
-  { id: 'vip',         label: 'VIP' },
+const ENTITY_TABS = [
+  { id: 'users',  label: 'Utenti' },
+  { id: 'venues', label: 'Locali' },
+  { id: 'events', label: 'Eventi' },
 ];
 
+function normalize(s) { return (s || '').trim().toLowerCase(); }
 function initialOf(name) { return (name || '?').trim().charAt(0).toUpperCase(); }
 
-export default function SearchUsersPage() {
+export default function SearchPage() {
   const [myId, setMyId] = useState(null);
-  const [myCity, setMyCity] = useState(null);
   const [users, setUsers] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [events, setEvents] = useState([]);
   const [followingIds, setFollowingIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('users');
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     async function load() {
@@ -32,22 +32,35 @@ export default function SearchUsersPage() {
       const uid = session?.user?.id || null;
       setMyId(uid);
 
-      if (uid) {
-        const { data: prof } = await supabase.from('profiles').select('city').eq('id', uid).maybeSingle();
-        setMyCity(prof?.city || null);
-        const { data: fol } = await supabase.from('follows').select('following_id').eq('follower_id', uid);
-        setFollowingIds(new Set((fol || []).map(f => f.following_id)));
-      }
+      const today = new Date().toISOString().split('T')[0];
+      const [usersRes, venuesRes, eventsRes, followsRes] = await Promise.all([
+        supabase.from('profiles')
+          .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
+          .eq('role', 'user')
+          .limit(80),
+        supabase.from('venues')
+          .select('id, name, category, city, zona, description, is_verified, is_partner')
+          .eq('is_verified', true)
+          .order('name', { ascending: true })
+          .limit(80),
+        supabase.from('events')
+          .select('id, title, category, event_date, event_time, price, venues(name, zona, city)')
+          .eq('is_active', true)
+          .gte('event_date', today)
+          .order('event_date', { ascending: true })
+          .limit(80),
+        uid
+          ? supabase.from('follows').select('following_id').eq('follower_id', uid)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-      let query = supabase
-        .from('profiles')
-        .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
-        .in('role', ['user', 'business'])  // include i business ma esclude eventuali role NULL
-        .limit(80);
-      if (uid) query = query.neq('id', uid);
-      const { data } = await query;
-      const visible = (data || []).filter(u => (u.privacy_settings || {}).searchable !== false);
-      setUsers(visible);
+      const visibleUsers = (usersRes.data || []).filter(u =>
+        u.id !== uid && (u.privacy_settings || {}).searchable !== false
+      );
+      setUsers(visibleUsers);
+      setVenues(venuesRes.data || []);
+      setEvents(eventsRes.data || []);
+      setFollowingIds(new Set((followsRes.data || []).map(r => r.following_id)));
       setLoading(false);
     }
     load();
@@ -66,99 +79,171 @@ export default function SearchUsersPage() {
     setBusyId(null);
   }
 
-  const filtered = useMemo(() => {
-    const lower = q.trim().toLowerCase();
+  const lower = normalize(q);
+
+  const filteredUsers = useMemo(() => {
+    if (!lower) return users;
     return users.filter(u => {
-      if (lower) {
-        const hay = `${u.display_name || ''} ${u.full_name || ''} ${u.username || ''} ${u.bio || ''}`.toLowerCase();
-        if (!hay.includes(lower)) return false;
-      }
-      if (filter === 'following' && !followingIds.has(u.id)) return false;
-      if (filter === 'same_city' && myCity && u.city !== myCity) return false;
-      if (filter === 'university' && !(u.interests || []).map(s => s.toLowerCase()).includes('universitario')) return false;
-      if (filter === 'aperitivo' && !(u.interests || []).map(s => s.toLowerCase()).includes('aperitivo')) return false;
-      if (filter === 'vip' && !(u.interests || []).map(s => s.toLowerCase()).includes('vip')) return false;
-      return true;
+      const hay = `${u.display_name || ''} ${u.full_name || ''} ${u.username || ''} ${u.bio || ''} ${u.city || ''} ${(u.interests || []).join(' ')}`.toLowerCase();
+      return hay.includes(lower);
     });
-  }, [users, q, filter, followingIds, myCity]);
+  }, [users, lower]);
+
+  const filteredVenues = useMemo(() => {
+    if (!lower) return venues;
+    return venues.filter(v => {
+      const hay = `${v.name || ''} ${v.category || ''} ${v.city || ''} ${v.zona || ''} ${v.description || ''}`.toLowerCase();
+      return hay.includes(lower);
+    });
+  }, [venues, lower]);
+
+  const filteredEvents = useMemo(() => {
+    if (!lower) return events;
+    return events.filter(e => {
+      const hay = `${e.title || ''} ${e.category || ''} ${e.venues?.name || ''} ${e.venues?.zona || ''} ${e.venues?.city || ''}`.toLowerCase();
+      return hay.includes(lower);
+    });
+  }, [events, lower]);
+
+  const counts = {
+    users: filteredUsers.length,
+    venues: filteredVenues.length,
+    events: filteredEvents.length,
+  };
 
   return (
     <div className="search-page">
       <Navbar />
-
       <div className="search-container">
         <div className="search-hero">
           <h1>Cerca</h1>
-          <p>Trova persone con cui vivere la serata</p>
+          <p>Utenti, locali ed eventi a Milano e Roma</p>
         </div>
 
         <div className="search-bar">
           <span>🔍</span>
           <input
             type="text" value={q} onChange={e => setQ(e.target.value)}
-            placeholder="Cerca utenti..." />
+            placeholder={tab === 'users' ? 'Cerca utenti...' : tab === 'venues' ? 'Cerca locali...' : 'Cerca eventi...'} />
           {q && <button onClick={() => setQ('')} style={{ background: 'transparent', border: 0, color: '#64748B', fontSize: 18, cursor: 'pointer' }}>×</button>}
         </div>
 
-        <div className="search-chips">
-          {SOCIAL_FILTERS.map(f => {
-            const disabled =
-              ((f.id === 'following' || f.id === 'same_city') && !myId) ||
-              (f.id === 'same_city' && !myCity);
-            return (
-              <button key={f.id} disabled={disabled}
-                onClick={() => !disabled && setFilter(f.id)}
-                className={`search-chip ${filter === f.id ? 'active' : ''}`}>
-                {f.label}
-              </button>
-            );
-          })}
+        {/* Tabs entity */}
+        <div style={{ display: 'flex', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', marginBottom: '1.5rem' }}>
+          {ENTITY_TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              style={{
+                flex: 1, padding: '12px', textAlign: 'center', cursor: 'pointer',
+                background: 'transparent', border: 0,
+                borderBottom: '1px solid ' + (tab === t.id ? '#A855F7' : 'transparent'),
+                color: tab === t.id ? '#fff' : '#64748B',
+                fontSize: 12, fontWeight: tab === t.id ? 600 : 500,
+                letterSpacing: 0.2, fontFamily: 'inherit',
+              }}>
+              {t.label} <span style={{ color: '#475569', fontWeight: 500 }}>({counts[t.id]})</span>
+            </button>
+          ))}
         </div>
 
         {loading ? (
           <div className="dash-loading">Caricamento...</div>
-        ) : filtered.length === 0 ? (
-          <div className="empty">
-            <div className="empty-icon">🌃</div>
-            <div className="empty-title">{q ? 'Nessun utente trovato' : 'Nessuno qui per ora'}</div>
-            <div className="empty-sub">{q ? 'Prova un altro nome o username.' : 'La community è in crescita: torna più tardi.'}</div>
-            {q && <button onClick={() => setQ('')} className="ln-btn-primary">Resetta ricerca</button>}
-          </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filtered.map(u => {
-              const display = u.display_name || u.full_name || u.username || 'Utente';
-              const handle = u.username ? `@${u.username}` : null;
-              const isFollowing = followingIds.has(u.id);
-              return (
-                <div key={u.id} className="user-card">
-                  <Link href={`/user/${u.id}`} className="user-avatar" style={{ textDecoration: 'none' }}>
-                    {initialOf(display)}
-                  </Link>
-                  <div className="user-info">
-                    <Link href={`/user/${u.id}`} style={{ textDecoration: 'none' }}>
-                      <div className="user-name">{display}</div>
-                      {handle && <div className="user-handle">{handle}</div>}
-                      {u.bio && <div className="user-bio">{u.bio}</div>}
-                    </Link>
-                    {Array.isArray(u.interests) && u.interests.length > 0 && (
-                      <div className="user-tags">
-                        {u.interests.slice(0, 3).map(t => <span key={t} className="user-tag">{t}</span>)}
-                      </div>
-                    )}
-                  </div>
-                  {myId && (
-                    <button
-                      onClick={() => toggleFollow(u.id)}
-                      disabled={busyId === u.id}
-                      className={`user-follow-btn ${isFollowing ? 'following' : ''}`}>
-                      {busyId === u.id ? '...' : (isFollowing ? 'Segui già' : 'Segui')}
-                    </button>
-                  )}
+          <>
+            {tab === 'users' && (
+              filteredUsers.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-title">{q ? 'Nessun utente trovato' : 'Nessun utente'}</div>
+                  <div className="empty-sub">{q ? 'Prova un altro nome o username.' : 'La community è in crescita.'}</div>
+                  {q && <button onClick={() => setQ('')} className="ln-btn-primary">Reset</button>}
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredUsers.map(u => {
+                    const display = u.display_name || u.full_name || u.username || 'Utente';
+                    const handle = u.username ? `@${u.username}` : null;
+                    const isFollowing = followingIds.has(u.id);
+                    return (
+                      <div key={u.id} className="user-card">
+                        <Link href={`/user/${u.id}`} className="user-avatar" style={{ textDecoration: 'none' }}>
+                          {initialOf(display)}
+                        </Link>
+                        <div className="user-info">
+                          <Link href={`/user/${u.id}`} style={{ textDecoration: 'none' }}>
+                            <div className="user-name">{display}</div>
+                            {handle && <div className="user-handle">{handle}</div>}
+                            {u.bio && <div className="user-bio">{u.bio}</div>}
+                          </Link>
+                          {Array.isArray(u.interests) && u.interests.length > 0 && (
+                            <div className="user-tags">
+                              {u.interests.slice(0, 3).map(t => <span key={t} className="user-tag">{t}</span>)}
+                            </div>
+                          )}
+                        </div>
+                        {myId && (
+                          <button
+                            onClick={() => toggleFollow(u.id)}
+                            disabled={busyId === u.id}
+                            className={`user-follow-btn ${isFollowing ? 'following' : ''}`}>
+                            {busyId === u.id ? '...' : (isFollowing ? 'Segui già' : 'Segui')}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {tab === 'venues' && (
+              filteredVenues.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-title">{q ? 'Nessun locale trovato' : 'Nessun locale'}</div>
+                  <div className="empty-sub">{q ? 'Prova un altro nome, zona o categoria.' : 'Nessun locale verificato.'}</div>
+                  {q && <button onClick={() => setQ('')} className="ln-btn-primary">Reset</button>}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                  {filteredVenues.map(v => (
+                    <Link key={v.id} href={`/venue/${v.id}`} className="search-card">
+                      <div className="search-card-meta">
+                        <span className="search-card-cat">{v.category}</span>
+                        {v.is_partner && <span className="search-card-badge">PARTNER</span>}
+                      </div>
+                      <div className="search-card-title">{v.name}</div>
+                      <div className="search-card-sub">{v.zona}, {v.city}</div>
+                      {v.description && <div className="search-card-desc">{v.description}</div>}
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+
+            {tab === 'events' && (
+              filteredEvents.length === 0 ? (
+                <div className="empty">
+                  <div className="empty-title">{q ? 'Nessun evento trovato' : 'Nessun evento'}</div>
+                  <div className="empty-sub">{q ? 'Prova un altro nome di evento o locale.' : 'Nessun evento in programma.'}</div>
+                  {q && <button onClick={() => setQ('')} className="ln-btn-primary">Reset</button>}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                  {filteredEvents.map(e => (
+                    <Link key={e.id} href={`/event/${e.id}`} className="search-card">
+                      <div className="search-card-meta">
+                        <span className="search-card-cat">{e.category}</span>
+                      </div>
+                      <div className="search-card-title">{e.title}</div>
+                      <div className="search-card-sub">{e.venues?.name} · {e.venues?.zona}, {e.venues?.city}</div>
+                      <div className="search-card-footer">
+                        <span>{formatDate(e.event_date)} · {formatTime(e.event_time) || '—'}</span>
+                        <strong>{getPriceLabel(e.price)}</strong>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )
+            )}
+          </>
         )}
       </div>
     </div>

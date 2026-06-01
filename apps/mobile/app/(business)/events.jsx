@@ -25,6 +25,7 @@ export default function BusinessEvents() {
   const [venue, setVenue] = useState(null);
   const [events, setEvents] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_EVENT);
   const [saving, setSaving] = useState(false);
@@ -94,10 +95,36 @@ export default function BusinessEvents() {
 
   const today = todayLocal();
   const filtered = events.filter(e => {
-    if (filter === 'upcoming') return e.event_date >= today;
-    if (filter === 'past') return e.event_date < today;
+    // Filtro stato
+    if (filter === 'upcoming') {
+      if (!(e.event_date >= today && e.is_active)) return false;
+    } else if (filter === 'past') {
+      if (!(e.event_date < today)) return false;
+    } else if (filter === 'draft') {
+      if (e.is_active) return false;
+    } else if (filter === 'soldout') {
+      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;
+      if (!(e.capacity && sold >= e.capacity)) return false;
+    }
+    // Search interna
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = `${e.title || ''} ${e.category || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
+
+  const counts = {
+    all:      events.length,
+    upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
+    draft:    events.filter(e => !e.is_active).length,
+    past:     events.filter(e => e.event_date < today).length,
+    soldout:  events.filter(e => {
+      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;
+      return e.capacity && sold >= e.capacity;
+    }).length,
+  };
 
   if (loading) return <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#A855F7" size="large" /></View>;
 
@@ -112,32 +139,93 @@ export default function BusinessEvents() {
           <Text style={{ color: '#A855F7', fontSize: 16 }}>‹</Text>
           <Text style={{ color: '#A855F7', fontSize: 13, fontWeight: '600' }}>Dashboard</Text>
         </Pressable>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>I tuoi eventi</Text>
+        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>I tuoi eventi</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }}>Eventi</Text>
+          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>Gestione eventi</Text>
           {venue?.is_verified && (
-            <Pressable onPress={() => setShowModal(true)} style={{ backgroundColor: '#7C3AED', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 }}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>+ Nuovo</Text>
+            <Pressable onPress={() => setShowModal(true)}
+              style={{ backgroundColor: '#A855F7', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}>
+              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>+ Nuovo</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Search interna */}
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', gap: 8,
+          backgroundColor: '#18181f', borderRadius: 8,
+          borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+          paddingHorizontal: 12, paddingVertical: 8,
+          marginTop: 14,
+        }}>
+          <TextInput
+            value={search} onChangeText={setSearch}
+            placeholder="Cerca per titolo o categoria..."
+            placeholderTextColor="#475569"
+            style={{ flex: 1, color: '#fff', fontSize: 13, paddingVertical: 0 }}
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')} hitSlop={10}>
+              <Text style={{ color: '#64748B', fontSize: 16 }}>×</Text>
             </Pressable>
           )}
         </View>
 
         {/* Filter tabs */}
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-          {[['all', 'Tutti'], ['upcoming', 'Prossimi'], ['past', 'Passati']].map(([id, label]) => (
-            <Pressable key={id} onPress={() => setFilter(id)}
-              style={{ paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, backgroundColor: filter === id ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: filter === id ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}
-            >
-              <Text style={{ color: filter === id ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: filter === id ? '700' : '400' }}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, marginTop: 12 }}>
+          {[
+            ['all',      'Tutti'],
+            ['upcoming', 'Pubblicati'],
+            ['draft',    'Bozze'],
+            ['past',     'Passati'],
+            ['soldout',  'Sold out'],
+          ].map(([id, label]) => {
+            const active = filter === id;
+            return (
+              <Pressable key={id} onPress={() => setFilter(id)}
+                style={{
+                  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12,
+                  backgroundColor: active ? 'rgba(168,85,247,0.15)' : 'transparent',
+                  borderWidth: 1,
+                  borderColor: active ? '#A855F7' : 'rgba(255,255,255,0.08)',
+                }}
+              >
+                <Text style={{
+                  color: active ? '#fff' : '#94A3B8',
+                  fontSize: 11,
+                  fontWeight: active ? '600' : '500',
+                }}>
+                  {label} <Text style={{ color: '#475569' }}>({counts[id]})</Text>
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
         {filtered.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-            <Text style={{ color: '#64748B', fontSize: 14 }}>Nessun evento in questa sezione.</Text>
+          <View style={{
+            alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24,
+            backgroundColor: '#111118', borderRadius: 10,
+            borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+          }}>
+            <View style={{ width: 32, height: 1, backgroundColor: 'rgba(168,85,247,0.3)', marginBottom: 16 }} />
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 6, textAlign: 'center' }}>
+              {events.length === 0 ? 'Non hai ancora creato eventi' : 'Nessun evento per questo filtro'}
+            </Text>
+            <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', marginBottom: events.length === 0 ? 18 : 0 }}>
+              {events.length === 0
+                ? 'Crea il tuo primo evento per iniziare ad accettare prenotazioni.'
+                : 'Cambia filtro o resetta la ricerca.'}
+            </Text>
+            {events.length === 0 && venue?.is_verified && (
+              <Pressable onPress={() => setShowModal(true)}
+                style={{ backgroundColor: '#A855F7', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 }}>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Crea evento</Text>
+              </Pressable>
+            )}
           </View>
         ) : filtered.map(ev => {
           const bookingsCount = (ev.bookings || []).filter(b => b.status !== 'cancelled').length;
