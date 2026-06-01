@@ -35,6 +35,7 @@ export default function RootLayout() {
         <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà' }} />
         <Stack.Screen name="profile/edit" options={{ title: 'Modifica profilo' }} />
         <Stack.Screen name="profile/privacy" options={{ title: 'Privacy' }} />
+        <Stack.Screen name="business-event/[id]" options={{ title: 'Dettaglio evento' }} />
       </Stack>
     </>
   );

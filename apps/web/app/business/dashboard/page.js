@@ -31,6 +31,8 @@ export default function BusinessDashboard() {
     dress_code: '',
     age_target: '',
     tags: [],
+    has_tables: false,
+    table_price: '',
   });
   const [creatingEvent, setCreatingEvent] = useState(false);
 
@@ -118,6 +120,8 @@ export default function BusinessDashboard() {
       dress_code: newEvent.dress_code || null,
       age_target: newEvent.age_target || null,
       tags: newEvent.tags || [],
+      has_tables: !!newEvent.has_tables,
+      table_price: newEvent.table_price ? parseFloat(String(newEvent.table_price).replace(',', '.')) : null,
       price: isNaN(priceNum) ? 0 : priceNum,
       capacity: capacityNum || null,
       is_active: true,
@@ -135,6 +139,7 @@ export default function BusinessDashboard() {
       event_date: '', event_time: '', end_time: '',
       price: '', capacity: '', area: '',
       music_type: '', dress_code: '', age_target: '', tags: [],
+      has_tables: false, table_price: '',
     });
     setCreatingEvent(false);
     loadData();
@@ -316,6 +321,25 @@ export default function BusinessDashboard() {
                   </p>
                 </div>
 
+                <div className="auth-row" style={{ alignItems: 'flex-end' }}>
+                  <div className="auth-field">
+                    <label style={{ cursor: 'pointer' }}>
+                      <input type="checkbox" checked={newEvent.has_tables}
+                        onChange={e => setNewEvent({ ...newEvent, has_tables: e.target.checked })}
+                        style={{ marginRight: 8 }} />
+                      Tavoli disponibili
+                    </label>
+                  </div>
+                  {newEvent.has_tables && (
+                    <div className="auth-field">
+                      <label>Prezzo tavolo (EUR)</label>
+                      <input type="number" step="0.01" placeholder="Lascia vuoto = su richiesta"
+                        value={newEvent.table_price}
+                        onChange={e => setNewEvent({ ...newEvent, table_price: e.target.value })} />
+                    </div>
+                  )}
+                </div>
+
                 <button type="submit" className="biz-submit" disabled={creatingEvent}>
                   {creatingEvent ? 'Pubblicazione...' : 'Pubblica evento'}
                 </button>
@@ -327,7 +351,11 @@ export default function BusinessDashboard() {
             ) : (
               <div className="biz-events-list">
                 {events.map(ev => (
-                  <div key={ev.id} className={'biz-event-item ' + (ev.is_active ? '' : 'inactive')}>
+                  <Link
+                    key={ev.id}
+                    href={`/business/event/${ev.id}`}
+                    className={'biz-event-item ' + (ev.is_active ? '' : 'inactive')}
+                    style={{ textDecoration: 'none', cursor: 'pointer' }}>
                     <div className="biz-event-info">
                       <h3>{ev.title}</h3>
                       <div className="biz-event-meta">
@@ -335,14 +363,17 @@ export default function BusinessDashboard() {
                         <span>{getPriceLabel(ev.price)}</span>
                         <span>{ev.booked_count || 0}{ev.capacity ? `/${ev.capacity}` : ''} posti</span>
                       </div>
+                      <div style={{ color: 'var(--purple-light)', fontSize: 11, marginTop: 6 }}>
+                        Statistiche e lista ospiti →
+                      </div>
                     </div>
-                    <button 
-                      className={'biz-toggle ' + (ev.is_active ? 'active' : '')} 
-                      onClick={() => toggleEventActive(ev.id, ev.is_active)}
+                    <button
+                      className={'biz-toggle ' + (ev.is_active ? 'active' : '')}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleEventActive(ev.id, ev.is_active); }}
                     >
                       {ev.is_active ? 'Attivo' : 'Nascosto'}
                     </button>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

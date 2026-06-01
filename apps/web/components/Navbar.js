@@ -58,6 +58,17 @@ export default function Navbar() {
   const isBusiness = profile?.role === 'business';
   const profileHref = isBusiness ? '/business/dashboard' : '/dashboard';
   const displayName = profile?.display_name || profile?.full_name || session?.user?.email?.split('@')[0];
+  const onBusinessLanding = pathname === '/business' || pathname === '/business/login' || pathname === '/business/register';
+
+  const logoutBtn = (
+    <button onClick={handleLogout} className="ln-btn-ghost" style={{
+      background: 'transparent', border: '1px solid var(--border)',
+      padding: '8px 14px', borderRadius: 8, color: 'var(--text2)',
+      cursor: 'pointer', fontSize: 13,
+    }}>
+      Esci
+    </button>
+  );
 
   return (
     <nav id="lnav" className={'lnav ' + (scrolled ? 'solid' : '')}>
@@ -67,31 +78,47 @@ export default function Navbar() {
       </Link>
 
       <div className={'ln-menu ' + (menuOpen ? 'open' : '')}>
-        <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
-        <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
-
-        {!loaded ? null : session ? (
+        {/* Modalità business landing (non loggato o utente normale che esplora) */}
+        {onBusinessLanding && !isBusiness ? (
           <>
-            {!isBusiness && (
-              <Link href="/loyalty" onClick={() => setMenuOpen(false)}>Fedeltà</Link>
+            <Link href="/" onClick={() => setMenuOpen(false)}>Per utenti</Link>
+            {!loaded ? null : session ? (
+              <>
+                <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="ln-btn-ghost">
+                  {displayName ? `Ciao, ${displayName}` : 'Profilo'}
+                </Link>
+                {logoutBtn}
+              </>
+            ) : (
+              <>
+                <Link href="/business/login" className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
+                <Link href="/business/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Registra locale</Link>
+              </>
             )}
-            <Link href={profileHref} onClick={() => setMenuOpen(false)} className="ln-btn-ghost">
-              {displayName ? `Ciao, ${displayName}` : 'Profilo'}
-            </Link>
-            <button onClick={handleLogout} className="ln-btn-ghost" style={{
-              background: 'transparent', border: '1px solid var(--border)',
-              padding: '8px 14px', borderRadius: 8, color: 'var(--text2)',
-              cursor: 'pointer', fontSize: 13,
-            }}>
-              Esci
-            </button>
           </>
         ) : (
           <>
-            <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
-            <Link href={`/login?next=${encodeURIComponent(pathname || '/')}`}
-              className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
-            <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
+            <Link href="/explore" onClick={() => setMenuOpen(false)}>Esplora</Link>
+            <Link href="/search" onClick={() => setMenuOpen(false)}>Cerca</Link>
+
+            {!loaded ? null : session ? (
+              <>
+                {!isBusiness && (
+                  <Link href="/loyalty" onClick={() => setMenuOpen(false)}>Fedeltà</Link>
+                )}
+                <Link href={profileHref} onClick={() => setMenuOpen(false)} className="ln-btn-ghost">
+                  {displayName ? `Ciao, ${displayName}` : 'Profilo'}
+                </Link>
+                {logoutBtn}
+              </>
+            ) : (
+              <>
+                <Link href="/business" onClick={() => setMenuOpen(false)}>Per i Locali</Link>
+                <Link href={`/login?next=${encodeURIComponent(pathname || '/')}`}
+                  className="ln-btn-ghost" onClick={() => setMenuOpen(false)}>Accedi</Link>
+                <Link href="/register" className="ln-btn-primary" onClick={() => setMenuOpen(false)}>Iscriviti</Link>
+              </>
+            )}
           </>
         )}
       </div>

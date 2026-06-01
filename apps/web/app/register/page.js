@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState('');
   const [city, setCity] = useState('Milano');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,6 +53,7 @@ export default function RegisterPage() {
           phone: phone || null,
           city,
           birth_date: birthDate,
+          gender: gender || null,
         },
       },
     });
@@ -107,12 +109,23 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <div className="auth-field">
-            <label>Città</label>
-            <select value={city} onChange={e => setCity(e.target.value)}>
-              <option value="Milano">Milano</option>
-              <option value="Roma">Roma</option>
-            </select>
+          <div className="auth-row">
+            <div className="auth-field">
+              <label>Sesso</label>
+              <select value={gender} onChange={e => setGender(e.target.value)}>
+                <option value="">Preferisco non dirlo</option>
+                <option value="M">Uomo</option>
+                <option value="F">Donna</option>
+                <option value="X">Altro</option>
+              </select>
+            </div>
+            <div className="auth-field">
+              <label>Città</label>
+              <select value={city} onChange={e => setCity(e.target.value)}>
+                <option value="Milano">Milano</option>
+                <option value="Roma">Roma</option>
+              </select>
+            </div>
           </div>
 
           {error && <div className="auth-error">{error}</div>}

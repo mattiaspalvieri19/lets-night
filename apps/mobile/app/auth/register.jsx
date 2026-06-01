@@ -10,6 +10,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState(null);
   const [city, setCity] = useState('Milano');
 
   function handleBirthDateChange(text) {
@@ -69,6 +70,7 @@ export default function RegisterScreen() {
           phone: phone || null,
           city,
           birth_date: birthDateISO,
+          gender: gender || null,
         },
       },
     });
@@ -201,6 +203,21 @@ export default function RegisterScreen() {
                 keyboardType="number-pad"
                 maxLength={10}
               />
+            </View>
+
+            <View>
+              <Text className="text-gray-400 text-sm mb-2">Sesso</Text>
+              <View className="flex-row gap-3">
+                {[{ v: 'M', l: 'Uomo' }, { v: 'F', l: 'Donna' }, { v: 'X', l: 'Altro' }].map(g => (
+                  <Pressable
+                    key={g.v}
+                    onPress={() => setGender(g.v)}
+                    className={`flex-1 py-4 rounded-xl border items-center ${gender === g.v ? 'bg-brand border-brand' : 'bg-card border-gray-700'}`}
+                  >
+                    <Text className={gender === g.v ? 'text-white font-semibold' : 'text-gray-400'}>{g.l}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View>

@@ -27,6 +27,7 @@ export default function EventDetailPage({ params }) {
   const [copied, setCopied] = useState(false);
   const [bookingModal, setBookingModal] = useState(false);
   const [bookingQty, setBookingQty] = useState(1);
+  const [bookingType, setBookingType] = useState('ticket');
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -114,16 +115,20 @@ export default function EventDetailPage({ params }) {
       return;
     }
     const safePrice = Math.max(0, Number(event.price) || 0);
-    const isFree = safePrice === 0;
+    const safeTablePrice = Math.max(0, Number(event.table_price) || 0);
+    const isTable = bookingType === 'table';
+    const effectivePrice = isTable ? (safeTablePrice || safePrice * 4) : safePrice;
+    const isFree = effectivePrice === 0;
     const qty = isFree ? 1 : bookingQty;
     const { error } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
       quantity: qty,
-      total_price: isFree ? 0 : safePrice * qty,
+      total_price: isFree ? 0 : effectivePrice * (isTable ? 1 : qty),
       fee: isFree ? 0 : BOOKING_FEE,
       qr_code: generateBookingQR(),
+      booking_type: bookingType,
     });
     setBookingLoading(false);
     if (error) {
@@ -144,6 +149,7 @@ export default function EventDetailPage({ params }) {
     setBookingSuccess(false);
     setBookingError('');
     setBookingQty(1);
+    setBookingType('ticket');
   }
 
   function shareWhatsApp() {
@@ -392,7 +398,32 @@ export default function EventDetailPage({ params }) {
                   <div><span>Orario</span><strong>{formatTime(event.event_time) || '—'}</strong></div>
                 </div>
 
-                {event.price > 0 && (
+                {event.has_tables && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                      Tipo prenotazione
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      {[
+                        { id: 'ticket', label: '🎟️ Ingresso', sub: getPriceLabel(event.price) },
+                        { id: 'table',  label: '🍾 Tavolo',   sub: event.table_price > 0 ? `EUR ${event.table_price}` : 'Su richiesta' },
+                      ].map(opt => (
+                        <button key={opt.id} type="button" onClick={() => setBookingType(opt.id)}
+                          style={{
+                            flex: 1, padding: 14, borderRadius: 12, cursor: 'pointer',
+                            background: bookingType === opt.id ? 'rgba(124,58,237,0.15)' : 'var(--dark3)',
+                            border: '1.5px solid ' + (bookingType === opt.id ? 'var(--purple-light)' : 'var(--border)'),
+                            color: 'inherit', textAlign: 'left',
+                          }}>
+                          <div style={{ color: bookingType === opt.id ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{opt.label}</div>
+                          <div style={{ color: bookingType === opt.id ? 'var(--purple-light)' : 'var(--text2)', fontSize: 11 }}>{opt.sub}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {event.price > 0 && bookingType !== 'table' && (
                   <div className="book-modal-qty">
                     <span>Posti</span>
                     <div className="book-modal-qty-controls">
@@ -405,7 +436,14 @@ export default function EventDetailPage({ params }) {
 
                 <div className="book-modal-total">
                   <span>Totale</span>
-                  <strong>{!event.price || event.price === 0 ? 'Gratuito' : `EUR ${event.price * bookingQty}`}</strong>
+                  <strong>{(() => {
+                    const safePrice = Math.max(0, Number(event.price) || 0);
+                    const safeTablePrice = Math.max(0, Number(event.table_price) || 0);
+                    const isTable = bookingType === 'table';
+                    const eff = isTable ? (safeTablePrice || safePrice * 4) : safePrice;
+                    if (eff === 0) return 'Gratuito';
+                    return `EUR ${eff * (isTable ? 1 : bookingQty)}`;
+                  })()}</strong>
                 </div>
 
                 {bookingError && <div className="auth-error">{bookingError}</div>}

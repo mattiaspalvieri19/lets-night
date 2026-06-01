@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
+import Navbar from '../../components/Navbar';
 
 export default function BusinessLanding() {
   const cursorRef = useRef(null);
@@ -38,14 +39,7 @@ export default function BusinessLanding() {
       <div className="cur-dot" ref={cursorRef} />
       <div className="cur-ring" ref={innerRef} />
 
-      <nav className="lnav biz-nav">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span></Link>
-        <div className="ln-menu">
-          <Link href="/">Per utenti</Link>
-          <Link href="/business/login" className="ln-btn-ghost">Accedi</Link>
-          <Link href="/business/register" className="biz-btn-primary">Registra locale</Link>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="biz-hero">
         <div className="biz-hero-bg" />

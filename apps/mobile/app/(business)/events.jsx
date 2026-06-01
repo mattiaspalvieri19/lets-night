@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatTime, getPriceLabel, CATS_NO_TUTTI } from '@lets-night/shared';
 
-const EMPTY_EVENT = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', price: '', capacity: '' };
+const EMPTY_EVENT = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', price: '', capacity: '', has_tables: false, table_price: '' };
 const CATS = CATS_NO_TUTTI;
 
 function todayLocal() {
@@ -77,6 +77,8 @@ export default function BusinessEvents() {
       event_time: form.event_time,
       price,
       capacity: capacity || null,
+      has_tables: !!form.has_tables,
+      table_price: form.table_price ? parseNumber(form.table_price) : null,
       is_active: true,
     });
     setSaving(false);
@@ -133,7 +135,15 @@ export default function BusinessEvents() {
           const bookingsCount = (ev.bookings || []).filter(b => b.status !== 'cancelled').length;
           const isPast = ev.event_date < today;
           return (
-            <View key={ev.id} style={{ backgroundColor: '#111118', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: ev.is_active ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.06)', opacity: isPast ? 0.7 : 1 }}>
+            <Pressable
+              key={ev.id}
+              onPress={() => router.push(`/business-event/${ev.id}`)}
+              style={({ pressed }) => ({
+                backgroundColor: '#111118', borderRadius: 14, padding: 16, marginBottom: 12,
+                borderWidth: 1, borderColor: ev.is_active ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.06)',
+                opacity: isPast ? 0.7 : (pressed ? 0.85 : 1),
+              })}
+            >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>{ev.category}</Text>
@@ -146,7 +156,7 @@ export default function BusinessEvents() {
                   </View>
                 </View>
                 {!isPast && (
-                  <Pressable onPress={() => toggleActive(ev)}
+                  <Pressable onPress={(e) => { e.stopPropagation?.(); toggleActive(ev); }} hitSlop={6}
                     style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: ev.is_active ? 'rgba(74,222,128,0.12)' : 'rgba(100,116,139,0.15)', borderWidth: 1, borderColor: ev.is_active ? 'rgba(74,222,128,0.35)' : 'rgba(100,116,139,0.3)' }}
                   >
                     <Text style={{ color: ev.is_active ? '#4ADE80' : '#64748B', fontSize: 12, fontWeight: '700' }}>
@@ -155,7 +165,10 @@ export default function BusinessEvents() {
                   </Pressable>
                 )}
               </View>
-            </View>
+              <Text style={{ color: '#A855F7', fontSize: 11, marginTop: 10, textAlign: 'right' }}>
+                Tocca per statistiche →
+              </Text>
+            </Pressable>
           );
         })}
       </ScrollView>

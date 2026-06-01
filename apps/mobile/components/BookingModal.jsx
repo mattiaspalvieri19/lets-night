@@ -5,17 +5,23 @@ import { formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_F
 
 export default function BookingModal({ visible, onClose, event, session }) {
   const [quantity, setQuantity] = useState(1);
+  const [bookingType, setBookingType] = useState('ticket');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const submitting = useRef(false);
 
   const safePrice = Math.max(0, Number(event?.price) || 0);
-  const isFree = safePrice === 0;
-  const total = isFree ? 0 : safePrice * quantity;
+  const safeTablePrice = Math.max(0, Number(event?.table_price) || 0);
+  const isTable = bookingType === 'table';
+  const effectivePrice = isTable ? (safeTablePrice || safePrice * 4) : safePrice;
+  const isFree = effectivePrice === 0;
+  const total = isFree ? 0 : effectivePrice * (isTable ? 1 : quantity);
+  const hasTables = !!event?.has_tables;
 
   function handleClose() {
     setQuantity(1);
+    setBookingType('ticket');
     setSuccess(false);
     setError('');
     onClose();
@@ -31,15 +37,16 @@ export default function BookingModal({ visible, onClose, event, session }) {
     setError('');
     setLoading(true);
 
-    const qty = isFree ? 1 : quantity;
+    const qty = isFree ? 1 : (isTable ? quantity : quantity);
     const { error: err } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
       quantity: qty,
-      total_price: isFree ? 0 : safePrice * qty,
+      total_price: isFree ? 0 : effectivePrice * (isTable ? 1 : qty),
       fee: isFree ? 0 : BOOKING_FEE,
       qr_code: generateBookingQR(),
+      booking_type: bookingType,
     });
     setLoading(false);
     submitting.current = false;
@@ -111,6 +118,39 @@ export default function BookingModal({ visible, onClose, event, session }) {
                   </View>
                 </View>
               </View>
+
+              {/* Tipo booking (se l'evento offre tavoli) */}
+              {hasTables && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                    Tipo prenotazione
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {[
+                      { id: 'ticket', label: '🎟️ Ingresso', sub: getPriceLabel(safePrice) },
+                      { id: 'table',  label: '🍾 Tavolo',   sub: safeTablePrice > 0 ? `EUR ${safeTablePrice}` : 'Su richiesta' },
+                    ].map(opt => {
+                      const active = bookingType === opt.id;
+                      return (
+                        <Pressable key={opt.id} onPress={() => setBookingType(opt.id)}
+                          style={{
+                            flex: 1, padding: 14, borderRadius: 12,
+                            backgroundColor: active ? 'rgba(124,58,237,0.15)' : '#18181f',
+                            borderWidth: 1.5,
+                            borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+                          }}>
+                          <Text style={{ color: active ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: '700', marginBottom: 3 }}>
+                            {opt.label}
+                          </Text>
+                          <Text style={{ color: active ? '#A855F7' : '#64748B', fontSize: 11 }}>
+                            {opt.sub}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
               {/* Quantity (solo se a pagamento) */}
               {!isFree && (
