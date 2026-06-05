@@ -17,7 +17,7 @@ export default function BusinessDashboard() {
       if (!session) { router.replace('/auth/login'); return; }
 
       const { data: venueData } = await supabase
-        .from('venues').select('*').eq('owner_id', session.user.id).single();
+        .from('venues').select('*').eq('owner_id', session.user.id).maybeSingle();
       if (!venueData) { setLoading(false); return; }
       setVenue(venueData);
 

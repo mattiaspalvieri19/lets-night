@@ -43,7 +43,7 @@ export default function BusinessEventDetailPage({ params }) {
       .from('events')
       .select('*, venues!inner(id, name, zona, city, owner_id)')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!ev || ev.venues.owner_id !== session.user.id) {
       setForbidden(true);

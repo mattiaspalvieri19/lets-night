@@ -72,6 +72,7 @@ export default function PublicProfileScreen() {
     });
 
     // Sto seguendo?
+    let isFollowingNow = false;
     if (myId && myId !== id) {
       const { data: f } = await supabase
         .from('follows')
@@ -79,23 +80,31 @@ export default function PublicProfileScreen() {
         .eq('follower_id', myId)
         .eq('following_id', id)
         .maybeSingle();
-      setIsFollowing(!!f);
+      isFollowingNow = !!f;
+      setIsFollowing(isFollowingNow);
     }
+    // Gate dati: se private/followers e non lo segui, niente fetch
+    const ps0 = p.privacy_settings || {};
+    const profileBlocked = !isOwn && !isFollowingNow && (
+      ps0.profile_visibility === 'private' || ps0.profile_visibility === 'followers'
+    );
 
     // Attività (RLS filtra in base a visibility/follow)
-    const { data: acts } = await supabase
-      .from('activities')
-      .select('*, events(id, title, event_date), venues(id, name, zona, city)')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-    setActivities(acts || []);
+    if (!profileBlocked) {
+      const { data: acts } = await supabase
+        .from('activities')
+        .select('*, events(id, title, event_date), venues(id, name, zona, city)')
+        .eq('user_id', id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      setActivities(acts || []);
+    }
 
     // Eventi (filtra client-side: PostgREST non supporta filter su joined column)
     const ps = p.privacy_settings || {};
     const today = new Date().toISOString().split('T')[0];
-    const wantsFuture = ps.show_future_events !== false || isOwn;
-    const wantsPast = ps.show_past_events !== false || isOwn;
+    const wantsFuture = !profileBlocked && (ps.show_future_events !== false || isOwn);
+    const wantsPast = !profileBlocked && (ps.show_past_events !== false || isOwn);
     if (wantsFuture || wantsPast) {
       const { data: all } = await supabase
         .from('bookings')
@@ -112,7 +121,7 @@ export default function PublicProfileScreen() {
     }
 
     // Locali preferiti (utenti normali)
-    if (ps.show_favorite_venues !== false || isOwn) {
+    if (!profileBlocked && (ps.show_favorite_venues !== false || isOwn)) {
       const { data: favs } = await supabase
         .from('favorite_venues')
         .select('venue_id, venues(id, name, zona, city, category)')

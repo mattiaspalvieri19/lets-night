@@ -41,7 +41,7 @@ export default function SearchScreen() {
       supabase
         .from('profiles')
         .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
-        .eq('role', 'user')
+        .or('role.eq.user,role.is.null')
         .limit(60),
       supabase
         .from('venues')

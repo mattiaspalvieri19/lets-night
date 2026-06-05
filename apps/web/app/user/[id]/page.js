@@ -61,17 +61,24 @@ export default function PublicProfilePage({ params }) {
       ]);
       setStats({ followers: fc || 0, following: fgc || 0, badges: bc || 0 });
 
+      let isFollowingNow = false;
       if (uid && uid !== id) {
         const { data: f } = await supabase.from('follows').select('follower_id')
           .eq('follower_id', uid).eq('following_id', id).maybeSingle();
-        setIsFollowing(!!f);
+        isFollowingNow = !!f;
+        setIsFollowing(isFollowingNow);
       }
 
       const ps = p.privacy_settings || {};
       const today = new Date().toISOString().split('T')[0];
       const isOwn = uid === id;
-      const wantsFuture = ps.show_future_events !== false || isOwn;
-      const wantsPast = ps.show_past_events !== false || isOwn;
+      // Gate dati a livello fetch: se profilo private/followers e non lo segui,
+      // NON scaricare bookings/favorites/badges (anche se la UI li nasconderebbe).
+      const profileBlocked = !isOwn && !isFollowingNow && (
+        ps.profile_visibility === 'private' || ps.profile_visibility === 'followers'
+      );
+      const wantsFuture = !profileBlocked && (ps.show_future_events !== false || isOwn);
+      const wantsPast = !profileBlocked && (ps.show_past_events !== false || isOwn);
       // PostgREST non supporta filter su joined column: filtra client-side
       if (wantsFuture || wantsPast) {
         const { data: all } = await supabase
@@ -82,13 +89,13 @@ export default function PublicProfilePage({ params }) {
         if (wantsFuture) setFutureBookings(list.filter(b => b.events.event_date >= today));
         if (wantsPast) setPastBookings(list.filter(b => b.events.event_date < today).slice(0, 20));
       }
-      if (ps.show_favorite_venues !== false || isOwn) {
+      if (!profileBlocked && (ps.show_favorite_venues !== false || isOwn)) {
         const { data: favs } = await supabase
           .from('favorite_venues').select('venue_id, venues(id, name, zona, city, category)')
           .eq('user_id', id);
         setFavorites((favs || []).filter(f => f.venues));
       }
-      if (ps.show_badges !== false || isOwn) {
+      if (!profileBlocked && (ps.show_badges !== false || isOwn)) {
         const { data: ums } = await supabase
           .from('user_milestones')
           .select('loyalty_milestones(*)').eq('user_id', id).not('unlocked_at', 'is', null);

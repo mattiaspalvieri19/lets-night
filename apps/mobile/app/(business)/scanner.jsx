@@ -30,7 +30,7 @@ export default function ScannerScreen() {
     async function loadVenue() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const { data: v } = await supabase.from('venues').select('id').eq('owner_id', session.user.id).single();
+      const { data: v } = await supabase.from('venues').select('id').eq('owner_id', session.user.id).maybeSingle();
       if (v) setMyVenueId(v.id);
     }
     loadVenue();

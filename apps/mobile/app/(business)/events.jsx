@@ -33,7 +33,7 @@ export default function BusinessEvents() {
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const { data: v } = await supabase.from('venues').select('id, name, is_verified').eq('owner_id', session.user.id).single();
+    const { data: v } = await supabase.from('venues').select('id, name, is_verified').eq('owner_id', session.user.id).maybeSingle();
     if (!v) { setLoading(false); return; }
     setVenue(v);
     const { data: evs } = await supabase.from('events').select('*, bookings(id, status)').eq('venue_id', v.id).order('event_date', { ascending: false });
@@ -82,6 +82,7 @@ export default function BusinessEvents() {
       table_price: form.table_price ? parseNumber(form.table_price) : null,
       is_active: true,
     });
+    // se has_tables, auto-aggiungi tag 'Tavoli' (idempotente lato DB).
     setSaving(false);
     if (error) { Alert.alert('Errore', error.message); return; }
     closeModal();
@@ -101,7 +102,7 @@ export default function BusinessEvents() {
     } else if (filter === 'past') {
       if (!(e.event_date < today)) return false;
     } else if (filter === 'draft') {
-      if (e.is_active) return false;
+      if (e.is_active || e.event_date < today) return false;
     } else if (filter === 'soldout') {
       const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;
       if (!(e.capacity && sold >= e.capacity)) return false;
@@ -118,7 +119,7 @@ export default function BusinessEvents() {
   const counts = {
     all:      events.length,
     upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
-    draft:    events.filter(e => !e.is_active).length,
+    draft:    events.filter(e => !e.is_active && e.event_date >= today).length,
     past:     events.filter(e => e.event_date < today).length,
     soldout:  events.filter(e => {
       const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;

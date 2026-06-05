@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
@@ -54,17 +54,18 @@ export default function PrivacySettingsPage() {
     load();
   }, [router]);
 
+  const saveTimer = useRef(null);
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
   async function persist(next) {
     setS(next);
+    if (!myId) return; // safety: niente UPDATE su null
     setSaving(true);
-    // Debounce: salva solo l'ultimo stato dopo 400ms di inattività
-    if (typeof window !== 'undefined') {
-      if (window.__privacySaveTimer) clearTimeout(window.__privacySaveTimer);
-      window.__privacySaveTimer = setTimeout(async () => {
-        await supabase.from('profiles').update({ privacy_settings: next }).eq('id', myId);
-        setSaving(false);
-      }, 400);
-    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      await supabase.from('profiles').update({ privacy_settings: next }).eq('id', myId);
+      setSaving(false);
+    }, 400);
   }
 
   if (loading) return <div className="dash-loading">Caricamento...</div>;

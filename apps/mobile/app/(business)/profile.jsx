@@ -14,7 +14,7 @@ export default function BusinessProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.replace('/auth/login'); return; }
       setUser(session.user);
-      const { data: v } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).single();
+      const { data: v } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).maybeSingle();
       setVenue(v);
       setLoading(false);
     }

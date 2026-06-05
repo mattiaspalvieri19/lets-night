@@ -103,11 +103,15 @@ export default function VenueDetailPage({ params }) {
     }
     setFavBusy(true);
     if (isFav) {
-      await supabase.from('favorite_venues').delete().eq('user_id', user.id).eq('venue_id', id);
-      setIsFav(false);
+      const { error } = await supabase.from('favorite_venues')
+        .delete().eq('user_id', user.id).eq('venue_id', id);
+      if (!error) setIsFav(false);
+      else alert('Impossibile rimuovere dai preferiti. Riprova.');
     } else {
-      await supabase.from('favorite_venues').insert({ user_id: user.id, venue_id: id });
-      setIsFav(true);
+      const { error } = await supabase.from('favorite_venues')
+        .insert({ user_id: user.id, venue_id: id });
+      if (!error) setIsFav(true);
+      else alert('Impossibile aggiungere ai preferiti. Riprova.');
     }
     setFavBusy(false);
   }

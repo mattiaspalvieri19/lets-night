@@ -80,11 +80,15 @@ export default function VenueDetailScreen() {
     if (!myId) { router.push('/auth/login'); return; }
     setFavBusy(true);
     if (isFav) {
-      await supabase.from('favorite_venues').delete().eq('user_id', myId).eq('venue_id', id);
-      setIsFav(false);
+      const { error } = await supabase.from('favorite_venues')
+        .delete().eq('user_id', myId).eq('venue_id', id);
+      if (!error) setIsFav(false);
+      else Alert.alert('Errore', 'Impossibile aggiornare i preferiti. Riprova.');
     } else {
-      await supabase.from('favorite_venues').insert({ user_id: myId, venue_id: id });
-      setIsFav(true);
+      const { error } = await supabase.from('favorite_venues')
+        .insert({ user_id: myId, venue_id: id });
+      if (!error) setIsFav(true);
+      else Alert.alert('Errore', 'Impossibile aggiornare i preferiti. Riprova.');
     }
     setFavBusy(false);
   }

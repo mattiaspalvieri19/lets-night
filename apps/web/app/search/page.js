@@ -36,7 +36,7 @@ export default function SearchPage() {
       const [usersRes, venuesRes, eventsRes, followsRes] = await Promise.all([
         supabase.from('profiles')
           .select('id, display_name, full_name, username, bio, avatar_url, city, interests, privacy_settings, role')
-          .eq('role', 'user')
+          .or('role.eq.user,role.is.null')
           .limit(80),
         supabase.from('venues')
           .select('id, name, category, city, zona, description, is_verified, is_partner')

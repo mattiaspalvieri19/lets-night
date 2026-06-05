@@ -31,7 +31,7 @@ export default function BusinessLogin() {
       return;
     }
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
 
     if (profile?.role !== 'business') {
       setError('Questo account non e registrato come business. Usa il login utenti.');

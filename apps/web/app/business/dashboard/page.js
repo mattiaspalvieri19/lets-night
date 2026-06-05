@@ -51,13 +51,13 @@ export default function BusinessDashboard() {
       }
       setUser(session.user);
 
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
       if (profile?.role !== 'business') {
         router.push('/dashboard');
         return;
       }
 
-      const { data: venueData } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).single();
+      const { data: venueData } = await supabase.from('venues').select('*').eq('owner_id', session.user.id).maybeSingle();
       setVenue(venueData);
 
       if (venueData) {
@@ -121,7 +121,13 @@ export default function BusinessDashboard() {
       music_type: newEvent.music_type || null,
       dress_code: newEvent.dress_code || null,
       age_target: newEvent.age_target || null,
-      tags: newEvent.tags || [],
+      tags: (() => {
+        const t = newEvent.tags || [];
+        if (newEvent.has_tables && !t.map(x => x.toLowerCase()).includes('tavoli')) {
+          return [...t, 'Tavoli'];
+        }
+        return t;
+      })(),
       has_tables: !!newEvent.has_tables,
       table_price: newEvent.table_price ? parseFloat(String(newEvent.table_price).replace(',', '.')) : null,
       price: isNaN(priceNum) ? 0 : priceNum,
@@ -353,13 +359,13 @@ export default function BusinessDashboard() {
               const counts = {
                 all: events.length,
                 upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
-                draft: events.filter(e => !e.is_active).length,
+                draft: events.filter(e => !e.is_active && e.event_date >= today).length,
                 past: events.filter(e => e.event_date < today).length,
                 soldout: events.filter(e => e.capacity && (e.booked_count || 0) >= e.capacity).length,
               };
               const filtered = events.filter(e => {
                 if (eventsFilter === 'upcoming') { if (!(e.event_date >= today && e.is_active)) return false; }
-                else if (eventsFilter === 'draft') { if (e.is_active) return false; }
+                else if (eventsFilter === 'draft') { if (e.is_active || e.event_date < today) return false; }
                 else if (eventsFilter === 'past') { if (!(e.event_date < today)) return false; }
                 else if (eventsFilter === 'soldout') { if (!(e.capacity && (e.booked_count || 0) >= e.capacity)) return false; }
                 if (eventsSearch) {

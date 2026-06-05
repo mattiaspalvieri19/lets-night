@@ -41,7 +41,7 @@ export default function BusinessEventDetailScreen() {
       .from('events')
       .select('*, venues!inner(id, name, zona, city, owner_id)')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!ev || ev.venues.owner_id !== session.user.id) {
       Alert.alert('Accesso negato', 'Questo evento non appartiene al tuo locale.');

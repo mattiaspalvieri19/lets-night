@@ -34,7 +34,12 @@ export default function RegisterPage() {
 
     // Pre-check telefono via RPC (bypassa RLS profiles per utente non autenticato)
     if (phone) {
-      const { data: available } = await supabase.rpc('check_phone_available', { p_phone: phone });
+      const { data: available, error: rpcErr } = await supabase.rpc('check_phone_available', { p_phone: phone });
+      if (rpcErr || available == null) {
+        setError('Verifica telefono non riuscita. Riprova.');
+        setLoading(false);
+        return;
+      }
       if (available === false) {
         setError('Questo numero di telefono è già associato a un account.');
         setLoading(false);

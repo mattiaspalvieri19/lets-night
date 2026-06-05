@@ -148,7 +148,7 @@ export default function ExplorePage() {
     if (entryType === 'paid' && !(price > 0)) return false;
     const tags = (e.tags || []).map(t => t.toLowerCase());
     if (entryType === 'guestlist' && !tags.includes('guestlist')) return false;
-    if (entryType === 'table' && !tags.includes('tavoli')) return false;
+    if (entryType === 'table' && !tags.includes('tavoli') && !e.has_tables) return false;
     if (price == null && (priceMax === 0 || priceMin > 0)) return false;
     if (price != null && (price < priceMin || price > priceMax)) return false;
     if (quickTag) {

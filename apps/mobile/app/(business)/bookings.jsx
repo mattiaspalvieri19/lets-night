@@ -16,7 +16,7 @@ export default function BusinessBookings() {
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const { data: v } = await supabase.from('venues').select('id').eq('owner_id', session.user.id).single();
+    const { data: v } = await supabase.from('venues').select('id').eq('owner_id', session.user.id).maybeSingle();
     if (!v) { setLoading(false); return; }
     setVenueId(v.id);
 

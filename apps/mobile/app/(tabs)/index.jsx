@@ -117,7 +117,7 @@ export default function HomeScreen() {
         if (adv.entryType === 'free' && !(price === 0 || price == null)) return false;
         if (adv.entryType === 'paid' && !(price > 0)) return false;
         if (adv.entryType === 'guestlist' && !(e.tags || []).map(t => t.toLowerCase()).includes('guestlist')) return false;
-        if (adv.entryType === 'table' && !(e.tags || []).map(t => t.toLowerCase()).includes('tavoli')) return false;
+        if (adv.entryType === 'table' && !(e.tags || []).map(t => t.toLowerCase()).includes('tavoli') && !e.has_tables) return false;
         if (price != null) {
           if (adv.priceMin > 0 && price < adv.priceMin) return false;
           if (adv.priceMax > 0 && adv.priceMax < 200 && price > adv.priceMax) return false;
