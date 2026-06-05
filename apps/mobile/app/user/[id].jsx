@@ -176,6 +176,10 @@ export default function PublicProfileScreen() {
       await supabase.from('follows').insert({ follower_id: myId, following_id: id });
       setIsFollowing(true);
       setStats(s => ({ ...s, followers: s.followers + 1 }));
+      // Notifica remota all'utente seguito (fire-and-forget)
+      supabase.functions.invoke('notify-follower', {
+        body: { follower_id: myId, following_id: id },
+      }).catch(() => {});
     }
     setFollowBusy(false);
   }

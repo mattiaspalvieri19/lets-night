@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_FEE } from '@lets-night/shared';
+import { sendLocalNotification } from '../lib/notifications';
 
 export default function BookingModal({ visible, onClose, event, session }) {
   const [quantity, setQuantity] = useState(1);
@@ -59,6 +60,16 @@ export default function BookingModal({ visible, onClose, event, session }) {
       }
     } else {
       setSuccess(true);
+      // Notifica locale di conferma
+      sendLocalNotification({
+        title: 'Prenotazione confermata!',
+        body: `${event.title} — ${formatDateFull(event.event_date)}`,
+        data: { type: 'booking', event_id: event.id },
+      });
+      // Notifica al business (Edge Function, fire-and-forget)
+      supabase.functions.invoke('notify-new-booking', {
+        body: { event_id: event.id, user_id: session.user.id },
+      }).catch(() => {});
     }
   }
 

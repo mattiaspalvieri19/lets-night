@@ -1,15 +1,41 @@
 import '../global.css';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
+import { registerForPushNotifications } from '../lib/notifications';
 
 export default function RootLayout() {
+  const responseListener = useRef(null);
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, _session) => {
-      // La navigazione è gestita da ciascuna schermata in base alla sessione
+    // Registra push token al login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user?.id) {
+        registerForPushNotifications(session.user.id);
+      }
     });
-    return () => subscription.unsubscribe();
+
+    // Tap su notifica → naviga alla schermata corretta
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data || {};
+      if (data.type === 'follow' && data.follower_id) {
+        router.push(`/user/${data.follower_id}`);
+      } else if (data.type === 'booking' && data.event_id) {
+        router.push(`/event/${data.event_id}`);
+      } else if (data.type === 'reminder' && data.eventId) {
+        router.push(`/event/${data.eventId}`);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
   }, []);
 
   return (

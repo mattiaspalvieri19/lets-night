@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
 import BookingModal from '../../components/BookingModal';
+import { scheduleEventReminder, cancelReminder } from '../../lib/notifications';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -13,6 +14,7 @@ export default function EventDetailScreen() {
   const [otherEvents, setOtherEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [reminderId, setReminderId] = useState(null);
   const { session } = useSession();
   const [bookingVisible, setBookingVisible] = useState(false);
 
@@ -220,18 +222,49 @@ export default function EventDetailScreen() {
 
           {/* Bottoni azione */}
           {!isPast && (
-            <View className="flex-row gap-3 mb-6">
+            <View className="gap-3 mb-6">
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={handleBook}
+                  className="flex-1 bg-brand rounded-xl py-4 items-center"
+                >
+                  <Text className="text-white font-bold text-base">Prenota</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleShare}
+                  className="border border-gray-700 rounded-xl py-4 px-5 items-center"
+                >
+                  <Text className="text-white">Condividi</Text>
+                </Pressable>
+              </View>
+              {/* Promemoria */}
               <Pressable
-                onPress={handleBook}
-                className="flex-1 bg-brand rounded-xl py-4 items-center"
+                onPress={async () => {
+                  if (reminderId) {
+                    await cancelReminder(reminderId);
+                    setReminderId(null);
+                    Alert.alert('Promemoria rimosso', 'Non riceverai più la notifica per questo evento.');
+                  } else {
+                    const id = await scheduleEventReminder(event);
+                    if (id) {
+                      setReminderId(id);
+                      Alert.alert('Promemoria impostato', 'Ti avviseremo 24 ore prima dell\'evento.');
+                    } else {
+                      Alert.alert('Non disponibile', 'L\'evento è tra meno di 24 ore o già passato.');
+                    }
+                  }
+                }}
+                style={({ pressed }) => ({
+                  borderWidth: 1,
+                  borderColor: reminderId ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+                  backgroundColor: reminderId ? 'rgba(168,85,247,0.1)' : 'transparent',
+                  opacity: pressed ? 0.7 : 1,
+                })}
               >
-                <Text className="text-white font-bold text-base">Prenota</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleShare}
-                className="border border-gray-700 rounded-xl py-4 px-5 items-center"
-              >
-                <Text className="text-white">Condividi</Text>
+                <Text style={{ color: reminderId ? '#A855F7' : '#9CA3AF', fontSize: 14, fontWeight: '600' }}>
+                  {reminderId ? '🔔 Promemoria impostato' : '🔔 Ricordami 24h prima'}
+                </Text>
               </Pressable>
             </View>
           )}
