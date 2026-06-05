@@ -48,7 +48,7 @@ export default function PublicProfilePage({ params }) {
 
       const { data: p } = await supabase
         .from('profiles')
-        .select('id, display_name, full_name, username, bio, city, interests, loyalty_level, loyalty_points, privacy_settings, role')
+        .select('id, display_name, full_name, username, bio, city, interests, loyalty_level, loyalty_points, privacy_settings, role, avatar_url')
         .eq('id', id).maybeSingle();
       setProfile(p);
       if (!p) { setLoading(false); return; }
@@ -161,7 +161,10 @@ export default function PublicProfilePage({ params }) {
 
       <div className="profile-pub-container">
         <div className="profile-pub-head">
-          <div className="user-avatar user-avatar-lg">{initialOf(display)}</div>
+          {profile.avatar_url
+            ? <img src={profile.avatar_url} alt={display} className="user-avatar user-avatar-lg" style={{ objectFit: 'cover' }} />
+            : <div className="user-avatar user-avatar-lg">{initialOf(display)}</div>
+          }
           <h1 className="profile-pub-name">{display}</h1>
           {handle && <div className="profile-pub-handle">{handle}</div>}
           {profile.bio && <p className="profile-pub-bio">{profile.bio}</p>}

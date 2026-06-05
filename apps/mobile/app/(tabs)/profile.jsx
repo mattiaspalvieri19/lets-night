@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -137,15 +137,22 @@ export default function MyProfileScreen() {
     >
       {/* Header */}
       <View style={{ padding: 20, paddingTop: 60, alignItems: 'center' }}>
-        <View style={{
-          width: 88, height: 88, borderRadius: 44,
-          backgroundColor: 'rgba(168,85,247,0.18)',
-          alignItems: 'center', justifyContent: 'center',
-          borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)',
-          marginBottom: 14,
-        }}>
-          <Text style={{ color: '#A855F7', fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
-        </View>
+        {profile?.avatar_url ? (
+          <Image
+            source={{ uri: profile.avatar_url }}
+            style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 2, borderColor: 'rgba(168,85,247,0.5)', marginBottom: 14 }}
+          />
+        ) : (
+          <View style={{
+            width: 88, height: 88, borderRadius: 44,
+            backgroundColor: 'rgba(168,85,247,0.18)',
+            alignItems: 'center', justifyContent: 'center',
+            borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)',
+            marginBottom: 14,
+          }}>
+            <Text style={{ color: '#A855F7', fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
+          </View>
+        )}
         <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{display}</Text>
         {handle && <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>{handle}</Text>}
         {profile?.bio && (
@@ -190,8 +197,29 @@ export default function MyProfileScreen() {
           </View>
         </View>
 
-        {/* Azioni: modifica + privacy */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20, width: '100%' }}>
+        {/* Banner completa profilo */}
+        {profile && (!profile.avatar_url || !profile.phone) && (
+          <Pressable
+            onPress={() => router.push('/profile/edit')}
+            style={({ pressed }) => ({
+              marginTop: 16, width: '100%',
+              backgroundColor: 'rgba(245,158,11,0.1)',
+              borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)',
+              borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14,
+              flexDirection: 'row', alignItems: 'center', gap: 10,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Text style={{ fontSize: 16 }}>⚡</Text>
+            <Text style={{ color: '#F59E0B', fontSize: 13, flex: 1, fontWeight: '600' }}>
+              Completa il profilo {!profile.avatar_url && !profile.phone ? '— aggiungi foto e telefono' : !profile.avatar_url ? '— aggiungi una foto' : '— aggiungi il telefono'}
+            </Text>
+            <Text style={{ color: '#F59E0B', fontSize: 14 }}>›</Text>
+          </Pressable>
+        )}
+
+        {/* Azioni: modifica + impostazioni */}
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' }}>
           <Pressable
             onPress={() => router.push('/profile/edit')}
             style={({ pressed }) => ({
@@ -205,7 +233,7 @@ export default function MyProfileScreen() {
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Modifica</Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push('/profile/privacy')}
+            onPress={() => router.push('/settings')}
             style={({ pressed }) => ({
               flex: 1, paddingVertical: 11, borderRadius: 11,
               borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)',
@@ -213,8 +241,8 @@ export default function MyProfileScreen() {
               flexDirection: 'row', justifyContent: 'center', gap: 6,
             })}
           >
-            <Ionicons name="shield-outline" size={15} color="#A855F7" />
-            <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 13 }}>Privacy</Text>
+            <Ionicons name="settings-outline" size={15} color="#A855F7" />
+            <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 13 }}>Impostazioni</Text>
           </Pressable>
         </View>
       </View>
@@ -312,12 +340,10 @@ export default function MyProfileScreen() {
         )}
       </View>
 
-      {/* Logout discreto in fondo */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' }}>
-        <Pressable onPress={handleLogout} hitSlop={8}>
-          <Text style={{ color: '#64748B', fontSize: 13, textDecorationLine: 'underline' }}>
-            Esci dall&apos;account
-          </Text>
+      {/* Link impostazioni e logout */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center', gap: 10 }}>
+        <Pressable onPress={() => router.push('/settings')} hitSlop={8}>
+          <Text style={{ color: '#64748B', fontSize: 13 }}>Impostazioni account →</Text>
         </Pressable>
       </View>
     </ScrollView>

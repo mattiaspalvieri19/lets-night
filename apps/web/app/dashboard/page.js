@@ -108,9 +108,9 @@ export default function DashboardPage() {
           <div className="profile-pub-stat"><strong>{stats.following}</strong><span>seguiti</span></div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20 }}>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
           <Link href="/settings/profile" className="ln-btn-primary" style={{ textDecoration: 'none' }}>Modifica profilo</Link>
-          <Link href="/settings/privacy" className="ln-btn-ghost" style={{ textDecoration: 'none' }}>Privacy</Link>
+          <Link href="/settings" className="ln-btn-ghost" style={{ textDecoration: 'none' }}>Impostazioni</Link>
         </div>
       </div>
 
