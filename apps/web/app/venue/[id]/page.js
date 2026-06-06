@@ -7,6 +7,16 @@ import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-nigh
 import Navbar from '../../../components/Navbar';
 
 
+function safeUrl(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return ['http:', 'https:'].includes(u.protocol) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function VenueDetailPage({ params }) {
   const { id } = use(params);
   const cursorRef = useRef(null);
@@ -222,8 +232,8 @@ export default function VenueDetailPage({ params }) {
                 <span>{venue.instagram}</span>
               </a>
             )}
-            {venue.website && (
-              <a href={venue.website} target="_blank" rel="noopener noreferrer" className="vn-contact-item vn-contact-link">
+            {safeUrl(venue.website) && (
+              <a href={safeUrl(venue.website)} target="_blank" rel="noopener noreferrer" className="vn-contact-item vn-contact-link">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                 <span>Sito web</span>
               </a>
@@ -357,8 +367,8 @@ export default function VenueDetailPage({ params }) {
                   <div><span>Instagram</span><strong>{venue.instagram}</strong></div>
                 </a>
               )}
-              {venue.website && (
-                <a href={venue.website} target="_blank" rel="noopener noreferrer" className="vn-contact-row">
+              {safeUrl(venue.website) && (
+                <a href={safeUrl(venue.website)} target="_blank" rel="noopener noreferrer" className="vn-contact-row">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
                   <div><span>Sito web</span><strong>Visita il sito &rarr;</strong></div>
                 </a>

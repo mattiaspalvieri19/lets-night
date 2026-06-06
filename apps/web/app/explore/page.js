@@ -59,11 +59,12 @@ export default function ExplorePage() {
     async function loadData() {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('events')
         .select('*, venues(name, zona, city, is_partner)')
         .eq('is_active', true)
         .gte('event_date', today);
+      if (error) console.error('Errore caricamento eventi:', error);
       const list = data || [];
       setEvents(list);
       const zonesSet = new Set(list.map(e => e.venues?.zona).filter(Boolean));
@@ -149,7 +150,6 @@ export default function ExplorePage() {
     const tags = (e.tags || []).map(t => t.toLowerCase());
     if (entryType === 'guestlist' && !tags.includes('guestlist')) return false;
     if (entryType === 'table' && !tags.includes('tavoli') && !e.has_tables) return false;
-    if (price == null && (priceMax === 0 || priceMin > 0)) return false;
     if (price != null && (price < priceMin || price > priceMax)) return false;
     if (quickTag) {
       if (quickTag === 'Gratis') {

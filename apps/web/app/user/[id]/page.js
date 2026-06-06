@@ -7,10 +7,11 @@ import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import Navbar from '../../../components/Navbar';
 
 const USER_TABS = [
-  { id: 'going',     label: 'Andrà a' },
-  { id: 'past',      label: 'È stato a' },
-  { id: 'favorites', label: 'Locali' },
-  { id: 'badges',    label: 'Badge' },
+  { id: 'activities', label: 'Attività' },
+  { id: 'going',      label: 'Andrà a' },
+  { id: 'past',       label: 'È stato a' },
+  { id: 'favorites',  label: 'Locali' },
+  { id: 'badges',     label: 'Badge' },
 ];
 const BUSINESS_TABS = [
   { id: 'future',  label: 'Prossimi' },
@@ -34,6 +35,7 @@ export default function PublicProfilePage({ params }) {
   const [pastBookings, setPastBookings] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [unlockedBadges, setUnlockedBadges] = useState([]);
+  const [activities, setActivities] = useState([]);
   // Business-specific
   const [bizVenue, setBizVenue] = useState(null);
   const [bizFutureEvents, setBizFutureEvents] = useState([]);
@@ -52,7 +54,7 @@ export default function PublicProfilePage({ params }) {
         .eq('id', id).maybeSingle();
       setProfile(p);
       if (!p) { setLoading(false); return; }
-      setTab(p.role === 'business' ? 'future' : 'going');
+      setTab(p.role === 'business' ? 'future' : 'activities');
 
       const [{ count: fc }, { count: fgc }, { count: bc }] = await Promise.all([
         supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id),
@@ -94,6 +96,15 @@ export default function PublicProfilePage({ params }) {
           .from('favorite_venues').select('venue_id, venues(id, name, zona, city, category)')
           .eq('user_id', id);
         setFavorites((favs || []).filter(f => f.venues));
+      }
+      if (!profileBlocked) {
+        const { data: acts } = await supabase
+          .from('activities')
+          .select('*, events(id, title, event_date), venues(id, name, zona, city)')
+          .eq('user_id', id)
+          .order('created_at', { ascending: false })
+          .limit(30);
+        setActivities(acts || []);
       }
       if (!profileBlocked && (ps.show_badges !== false || isOwn)) {
         const { data: ums } = await supabase
@@ -228,6 +239,29 @@ export default function PublicProfilePage({ params }) {
 
             <div style={{ paddingTop: 24 }}>
               {/* USER TABS */}
+              {!isBusiness && tab === 'activities' && (
+                activities.length === 0
+                  ? <Empty icon="✨" title="Nessuna attività ancora" sub="Le attività condivise appariranno qui." />
+                  : activities.map(a => (
+                    <div key={a.id} style={{
+                      background: 'var(--dark2)', borderRadius: 12, padding: '12px 16px', marginBottom: 10,
+                      border: '1px solid rgba(168,85,247,.12)', fontSize: 13,
+                    }}>
+                      <div style={{ color: '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                        {a.type || 'Attività'}
+                      </div>
+                      <div style={{ color: '#fff', fontWeight: 700 }}>
+                        {a.events?.title || a.venues?.name || '—'}
+                      </div>
+                      {(a.events?.event_date || a.venues?.zona) && (
+                        <div style={{ color: '#9ca3af', marginTop: 4 }}>
+                          {a.events?.event_date && formatDate(a.events.event_date)}
+                          {a.venues?.zona && ` · ${a.venues.zona}, ${a.venues.city}`}
+                        </div>
+                      )}
+                    </div>
+                  ))
+              )}
               {!isBusiness && tab === 'going' && (
                 futureBookings.length === 0 ? <Empty icon="📅" title="Niente in calendario" sub="Nessun evento futuro condiviso." />
                 : futureBookings.map(b => <BookingRow key={b.id} b={b} />))}

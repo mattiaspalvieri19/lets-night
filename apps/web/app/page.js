@@ -72,7 +72,11 @@ export default function Home() {
         return false;
       }
     }
-    if (search && !e.title.toLowerCase().includes(search.toLowerCase()) && !(e.venues?.name || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = `${e.title} ${e.venues?.name || ''} ${e.venues?.zona || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 

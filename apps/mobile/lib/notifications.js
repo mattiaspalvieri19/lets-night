@@ -36,8 +36,14 @@ export async function registerForPushNotifications(userId) {
 
   if (finalStatus !== 'granted') return null;
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
-  const token = tokenData.data;
+  const projectId = process.env.EXPO_PUBLIC_PROJECT_ID;
+  let token = null;
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : {});
+    token = tokenData.data;
+  } catch {
+    return null;
+  }
 
   if (userId && token) {
     await supabase.from('profiles').update({ push_token: token }).eq('id', userId);

@@ -3,7 +3,7 @@ import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator } from 
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { CATS, CITIES, QUICK_TAGS } from '@lets-night/shared';
+import { CATS, CITIES, QUICK_TAGS, isInDateRange } from '@lets-night/shared';
 import EventCard from '../../components/EventCard';
 import FeaturedCard from '../../components/FeaturedCard';
 import EmptyState from '../../components/EmptyState';
@@ -36,22 +36,6 @@ function timeSlotMatch(slot, eventTime) {
   return true;
 }
 
-function dateRangeMatch(range, eventDate) {
-  if (range === 'all') return true;
-  const ev = new Date(eventDate);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const evD = new Date(ev); evD.setHours(0, 0, 0, 0);
-  if (range === 'today') return evD.getTime() === today.getTime();
-  if (range === 'week') {
-    const end = new Date(today); end.setDate(end.getDate() + 7);
-    return evD >= today && evD <= end;
-  }
-  if (range === 'month') {
-    const end = new Date(today); end.setMonth(end.getMonth() + 1);
-    return evD >= today && evD <= end;
-  }
-  return true;
-}
 
 export default function HomeScreen() {
   const [city, setCity] = useState('Milano');
@@ -111,7 +95,7 @@ export default function HomeScreen() {
         if (adv.cities && adv.cities.length && !adv.cities.includes(e.venues?.city)) return false;
         if (adv.zone && adv.zone !== 'all' && e.venues?.zona !== adv.zone) return false;
         if (adv.cats && adv.cats.length && !adv.cats.includes(e.category)) return false;
-        if (!dateRangeMatch(adv.dateRange, e.event_date)) return false;
+        if (!isInDateRange(e.event_date, adv.dateRange)) return false;
         if (!timeSlotMatch(adv.timeSlot, e.event_time)) return false;
         const price = e.price == null ? null : Number(e.price);
         if (adv.entryType === 'free' && !(price === 0 || price == null)) return false;
@@ -136,9 +120,8 @@ export default function HomeScreen() {
     list.sort((a, b) => {
       const scoreA = (a.is_sponsored ? 100 : 0) + ((a.source === 'partner' || a.source === 'manual') ? 50 : 0);
       const scoreB = (b.is_sponsored ? 100 : 0) + ((b.source === 'partner' || b.source === 'manual') ? 50 : 0);
-      if (order === 'popular') {
-        return scoreB - scoreA;
-      }
+      if (order === 'popular') return scoreB - scoreA;
+      if (order === 'date_desc') return new Date(b.event_date) - new Date(a.event_date);
       if (order === 'price_asc') return (a.price || 0) - (b.price || 0);
       if (order === 'price_desc') return (b.price || 0) - (a.price || 0);
       // default: date_asc with sponsor boost

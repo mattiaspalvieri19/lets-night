@@ -105,6 +105,7 @@ export default function EventDetailPage({ params }) {
   }
 
   async function confirmBooking() {
+    if (bookingLoading) return;
     setBookingError('');
     setBookingLoading(true);
     const { data: { session } } = await supabase.auth.getSession();

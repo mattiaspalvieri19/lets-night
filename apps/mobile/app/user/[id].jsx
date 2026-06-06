@@ -12,6 +12,7 @@ const USER_TABS = [
   { id: 'going',      label: 'Andrà a' },
   { id: 'past',       label: 'È stato a' },
   { id: 'favorites',  label: 'Locali' },
+  { id: 'badges',     label: 'Badge' },
 ];
 const BUSINESS_TABS = [
   { id: 'future',   label: 'Prossimi' },
@@ -42,6 +43,8 @@ export default function PublicProfileScreen() {
   const [pastBookings, setPastBookings] = useState([]);
   const [favoriteVenues, setFavoriteVenues] = useState([]);
   // Business-specific
+  const [publicBadges, setPublicBadges] = useState([]);
+  // Business-specific
   const [bizVenue, setBizVenue] = useState(null);
   const [bizFutureEvents, setBizFutureEvents] = useState([]);
   const [bizPastEvents, setBizPastEvents] = useState([]);
@@ -60,11 +63,16 @@ export default function PublicProfileScreen() {
     setTab(p.role === 'business' ? 'future' : 'activities');
 
     // Followers/Following counts
-    const [{ count: followersCount }, { count: followingCount }, { count: badgesCount }] = await Promise.all([
+    const [
+      { count: followersCount, error: e1 },
+      { count: followingCount, error: e2 },
+      { count: badgesCount, error: e3 },
+    ] = await Promise.all([
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', id),
       supabase.from('user_milestones').select('*', { count: 'exact', head: true }).eq('user_id', id).not('unlocked_at', 'is', null),
     ]);
+    if (e1 || e2 || e3) console.error('Errore stats profilo:', e1 || e2 || e3);
     setStats({
       followers: followersCount || 0,
       following: followingCount || 0,
@@ -106,12 +114,13 @@ export default function PublicProfileScreen() {
     const wantsFuture = !profileBlocked && (ps.show_future_events !== false || isOwn);
     const wantsPast = !profileBlocked && (ps.show_past_events !== false || isOwn);
     if (wantsFuture || wantsPast) {
-      const { data: all } = await supabase
+      const { data: all, error: bErr } = await supabase
         .from('bookings')
         .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', id)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
+      if (bErr) console.error('Errore bookings profilo:', bErr);
       const list = (all || []).filter(b => b.events);
       setFutureBookings(wantsFuture ? list.filter(b => b.events.event_date >= today) : []);
       setPastBookings(wantsPast ? list.filter(b => b.events.event_date < today).slice(0, 20) : []);
@@ -120,12 +129,25 @@ export default function PublicProfileScreen() {
       setPastBookings([]);
     }
 
+    // Badge pubblici
+    if (!profileBlocked && (ps.show_badges !== false || isOwn)) {
+      const { data: ums } = await supabase
+        .from('user_milestones')
+        .select('loyalty_milestones(*)')
+        .eq('user_id', id)
+        .not('unlocked_at', 'is', null);
+      setPublicBadges((ums || []).map(r => r.loyalty_milestones).filter(Boolean));
+    } else {
+      setPublicBadges([]);
+    }
+
     // Locali preferiti (utenti normali)
     if (!profileBlocked && (ps.show_favorite_venues !== false || isOwn)) {
-      const { data: favs } = await supabase
+      const { data: favs, error: fErr } = await supabase
         .from('favorite_venues')
         .select('venue_id, venues(id, name, zona, city, category)')
         .eq('user_id', id);
+      if (fErr) console.error('Errore favorites profilo:', fErr);
       setFavoriteVenues((favs || []).filter(f => f.venues));
     } else {
       setFavoriteVenues([]);
@@ -135,26 +157,39 @@ export default function PublicProfileScreen() {
     if (p.role === 'business') {
       const { data: venue } = await supabase
         .from('venues')
-        .select('*')
+        .select('id, name, zona, city, address, category, description, phone, contact_email, website, instagram, is_verified, is_partner')
         .eq('owner_id', id)
         .maybeSingle();
       setBizVenue(venue);
       if (venue) {
-        const { data: allEvents, count } = await supabase
-          .from('events')
-          .select('id, title, event_date, event_time, price, category, venues(name, zona, city)', { count: 'exact' })
-          .eq('venue_id', venue.id)
-          .eq('is_active', true)
-          .order('event_date', { ascending: false });
-        const list = allEvents || [];
+        const [{ data: futureEvs, count }, { data: pastEvs }] = await Promise.all([
+          supabase.from('events')
+            .select('id, title, event_date, event_time, price, category, venues(name, zona, city)', { count: 'exact' })
+            .eq('venue_id', venue.id).eq('is_active', true)
+            .gte('event_date', today).order('event_date', { ascending: true }).limit(30),
+          supabase.from('events')
+            .select('id, title, event_date, event_time, price, category, venues(name, zona, city)')
+            .eq('venue_id', venue.id).eq('is_active', true)
+            .lt('event_date', today).order('event_date', { ascending: false }).limit(30),
+        ]);
         setBizEventsCount(count || 0);
-        setBizFutureEvents(list.filter(e => e.event_date >= today).reverse());
-        setBizPastEvents(list.filter(e => e.event_date < today).slice(0, 30));
+        setBizFutureEvents(futureEvs || []);
+        setBizPastEvents(pastEvs || []);
       }
     }
   }
 
   useFocusEffect(useCallback(() => {
+    setProfile(null);
+    setTab('activities');
+    setActivities([]);
+    setFutureBookings([]);
+    setPastBookings([]);
+    setFavoriteVenues([]);
+    setPublicBadges([]);
+    setBizVenue(null);
+    setBizFutureEvents([]);
+    setBizPastEvents([]);
     setLoading(true);
     loadAll().finally(() => setLoading(false));
   }, [id, myId]));
@@ -169,17 +204,24 @@ export default function PublicProfileScreen() {
     if (!myId) { router.push('/auth/login'); return; }
     setFollowBusy(true);
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', id);
-      setIsFollowing(false);
-      setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+      const { error } = await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', id);
+      if (!error) {
+        setIsFollowing(false);
+        setStats(s => ({ ...s, followers: Math.max(0, s.followers - 1) }));
+      } else {
+        console.error('Errore unfollow:', error);
+      }
     } else {
-      await supabase.from('follows').insert({ follower_id: myId, following_id: id });
-      setIsFollowing(true);
-      setStats(s => ({ ...s, followers: s.followers + 1 }));
-      // Notifica remota all'utente seguito (fire-and-forget)
-      supabase.functions.invoke('notify-follower', {
-        body: { follower_id: myId, following_id: id },
-      }).catch(() => {});
+      const { error } = await supabase.from('follows').insert({ follower_id: myId, following_id: id });
+      if (!error) {
+        setIsFollowing(true);
+        setStats(s => ({ ...s, followers: s.followers + 1 }));
+        supabase.functions.invoke('notify-follower', {
+          body: { follower_id: myId, following_id: id },
+        }).catch(() => {});
+      } else {
+        console.error('Errore follow:', error);
+      }
     }
     setFollowBusy(false);
   }
@@ -389,6 +431,26 @@ export default function PublicProfileScreen() {
               favoriteVenues.length === 0
                 ? <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
                 : favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
+            )}
+            {!isBusiness && tab === 'badges' && (
+              publicBadges.length === 0
+                ? <EmptyState compact icon="🏆" title="Nessun badge ancora" subtitle="L'utente non ha ancora sbloccato nessun traguardo." />
+                : (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {publicBadges.map(m => (
+                      <View key={m.id} style={{
+                        width: '31%', alignItems: 'center',
+                        backgroundColor: '#111118', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
+                        borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)',
+                      }}>
+                        <Text style={{ fontSize: 30, marginBottom: 6 }}>{m.icon || '🏆'}</Text>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' }} numberOfLines={2}>
+                          {m.title}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )
             )}
 
             {/* BUSINESS TABS */}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +45,11 @@ function Section({ title, children }) {
 }
 
 export default function SettingsScreen() {
-  const { session } = useSession();
+  const { session, loading } = useSession();
+
+  useEffect(() => {
+    if (!loading && !session) router.replace('/auth/login');
+  }, [session, loading]);
 
   async function handleLogout() {
     await supabase.auth.signOut();

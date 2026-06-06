@@ -26,7 +26,7 @@ export default function EventDetailScreen() {
         .select('*, venues(id, name, zona, city, address, phone, description, category)')
         .eq('id', id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error || !data) { setNotFound(true); setLoading(false); return; }
       setEvent(data);
@@ -50,6 +50,7 @@ export default function EventDetailScreen() {
   }, [id]);
 
   async function handleShare() {
+    if (!event) return;
     await Share.share({
       message: `${event.title} — ${event.venues?.name}\n${formatDateFull(event.event_date)} alle ${formatTime(event.event_time)}\n\nTrova questo evento su Let's Night!`,
     });
@@ -160,9 +161,13 @@ export default function EventDetailScreen() {
             <View className="flex-row justify-between">
               <View>
                 <Text className="text-gray-400 text-xs mb-1">Dove</Text>
-                <Pressable onPress={() => router.push(`/venue/${event.venues?.id}`)}>
-                  <Text className="text-brand-light font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
-                </Pressable>
+                {event.venues?.id ? (
+                  <Pressable onPress={() => router.push(`/venue/${event.venues.id}`)}>
+                    <Text className="text-brand-light font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
+                  </Pressable>
+                ) : (
+                  <Text className="text-white font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
+                )}
               </View>
               <View className="items-end">
                 <Text className="text-gray-400 text-xs mb-1">Prezzo</Text>

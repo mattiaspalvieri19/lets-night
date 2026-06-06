@@ -30,8 +30,9 @@ export default function MyProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function loadData() {
+  async function loadData(isCancelled = () => false) {
     const { data: { session: s } } = await supabase.auth.getSession();
+    if (isCancelled()) return;
     setSession(s);
     if (!s) return;
 
@@ -39,33 +40,36 @@ export default function MyProfileScreen() {
     const myId = s.user.id;
 
     const [
-      { data: prof },
-      { data: bookingsList },
+      { data: prof, error: profErr },
+      { data: bookingsList, error: bookErr },
       { count: followersCount },
       { count: followingCount },
-      { data: favs },
+      { data: favs, error: favsErr },
       { data: ums },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', myId).maybeSingle(),
       supabase.from('bookings')
         .select('id, status, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', myId)
-        .neq('status', 'cancelled')
         .order('created_at', { ascending: false }),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', myId),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', myId),
       supabase.from('favorite_venues').select('venue_id, venues(id, name, zona, city, category)').eq('user_id', myId),
       supabase.from('user_milestones').select('milestone_id, unlocked_at, loyalty_milestones(*)').eq('user_id', myId).not('unlocked_at', 'is', null),
     ]);
+    if (profErr) console.error('Errore profilo:', profErr);
+    if (bookErr) console.error('Errore prenotazioni:', bookErr);
+    if (favsErr) console.error('Errore preferiti:', favsErr);
 
+    if (isCancelled()) return;
     setProfile(prof);
     const all = bookingsList || [];
-    const upcoming = all.filter(b => b.events && b.events.event_date >= today);
-    const past = all.filter(b => b.events && b.events.event_date < today);
+    const upcoming = all.filter(b => b.events && b.events.event_date >= today && b.status !== 'cancelled');
+    const past = all.filter(b => b.events && (b.events.event_date < today || b.status === 'cancelled'));
     setFutureBookings(upcoming);
     setPastBookings(past);
     setStats({
-      bookings: all.length,
+      bookings: all.filter(b => b.status !== 'cancelled').length,
       confirmed: all.filter(b => b.status === 'confirmed').length,
       followers: followersCount || 0,
       following: followingCount || 0,
@@ -76,8 +80,11 @@ export default function MyProfileScreen() {
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
+    const isCancelled = () => cancelled;
     setLoading(true);
-    loadData().finally(() => { if (!cancelled) setLoading(false); });
+    loadData(isCancelled).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
     return () => { cancelled = true; };
   }, []));
 

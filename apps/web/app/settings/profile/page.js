@@ -94,9 +94,8 @@ export default function EditProfilePage() {
         .upload(path, file, { contentType: file.type, upsert: true });
       if (uploadErr) { setError('Impossibile caricare la foto. Riprova.'); return; }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-      const urlWithBust = `${publicUrl}?t=${Date.now()}`;
-      await supabase.from('profiles').update({ avatar_url: urlWithBust }).eq('id', myId);
-      setAvatarUrl(urlWithBust);
+      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', myId);
+      setAvatarUrl(`${publicUrl}?t=${Date.now()}`);
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

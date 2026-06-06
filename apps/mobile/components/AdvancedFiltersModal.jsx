@@ -13,6 +13,7 @@ const DATE_RANGES = [
 
 const SORT_OPTIONS = [
   { id: 'date_asc',    label: 'Prossimi prima' },
+  { id: 'date_desc',   label: 'Lontani prima' },
   { id: 'popular',     label: 'Più popolari' },
   { id: 'price_asc',   label: 'Prezzo ↑' },
   { id: 'price_desc',  label: 'Prezzo ↓' },

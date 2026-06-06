@@ -1,16 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import Navbar from '../../../components/Navbar';
 
 export default function ChangePasswordPage() {
+  const router = useRouter();
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) router.push('/login?next=/settings/password');
+    });
+  }, [router]);
 
   async function handleSubmit(e) {
     e.preventDefault();

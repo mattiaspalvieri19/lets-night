@@ -12,6 +12,10 @@ export default function DeleteAccountScreen() {
 
   async function handleDelete() {
     if (confirm !== 'elimina') return;
+    if (!myId) {
+      Alert.alert('Sessione scaduta', 'Rieffettua il login prima di eliminare l\'account.');
+      return;
+    }
     Alert.alert(
       'Conferma eliminazione',
       'Tutti i tuoi dati verranno rimossi definitivamente. Questa azione non è reversibile.',
@@ -22,8 +26,7 @@ export default function DeleteAccountScreen() {
           style: 'destructive',
           onPress: async () => {
             setLoading(true);
-            // Soft delete: rimuove dati personali + prenotazioni + relazioni sociali
-            await Promise.all([
+            const results = await Promise.all([
               supabase.from('profiles').update({
                 full_name: 'Utente eliminato',
                 display_name: null,
@@ -34,12 +37,20 @@ export default function DeleteAccountScreen() {
                 interests: [],
                 city: null,
                 birth_date: null,
+                push_token: null,
               }).eq('id', myId),
               supabase.from('bookings').delete().eq('user_id', myId),
               supabase.from('follows').delete().eq('follower_id', myId),
               supabase.from('follows').delete().eq('following_id', myId),
               supabase.from('favorite_venues').delete().eq('user_id', myId),
             ]);
+            const failed = results.find(r => r.error);
+            if (failed) {
+              setLoading(false);
+              Alert.alert('Errore', 'Impossibile eliminare l\'account. Riprova o contatta il supporto.');
+              console.error('Errore soft delete:', failed.error);
+              return;
+            }
             await supabase.auth.signOut();
             setLoading(false);
             router.replace('/(tabs)/profile');

@@ -29,30 +29,33 @@ export default function DeleteAccountPage() {
     setLoading(true);
     setError('');
 
-    try {
-      await Promise.all([
-        supabase.from('profiles').update({
-          full_name: 'Utente eliminato',
-          display_name: null,
-          username: null,
-          bio: null,
-          avatar_url: null,
-          phone: null,
-          interests: [],
-          city: null,
-          birth_date: null,
-        }).eq('id', myId),
-        supabase.from('bookings').delete().eq('user_id', myId),
-        supabase.from('follows').delete().eq('follower_id', myId),
-        supabase.from('follows').delete().eq('following_id', myId),
-        supabase.from('favorite_venues').delete().eq('user_id', myId),
-      ]);
-      await supabase.auth.signOut();
-      router.push('/');
-    } catch {
+    const results = await Promise.all([
+      supabase.from('profiles').update({
+        full_name: 'Utente eliminato',
+        display_name: null,
+        username: null,
+        bio: null,
+        avatar_url: null,
+        phone: null,
+        interests: [],
+        city: null,
+        birth_date: null,
+        push_token: null,
+      }).eq('id', myId),
+      supabase.from('bookings').delete().eq('user_id', myId),
+      supabase.from('follows').delete().eq('follower_id', myId),
+      supabase.from('follows').delete().eq('following_id', myId),
+      supabase.from('favorite_venues').delete().eq('user_id', myId),
+    ]);
+    const failed = results.find(r => r.error);
+    if (failed) {
+      console.error('Errore soft delete:', failed.error);
       setError('Si è verificato un errore. Riprova o contatta il supporto.');
       setLoading(false);
+      return;
     }
+    await supabase.auth.signOut();
+    router.push('/');
   }
 
   const canDelete = confirm === 'elimina';
