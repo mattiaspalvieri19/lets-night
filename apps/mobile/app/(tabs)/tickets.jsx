@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as ScreenCapture from 'expo-screen-capture';
@@ -109,14 +109,16 @@ export default function TicketsScreen() {
   const [fetchError, setFetchError] = useState(false);
   const [qrModal, setQrModal] = useState(null);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const fetchSeqRef = useRef(0);
 
   useEffect(() => {
     if (!qrModal) return;
-    ScreenCapture.preventScreenCaptureAsync();
-    return () => { ScreenCapture.allowScreenCaptureAsync(); };
+    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    return () => { ScreenCapture.allowScreenCaptureAsync().catch(() => {}); };
   }, [qrModal]);
 
   async function fetchBookings(userId) {
+    const mySeq = ++fetchSeqRef.current;
     setFetchError(false);
     const [{ data, error }, { data: prof }] = await Promise.all([
       supabase
@@ -130,6 +132,8 @@ export default function TicketsScreen() {
         .eq('id', userId)
         .maybeSingle(),
     ]);
+    // Drop stale responses (login/logout in flight).
+    if (mySeq !== fetchSeqRef.current) return;
     if (error) {
       console.error('Errore bookings:', error);
       setFetchError(true);
@@ -140,7 +144,7 @@ export default function TicketsScreen() {
   }
 
   useEffect(() => {
-    if (!session) { setBookings([]); return; }
+    if (!session) { setBookings([]); fetchSeqRef.current++; return; }
     setLoadingBookings(true);
     fetchBookings(session.user.id).finally(() => setLoadingBookings(false));
   }, [session]);

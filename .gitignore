@@ -49,3 +49,7 @@ yarn-error.log*
 .claude/settings.local.json
 .claude/CLAUDE.local.md
 .claude/worktrees/
+
+# Supabase CLI temp
+supabase/.temp/
+supabase/.branches/

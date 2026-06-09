@@ -68,13 +68,18 @@ export default function BusinessEventDetailPage({ params }) {
 
   async function toggleCheckIn(bookingId, alreadyIn) {
     setCheckingIn(bookingId);
-    const { error } = await supabase.from('bookings').update({
-      checked_in: !alreadyIn,
-      checked_in_at: !alreadyIn ? new Date().toISOString() : null,
-    }).eq('id', bookingId);
+    // Quando si annulla un check-in, NON azzeriamo checked_in_at: serve come audit
+    // del primo ingresso (così un re-scan successivo mostra ancora "GIÀ SCANNERIZZATO").
+    const patch = alreadyIn
+      ? { checked_in: false }
+      : { checked_in: true, checked_in_at: new Date().toISOString() };
+    const { error } = await supabase.from('bookings').update(patch).eq('id', bookingId);
     setCheckingIn(null);
     if (error) { alert('Errore: ' + error.message); return; }
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: !alreadyIn } : b));
+    setBookings(prev => prev.map(b => b.id === bookingId
+      ? { ...b, checked_in: !alreadyIn, checked_in_at: patch.checked_in_at ?? b.checked_in_at }
+      : b
+    ));
   }
 
   const filtered = useMemo(() => {
@@ -176,7 +181,7 @@ export default function BusinessEventDetailPage({ params }) {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>
-                          {b.profiles?.full_name || 'Utente'}
+                          {b.snapshot_full_name || b.profiles?.full_name || 'Utente'}
                         </span>
                         <span className={'guest-tag ' + (isTable ? 'table' : 'ticket')}>
                           {isTable ? 'TAV' : 'ING'}

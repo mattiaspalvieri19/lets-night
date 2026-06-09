@@ -3,16 +3,74 @@
 import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import QRCode from 'react-qr-code';
 import { supabase } from '../../../lib/supabase';
-import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, BOOKING_FEE } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice, isPastDate } from '@lets-night/shared';
 import Navbar from '../../../components/Navbar';
 
-function isPastEvent(dateStr) {
-  if (!dateStr) return false;
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(y, m - 1, d) < today;
+function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoading, setBookingError, setBookingSuccess, setLastBookingQR, router, id }) {
+  const router2 = router;
+  const pricing = computeBookingPrice(event, bookingType, qty);
+
+  async function handlePay() {
+    if (bookingLoading) return;
+    setBookingError('');
+    setBookingLoading(true);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setBookingError('Sessione scaduta. Torno al login...');
+      setBookingLoading(false);
+      setTimeout(() => router2.push('/login?next=' + encodeURIComponent('/event/' + id)), 1500);
+      return;
+    }
+
+    let json;
+    try {
+      const res = await fetch('/api/stripe/checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId: event.id,
+          quantity: pricing.safeQty,
+          bookingType: pricing.bookingType,
+          accessToken: session.access_token,
+        }),
+      });
+      json = await res.json();
+      if (!res.ok || !json.url) {
+        throw new Error(json.error || 'Errore creazione pagamento');
+      }
+    } catch (e) {
+      setBookingError(e.message || 'Errore di connessione. Riprova.');
+      setBookingLoading(false);
+      return;
+    }
+
+    window.location.href = json.url;
+  }
+
+  return (
+    <>
+      <div style={{ background: 'var(--dark3)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ color: '#94a3b8' }}>Subtotale</span>
+          <span style={{ color: '#fff' }}>EUR {pricing.lineTotal.toFixed(2)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ color: '#94a3b8' }}>Commissione</span>
+          <span style={{ color: '#fff' }}>EUR {pricing.fee.toFixed(2)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', fontWeight: 700 }}>
+          <span style={{ color: '#fff' }}>Totale</span>
+          <span style={{ color: '#fff' }}>EUR {pricing.total.toFixed(2)}</span>
+        </div>
+      </div>
+      <button onClick={handlePay} disabled={bookingLoading} className="ev-book-btn book-modal-confirm">
+        {bookingLoading ? 'Apertura pagamento...' : `Paga EUR ${pricing.total.toFixed(2)}`}
+      </button>
+    </>
+  );
 }
 
 export default function EventDetailPage({ params }) {
@@ -31,6 +89,7 @@ export default function EventDetailPage({ params }) {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [lastBookingQR, setLastBookingQR] = useState(null);
 
   useEffect(() => {
     async function loadEvent() {
@@ -101,6 +160,11 @@ export default function EventDetailPage({ params }) {
       router.push('/login?next=' + encodeURIComponent('/event/' + id));
       return;
     }
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+    if (prof?.role === 'business') {
+      setBookingError('Gli account business non possono prenotare eventi. Accedi con un account utente.');
+      return;
+    }
     setBookingModal(true);
   }
 
@@ -115,25 +179,27 @@ export default function EventDetailPage({ params }) {
       setTimeout(() => router.push('/login?next=' + encodeURIComponent('/event/' + id)), 1500);
       return;
     }
-    const safePrice = Math.max(0, Number(event.price) || 0);
-    const safeTablePrice = Math.max(0, Number(event.table_price) || 0);
-    const isTable = bookingType === 'table';
-    const effectivePrice = isTable ? (safeTablePrice || safePrice * 4) : safePrice;
-    const isFree = effectivePrice === 0;
-    const qty = isFree ? 1 : bookingQty;
+    const pricing = computeBookingPrice(event, bookingType, bookingQty);
+    if (!pricing.isFree) {
+      setBookingError('Errore interno: questo evento è a pagamento.');
+      setBookingLoading(false);
+      return;
+    }
+    const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', session.user.id).maybeSingle();
+    const qrCode = generateBookingQR();
     const { error } = await supabase.from('bookings').insert({
       user_id: session.user.id,
       event_id: event.id,
       status: 'confirmed',
-      quantity: qty,
-      total_price: isFree ? 0 : effectivePrice * (isTable ? 1 : qty),
-      fee: isFree ? 0 : BOOKING_FEE,
-      qr_code: generateBookingQR(),
-      booking_type: bookingType,
+      quantity: pricing.safeQty,
+      total_price: 0,
+      fee: 0,
+      qr_code: qrCode,
+      booking_type: pricing.bookingType,
+      snapshot_full_name: prof?.full_name || null,
     });
     setBookingLoading(false);
     if (error) {
-      // 23505 = unique_violation: gestito dal nuovo UNIQUE (user_id, event_id) WHERE status != cancelled
       if (error.code === '23505') {
         setBookingError('Hai già prenotato questo evento.');
       } else {
@@ -142,6 +208,7 @@ export default function EventDetailPage({ params }) {
       }
       return;
     }
+    setLastBookingQR(qrCode);
     setBookingSuccess(true);
   }
 
@@ -149,6 +216,8 @@ export default function EventDetailPage({ params }) {
     setBookingModal(false);
     setBookingSuccess(false);
     setBookingError('');
+    setLastBookingQR(null);
+    setBookingLoading(false);
     setBookingQty(1);
     setBookingType('ticket');
   }
@@ -185,7 +254,7 @@ export default function EventDetailPage({ params }) {
 
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533','#0d0d1a','#c084fc'];
   const catClass = 'cat-' + event.category.toLowerCase().replace(/ /g,'-');
-  const past = isPastEvent(event.event_date);
+  const past = isPastDate(event.event_date);
   const hasCapacity = event.capacity != null && event.capacity > 0;
   const availableSpots = hasCapacity ? event.capacity - (event.booked_count || 0) : null;
   const availabilityPct = hasCapacity ? Math.round((availableSpots / event.capacity) * 100) : null;
@@ -269,9 +338,14 @@ export default function EventDetailPage({ params }) {
             {past ? (
               <button className="ev-book-btn-disabled" disabled>Evento passato</button>
             ) : (
-              <button className="ev-book-btn" onClick={handleBook}>
-                Prenota ora &rarr;
-              </button>
+              <>
+                <button className="ev-book-btn" onClick={handleBook}>
+                  Prenota ora &rarr;
+                </button>
+                {bookingError && !bookingModal && (
+                  <div className="auth-error" style={{ marginTop: 8, maxWidth: 320 }}>{bookingError}</div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -380,8 +454,19 @@ export default function EventDetailPage({ params }) {
               <div className="book-modal-success">
                 <div className="book-modal-check">✓</div>
                 <h2>Prenotato!</h2>
-                <p>Trovi il tuo biglietto con QR code nella tua area.</p>
-                <Link href="/dashboard" className="ln-btn-primary" onClick={closeBookingModal}>Vedi biglietto</Link>
+                <p style={{ marginBottom: 16 }}>Mostra questo QR all&apos;ingresso del locale.</p>
+                {lastBookingQR && (
+                  <div style={{ background: '#fff', padding: 16, borderRadius: 12, display: 'inline-block', marginBottom: 16 }}>
+                    <QRCode value={lastBookingQR} size={200} />
+                  </div>
+                )}
+                <p style={{ color: '#64748B', fontSize: 12, marginBottom: 14 }}>
+                  Lo ritrovi in qualsiasi momento nella tua area personale.
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Link href="/dashboard" className="ln-btn-primary" onClick={closeBookingModal}>Vai ai miei biglietti</Link>
+                  <button onClick={closeBookingModal} className="ln-btn-ghost">Chiudi</button>
+                </div>
               </div>
             ) : (
               <>
@@ -409,7 +494,7 @@ export default function EventDetailPage({ params }) {
                         { id: 'ticket', label: '🎟️ Ingresso', sub: getPriceLabel(event.price) },
                         { id: 'table',  label: '🍾 Tavolo',   sub: event.table_price > 0 ? `EUR ${event.table_price}` : 'Su richiesta' },
                       ].map(opt => (
-                        <button key={opt.id} type="button" onClick={() => setBookingType(opt.id)}
+                        <button key={opt.id} type="button" onClick={() => { setBookingError(''); setBookingType(opt.id); }}
                           style={{
                             flex: 1, padding: 14, borderRadius: 12, cursor: 'pointer',
                             background: bookingType === opt.id ? 'rgba(124,58,237,0.15)' : 'var(--dark3)',
@@ -424,7 +509,7 @@ export default function EventDetailPage({ params }) {
                   </div>
                 )}
 
-                {event.price > 0 && bookingType !== 'table' && (
+                {bookingType !== 'table' && (
                   <div className="book-modal-qty">
                     <span>Posti</span>
                     <div className="book-modal-qty-controls">
@@ -435,23 +520,38 @@ export default function EventDetailPage({ params }) {
                   </div>
                 )}
 
-                <div className="book-modal-total">
-                  <span>Totale</span>
-                  <strong>{(() => {
-                    const safePrice = Math.max(0, Number(event.price) || 0);
-                    const safeTablePrice = Math.max(0, Number(event.table_price) || 0);
-                    const isTable = bookingType === 'table';
-                    const eff = isTable ? (safeTablePrice || safePrice * 4) : safePrice;
-                    if (eff === 0) return 'Gratuito';
-                    return `EUR ${eff * (isTable ? 1 : bookingQty)}`;
-                  })()}</strong>
-                </div>
+                {(() => {
+                  const pricing = computeBookingPrice(event, bookingType, bookingQty);
+                  return (
+                    <>
+                      <div className="book-modal-total">
+                        <span>Totale</span>
+                        <strong>{pricing.isFree ? 'Gratuito' : `EUR ${pricing.total.toFixed(2)}`}</strong>
+                      </div>
 
-                {bookingError && <div className="auth-error">{bookingError}</div>}
+                      {bookingError && <div className="auth-error">{bookingError}</div>}
 
-                <button onClick={confirmBooking} disabled={bookingLoading} className="ev-book-btn book-modal-confirm">
-                  {bookingLoading ? 'Prenotazione...' : 'Conferma prenotazione'}
-                </button>
+                      {pricing.isFree ? (
+                        <button onClick={confirmBooking} disabled={bookingLoading} className="ev-book-btn book-modal-confirm">
+                          {bookingLoading ? 'Prenotazione...' : 'Conferma prenotazione'}
+                        </button>
+                      ) : (
+                        <PaymentForm
+                          event={event}
+                          qty={bookingQty}
+                          bookingType={bookingType}
+                          bookingLoading={bookingLoading}
+                          setBookingLoading={setBookingLoading}
+                          setBookingError={setBookingError}
+                          setBookingSuccess={setBookingSuccess}
+                          setLastBookingQR={setLastBookingQR}
+                          router={router}
+                          id={id}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>

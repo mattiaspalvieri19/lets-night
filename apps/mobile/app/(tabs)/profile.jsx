@@ -1,9 +1,11 @@
-import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image } from 'react-native';
+import { useState, useCallback, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image, Modal } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import * as ScreenCapture from 'expo-screen-capture';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { getLoyaltyLevel, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { getLoyaltyLevel, formatDate, formatTime, getPriceLabel, todayLocal } from '@lets-night/shared';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 import EmptyState from '../../components/EmptyState';
 
@@ -29,6 +31,14 @@ export default function MyProfileScreen() {
   const [unlockedBadges, setUnlockedBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [openQR, setOpenQR] = useState(null);
+
+  // Anti-screenshot quando QR modal visibile
+  useEffect(() => {
+    if (!openQR) return;
+    ScreenCapture.preventScreenCaptureAsync().catch(() => {});
+    return () => { ScreenCapture.allowScreenCaptureAsync().catch(() => {}); };
+  }, [openQR]);
 
   async function loadData(isCancelled = () => false) {
     const { data: { session: s } } = await supabase.auth.getSession();
@@ -36,7 +46,7 @@ export default function MyProfileScreen() {
     setSession(s);
     if (!s) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayLocal();
     const myId = s.user.id;
 
     const [
@@ -49,7 +59,7 @@ export default function MyProfileScreen() {
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', myId).maybeSingle(),
       supabase.from('bookings')
-        .select('id, status, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
+        .select('id, status, qr_code, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', myId)
         .order('created_at', { ascending: false }),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', myId),
@@ -89,9 +99,11 @@ export default function MyProfileScreen() {
   }, []));
 
   const onRefresh = useCallback(async () => {
+    let cancelled = false;
     setRefreshing(true);
-    await loadData();
+    await loadData(() => cancelled);
     setRefreshing(false);
+    return () => { cancelled = true; };
   }, []);
 
   async function handleLogout() {
@@ -138,6 +150,7 @@ export default function MyProfileScreen() {
   const handle = profile?.username ? `@${profile.username}` : null;
 
   return (
+    <>
     <ScrollView
       style={{ flex: 1, backgroundColor: '#09090f' }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
@@ -299,7 +312,7 @@ export default function MyProfileScreen() {
               onAction={() => router.push('/(tabs)')}
             />
           ) : (
-            futureBookings.map(b => <BookingRow key={b.id} booking={b} />)
+            futureBookings.map(b => <BookingRow key={b.id} booking={b} onShowQR={setOpenQR} />)
           )
         )}
 
@@ -354,10 +367,35 @@ export default function MyProfileScreen() {
         </Pressable>
       </View>
     </ScrollView>
+
+    {openQR && (
+      <Modal visible transparent animationType="fade" onRequestClose={() => setOpenQR(null)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+          onPress={() => setOpenQR(null)}
+        >
+          <Pressable onPress={e => e.stopPropagation()}
+            style={{ backgroundColor: '#111118', borderRadius: 20, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)', width: '100%' }}
+          >
+            <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Il tuo biglietto</Text>
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>{openQR.events?.title}</Text>
+            <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{openQR.events?.venues?.name}</Text>
+            <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 12 }}>
+              <QRCode value={openQR.qr_code || 'invalid'} size={200} />
+            </View>
+            <Text style={{ color: '#64748B', fontSize: 12, marginTop: 16, textAlign: 'center' }}>Mostra questo QR code all&apos;ingresso</Text>
+            <Pressable onPress={() => setOpenQR(null)} style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 32, backgroundColor: 'rgba(168,85,247,0.15)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)' }}>
+              <Text style={{ color: '#A855F7', fontWeight: '700' }}>Chiudi</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    )}
+    </>
   );
 }
 
-function BookingRow({ booking, past }) {
+function BookingRow({ booking, past, onShowQR }) {
   const ev = booking.events;
   if (!ev) return null;
   return (
@@ -380,6 +418,14 @@ function BookingRow({ booking, past }) {
       <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
         {formatDate(ev.event_date)} · {formatTime(ev.event_time) || '—'} · {getPriceLabel(ev.price)}
       </Text>
+      {!past && booking.qr_code && onShowQR && (
+        <Pressable
+          onPress={e => { e.stopPropagation?.(); onShowQR(booking); }}
+          style={{ marginTop: 10, alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 14, backgroundColor: 'rgba(168,85,247,0.12)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)' }}
+        >
+          <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>Mostra QR</Text>
+        </Pressable>
+      )}
     </Pressable>
   );
 }

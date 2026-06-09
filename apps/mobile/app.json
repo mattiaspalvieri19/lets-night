@@ -33,7 +33,8 @@
         {
           "cameraPermission": "Let's Night ha bisogno della fotocamera per scannerizzare i QR code dei biglietti."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false

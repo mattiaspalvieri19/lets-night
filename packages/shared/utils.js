@@ -1,3 +1,5 @@
+import { BOOKING_FEE } from './constants.js';
+
 const DAYS_SHORT  = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 const DAYS_FULL   = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato'];
 const MONTHS_SHORT = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
@@ -41,6 +43,15 @@ export function isPastDate(dateStr) {
   return parseLocalDate(dateStr) < today;
 }
 
+// Differenza in giorni interi tra due date 'YYYY-MM-DD' interpretate in tz locale.
+// new Date('YYYY-MM-DD') le interpreterebbe come UTC midnight, causando drift in tz non-UTC.
+export function daysBetweenLocal(dateStrA, dateStrB) {
+  if (!dateStrA || !dateStrB) return Infinity;
+  const a = parseLocalDate(dateStrA);
+  const b = parseLocalDate(dateStrB);
+  return Math.round((a - b) / (1000 * 60 * 60 * 24));
+}
+
 // Data di oggi in fuso locale come 'YYYY-MM-DD' (non UTC).
 export function todayLocal() {
   const d = new Date();
@@ -78,13 +89,54 @@ export function getLoyaltyLevel(points = 0) {
   };
 }
 
-// UUID v4 generato con Math.random — sufficiente per QR ticket (entropy 122 bit).
-// Hermes/RN compatibile (non usa crypto.randomUUID che non sempre esiste).
+// QR univoco basato su CSPRNG quando disponibile (crypto.randomUUID — Node 19+, Hermes 0.74+, browser moderni).
+// Math.random come fallback solo per ambienti legacy: i bouncer rilevano il riuso col flag checked_in.
 export function generateBookingQR() {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
+}
+
+// Valida bookingType contro l'evento. Forza 'ticket' se 'table' non disponibile.
+export function normalizeBookingType(event, requested) {
+  if (requested === 'table' && event?.has_tables) return 'table';
+  return 'ticket';
+}
+
+const MAX_QUANTITY_TICKETS = 10;
+
+// Single source of truth per il calcolo prezzo prenotazione.
+// Restituisce { effectivePrice, safeQty, lineTotal, fee, total, isFree, bookingType }.
+// `quantity` viene clampata a [1, 10] per i biglietti, forzata a 1 per i tavoli.
+export function computeBookingPrice(event, bookingType, quantity) {
+  const type = normalizeBookingType(event, bookingType);
+  const safePrice = Math.max(0, Number(event?.price) || 0);
+  const rawTable = event?.table_price;
+  // Distingui null/undefined (= "usa fallback price*4") da 0 esplicito (= tavolo gratis)
+  const tableHasPrice = rawTable !== null && rawTable !== undefined && rawTable !== '';
+  const safeTablePrice = tableHasPrice ? Math.max(0, Number(rawTable) || 0) : null;
+  const effectivePrice = type === 'table'
+    ? (tableHasPrice ? safeTablePrice : safePrice * 4)
+    : safePrice;
+  const safeQty = type === 'table'
+    ? 1
+    : Math.min(MAX_QUANTITY_TICKETS, Math.max(1, Number(quantity) || 1));
+  const lineTotal = effectivePrice * safeQty;
+  const isFree = lineTotal === 0;
+  const fee = isFree ? 0 : BOOKING_FEE;
+  return {
+    bookingType: type,
+    effectivePrice,
+    safeQty,
+    lineTotal,
+    fee,
+    total: lineTotal + fee,
+    isFree,
+  };
 }
 
 export function isInDateRange(dateStr, range) {

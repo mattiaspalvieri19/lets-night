@@ -1,11 +1,38 @@
 import '../global.css';
 import { useEffect, useRef } from 'react';
+import { Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+// Recovery: se il deep link letsnight://payment-return arriva DOPO che la BookingModal è chiusa
+// (utente che ha backgroundato l'app durante checkout), questo handler globale completa il flusso
+// chiamando confirm-booking e portando l'utente sui suoi biglietti.
+async function handlePaymentReturnUrl(url) {
+  if (!url || !url.includes('payment-return')) return;
+  const statusMatch = url.match(/[?&]status=([^&]+)/);
+  const sessionMatch = url.match(/[?&]session_id=([^&]+)/);
+  const status = statusMatch ? decodeURIComponent(statusMatch[1]) : null;
+  const sessionId = sessionMatch ? decodeURIComponent(sessionMatch[1]) : null;
+  if (status !== 'success' || !sessionId) return;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return;
+
+  try {
+    await fetch(`${API_URL}/api/stripe/confirm-booking`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, accessToken: session.access_token }),
+    });
+  } catch {}
+  router.push('/(tabs)/tickets');
+}
 
 export default function RootLayout() {
   const responseListener = useRef(null);
@@ -31,11 +58,16 @@ export default function RootLayout() {
       }
     });
 
+    // Recovery deep link payment-return (es. utente backgrounding durante checkout)
+    Linking.getInitialURL().then(url => { if (url) handlePaymentReturnUrl(url); });
+    const linkingSub = Linking.addEventListener('url', e => handlePaymentReturnUrl(e.url));
+
     return () => {
       subscription.unsubscribe();
       if (responseListener.current) {
         Notifications.removeNotificationSubscription(responseListener.current);
       }
+      linkingSub?.remove?.();
     };
   }, []);
 
