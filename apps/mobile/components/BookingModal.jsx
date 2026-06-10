@@ -112,6 +112,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
       submitting.current = false;
       if (err) {
         if (err.code === '23505') setError('Hai già prenotato questo evento.');
+        else if (err.code === '23514' || /CAPACITY_FULL/.test(err.message || '')) setError('Posti esauriti per questo evento.');
         else { setError('Prenotazione non riuscita. Riprova.'); console.error('Errore booking:', err); }
         return;
       }
@@ -327,6 +328,12 @@ export default function BookingModal({ visible, onClose, event, session }) {
                   </Text>
                 </View>
               </View>
+
+              {!pricing.isFree && (
+                <Text style={{ color: '#475569', fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
+                  Rimborso solo se il locale ti nega l&apos;ingresso. Nessun rimborso per mancata presentazione.
+                </Text>
+              )}
 
               {error ? (
                 <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: 8, padding: 12, marginBottom: 16 }}>

@@ -207,6 +207,8 @@ export default function EventDetailPage({ params }) {
     if (error) {
       if (error.code === '23505') {
         setBookingError('Hai già prenotato questo evento.');
+      } else if (error.code === '23514' || /CAPACITY_FULL/.test(error.message || '')) {
+        setBookingError('Posti esauriti per questo evento.');
       } else {
         setBookingError('Prenotazione non riuscita. Riprova.');
         console.error('Errore booking:', error);
@@ -533,6 +535,12 @@ export default function EventDetailPage({ params }) {
                         <span>Totale</span>
                         <strong>{pricing.isFree ? 'Gratuito' : `EUR ${pricing.total.toFixed(2)}`}</strong>
                       </div>
+
+                      {!pricing.isFree && (
+                        <p style={{ color: '#64748B', fontSize: 11, textAlign: 'center', margin: '0 0 12px', lineHeight: 1.4 }}>
+                          Rimborso solo se il locale ti nega l&apos;ingresso. Nessun rimborso per mancata presentazione.
+                        </p>
+                      )}
 
                       {bookingError && <div className="auth-error">{bookingError}</div>}
 

@@ -122,6 +122,12 @@ export async function fulfillBookingFromSession(stripeSession) {
       await refundAndAlert(stripeSession, 'duplicate_booking', { userId, eventId });
       return { error: 'Avevi già una prenotazione attiva per questo evento. Il pagamento è stato rimborsato automaticamente.', status: 409, refunded: true, duplicate: true };
     }
+    // Trigger capacity guard (enforce_event_capacity): l'evento si è riempito durante
+    // una race oltre il check applicativo sopra. Rimborso automatico come oversold.
+    if (bookErr.code === '23514' || /CAPACITY_FULL/.test(bookErr.message || '')) {
+      await refundAndAlert(stripeSession, 'oversold', { eventId, qty: pricing.safeQty });
+      return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', status: 409, oversold: true, refunded: true };
+    }
     console.error('Insert booking fallita:', bookErr);
     return { error: 'Errore creazione prenotazione', status: 500 };
   }
@@ -171,6 +177,9 @@ export async function cancelBookingByPaymentIntent(paymentIntentId, reason) {
     .from('bookings')
     .update({ status: 'cancelled', qr_code: null })
     .eq('stripe_session_id', sessionId)
+    // Non sovrascrivere 'denied': se il locale ha già negato l'ingresso (e avviato
+    // il refund), il successivo webhook charge.refunded non deve declassare a 'cancelled'.
+    .neq('status', 'denied')
     .select('id')
     .maybeSingle();
 

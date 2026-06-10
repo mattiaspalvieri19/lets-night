@@ -5,6 +5,8 @@ import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { formatDateFull, formatTime, todayLocal, daysBetweenLocal } from '@lets-night/shared';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
 function calcAge(birthDate) {
   if (!birthDate) return null;
   const today = new Date();
@@ -21,6 +23,7 @@ export default function ScannerScreen() {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [denying, setDenying] = useState(false);
   const [myVenueIds, setMyVenueIds] = useState(null); // null=loading, []=nessuno, [...]=ok
   const scanningRef = useRef(false);
 
@@ -131,6 +134,51 @@ export default function ScannerScreen() {
     setResult(prev => ({ ...prev, checked_in: true, checked_in_at: updated.checked_in_at }));
   }
 
+  function handleDenyEntry() {
+    if (!result || result.checked_in || denying) return;
+    Alert.alert(
+      'Negare l\'ingresso?',
+      'La prenotazione verrà annullata e, se a pagamento, rimborsata automaticamente. Usa SOLO se non fai entrare la persona — non per chi semplicemente non si presenta.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        { text: 'Nega e rimborsa', style: 'destructive', onPress: doDenyEntry },
+      ]
+    );
+  }
+
+  async function doDenyEntry() {
+    setDenying(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setDenying(false);
+      Alert.alert('Sessione scaduta', 'Rieffettua il login.');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/stripe/refund-booking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: result.id, accessToken: session.access_token, reason: 'denied_entry' }),
+      });
+      const json = await res.json();
+      setDenying(false);
+      if (!res.ok) {
+        Alert.alert('Operazione non riuscita', json.error || 'Riprova.');
+        return;
+      }
+      Alert.alert(
+        'Ingresso negato',
+        json.refunded
+          ? 'Prenotazione annullata e rimborso avviato.'
+          : 'Prenotazione annullata.'
+      );
+      setResult(null);
+    } catch {
+      setDenying(false);
+      Alert.alert('Errore di connessione', 'Riprova tra poco.');
+    }
+  }
+
   if (!permission) return <View style={{ flex: 1, backgroundColor: '#09090f' }} />;
 
   if (!permission.granted) {
@@ -229,10 +277,18 @@ export default function ScannerScreen() {
               <Text style={{ color: '#92400E', fontSize: 12, marginTop: 4 }}>Verifica visivamente che sia la stessa persona</Text>
             </View>
           ) : (
-            <Pressable onPress={handleCheckIn} disabled={checkingIn}
-              style={({ pressed }) => ({ backgroundColor: '#4ADE80', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12, opacity: checkingIn || pressed ? 0.7 : 1 })}
+            <Pressable onPress={handleCheckIn} disabled={checkingIn || denying}
+              style={({ pressed }) => ({ backgroundColor: '#4ADE80', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12, opacity: checkingIn || denying || pressed ? 0.7 : 1 })}
             >
               {checkingIn ? <ActivityIndicator color="#000" /> : <Text style={{ color: '#000', fontWeight: '900', fontSize: 16 }}>✓ Conferma ingresso</Text>}
+            </Pressable>
+          )}
+
+          {!alreadyIn && (
+            <Pressable onPress={handleDenyEntry} disabled={denying || checkingIn}
+              style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.08)', opacity: denying || checkingIn || pressed ? 0.7 : 1 })}
+            >
+              {denying ? <ActivityIndicator color="#F87171" /> : <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14 }}>✕ Nega ingresso e rimborsa</Text>}
             </Pressable>
           )}
 

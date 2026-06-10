@@ -104,7 +104,7 @@ export default function BusinessEvents() {
     } else if (filter === 'draft') {
       if (e.is_active || e.event_date < today) return false;
     } else if (filter === 'soldout') {
-      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;
+      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
       if (!(e.capacity && sold >= e.capacity)) return false;
     }
     // Search interna
@@ -122,7 +122,7 @@ export default function BusinessEvents() {
     draft:    events.filter(e => !e.is_active && e.event_date >= today).length,
     past:     events.filter(e => e.event_date < today).length,
     soldout:  events.filter(e => {
-      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled').length;
+      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
       return e.capacity && sold >= e.capacity;
     }).length,
   };
@@ -229,7 +229,7 @@ export default function BusinessEvents() {
             )}
           </View>
         ) : filtered.map(ev => {
-          const bookingsCount = (ev.bookings || []).filter(b => b.status !== 'cancelled').length;
+          const bookingsCount = (ev.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
           const isPast = ev.event_date < today;
           return (
             <Pressable

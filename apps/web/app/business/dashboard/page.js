@@ -92,6 +92,22 @@ export default function BusinessDashboard() {
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: true } : b));
   }
 
+  // Nega l'ingresso + rimborso (se a pagamento). Il rimborso lo avvia SOLO il locale:
+  // l'utente non ha self-service refund. No-show = nessun rimborso.
+  async function handleDenyRefund(bookingId) {
+    if (!confirm('Negare l\'ingresso e rimborsare (se a pagamento) questa prenotazione?\n\nUsa solo se NON fai entrare la persona — non per chi semplicemente non si presenta.')) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/stripe/refund-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId, accessToken: session.access_token, reason: 'denied_entry' }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(json.error || 'Operazione non riuscita.'); return; }
+    loadData();
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push('/business');
@@ -501,14 +517,29 @@ export default function BusinessDashboard() {
                     </div>
                     <div className="biz-booking-right">
                       <strong>EUR {b.total_price}</strong>
-                      <button
-                        onClick={() => handleCheckIn(b.id, b.checked_in)}
-                        disabled={b.checked_in}
-                        className={'biz-toggle ' + (b.checked_in ? 'active' : '')}
-                        style={{ marginTop: 6 }}
-                      >
-                        {b.checked_in ? '✓ Entrato' : 'Check-in'}
-                      </button>
+                      {b.status === 'denied' ? (
+                        <span style={{ marginTop: 6, fontSize: 11, fontWeight: 700, color: '#f87171' }}>
+                          Ingresso negato{b.refunded_at ? ' · rimborsato' : ''}
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, alignItems: 'flex-end' }}>
+                          <button
+                            onClick={() => handleCheckIn(b.id, b.checked_in)}
+                            disabled={b.checked_in}
+                            className={'biz-toggle ' + (b.checked_in ? 'active' : '')}
+                          >
+                            {b.checked_in ? '✓ Entrato' : 'Check-in'}
+                          </button>
+                          {!b.checked_in && (
+                            <button
+                              onClick={() => handleDenyRefund(b.id)}
+                              style={{ padding: '4px 10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Nega / Rimborsa
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -56,7 +56,7 @@ export default function EventDetailScreen() {
     });
   }
 
-  function handleBook() {
+  async function handleBook() {
     if (!session) {
       Alert.alert(
         'Accedi per prenotare',
@@ -66,6 +66,16 @@ export default function EventDetailScreen() {
           { text: 'Accedi', onPress: () => router.push('/auth/login') },
         ]
       );
+      return;
+    }
+    // Coerenza con il web: gli account business non prenotano eventi.
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .maybeSingle();
+    if (prof?.role === 'business') {
+      Alert.alert('Account business', 'Gli account business non possono prenotare eventi. Accedi con un account utente.');
       return;
     }
     setBookingVisible(true);
