@@ -94,9 +94,9 @@ export default function RootLayout() {
 
     return () => {
       subscription.unsubscribe();
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      // expo-notifications SDK 53+: Notifications.removeNotificationSubscription è stato
+      // rimosso → si chiama .remove() direttamente sull'oggetto subscription.
+      responseListener.current?.remove();
       linkingSub?.remove?.();
     };
   }, []);
