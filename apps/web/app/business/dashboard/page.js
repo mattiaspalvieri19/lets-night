@@ -197,6 +197,11 @@ export default function BusinessDashboard() {
           <div className="dash-label biz-label">Dashboard locale</div>
           <h1 className="dash-title"><em>{venue.name}</em></h1>
           <p className="dash-sub">{venue.category} - {venue.zona}, {venue.city}</p>
+          <div style={{ marginTop: 14 }}>
+            <Link href="/business/venue/edit" className="ln-btn-ghost" style={{ display: 'inline-block' }}>
+              ✏️ Modifica locale
+            </Link>
+          </div>
         </div>
       </div>
 

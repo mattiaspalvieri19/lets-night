@@ -57,8 +57,13 @@ export default function BusinessProfile() {
       </View>
 
       {/* Dati locale */}
-      <View style={{ marginHorizontal: 20, marginBottom: 20, backgroundColor: '#111118', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
-        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 14 }}>Dati locale</Text>
+      <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: '#111118', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Dati locale</Text>
+          <Pressable onPress={() => router.push('/(business)/venue/edit')} hitSlop={6}>
+            <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 13 }}>Modifica</Text>
+          </Pressable>
+        </View>
         {[
           ['Categoria', venue?.category],
           ['Città', venue?.city],
@@ -73,6 +78,14 @@ export default function BusinessProfile() {
         ))}
       </View>
 
+      <Pressable
+        onPress={() => router.push('/(business)/venue/edit')}
+        style={({ pressed }) => ({ marginHorizontal: 20, marginBottom: 20, backgroundColor: '#7C3AED', borderRadius: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, opacity: pressed ? 0.85 : 1 })}
+      >
+        <Text style={{ fontSize: 16 }}>✏️</Text>
+        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Modifica locale</Text>
+      </Pressable>
+
       {/* Dati account */}
       <View style={{ marginHorizontal: 20, marginBottom: 32, backgroundColor: '#111118', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
         <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 14 }}>Account</Text>
@@ -86,7 +99,7 @@ export default function BusinessProfile() {
       <View style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: 'rgba(124,58,237,0.08)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.25)', borderRadius: 14, padding: 16 }}>
         <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14, marginBottom: 4 }}>Dashboard web completa</Text>
         <Text style={{ color: '#64748B', fontSize: 12, lineHeight: 18 }}>
-          Per statistiche avanzate, modifica dati del locale e gestione approfondita visita letsnight.it/business dal browser.
+          Per statistiche avanzate e gestione eventi visita letsnight.it/business dal browser.
         </Text>
       </View>
 

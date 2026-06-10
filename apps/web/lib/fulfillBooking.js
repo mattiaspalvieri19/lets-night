@@ -108,14 +108,19 @@ export async function fulfillBookingFromSession(stripeSession) {
     .single();
 
   if (bookErr) {
-    // 23505 = race: webhook + confirm-booking polling concorrenti. Ritorna l'esistente.
     if (bookErr.code === '23505') {
+      // Race webhook + confirm-booking concorrenti: ritorna l'esistente per questa session.
       const { data: now } = await supabase
         .from('bookings')
         .select('id, qr_code')
         .eq('stripe_session_id', stripeSession.id)
         .maybeSingle();
       if (now) return { ok: true, bookingId: now.id, qrCode: now.qr_code, alreadyExisted: true };
+
+      // Caso diverso: 23505 ma niente booking per questa session → violazione UNIQUE (user_id, event_id).
+      // L'utente ha pagato per qualcosa che possedeva già. Refund automatico + segnala.
+      await refundAndAlert(stripeSession, 'duplicate_booking', { userId, eventId });
+      return { error: 'Avevi già una prenotazione attiva per questo evento. Il pagamento è stato rimborsato automaticamente.', status: 409, refunded: true, duplicate: true };
     }
     console.error('Insert booking fallita:', bookErr);
     return { error: 'Errore creazione prenotazione', status: 500 };

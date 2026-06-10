@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { CATS, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { CATS, CATS_NO_TUTTI, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import Navbar from '../components/Navbar';
 
 export default function Home() {
@@ -225,6 +225,41 @@ export default function Home() {
 
         <div className="see-more-wrap" data-anim="up">
           <Link href="/explore" className="ln-btn-outline">Vedi tutti gli eventi</Link>
+        </div>
+      </section>
+
+      <section className="cats-section">
+        <div className="sec-head" data-anim="up">
+          <div className="sec-label">Esplora per categoria</div>
+          <h2 className="sec-title">Scegli la tua<br /><em>vibe</em></h2>
+        </div>
+        <div className="cats-grid">
+          {CATS_NO_TUTTI.map((c, i) => {
+            const colors = COLORS_BY_CAT[c] || ['#1a0533', '#0d0d1a', '#c084fc'];
+            const count = events.filter(e => e.category === c && (e.venues?.city === city || !e.venues?.city)).length;
+            const emoji = { 'Discoteca': '🪩', 'Universitario': '🎓', 'Cena Show': '🍽️', 'VIP': '💎', 'Aperitivo': '🍸' }[c] || '🌙';
+            return (
+              <Link
+                key={c}
+                href={`/explore?cat=${encodeURIComponent(c)}&city=${encodeURIComponent(city)}`}
+                className="cat-card"
+                data-anim="up"
+                data-delay={String(i * 80)}
+                style={{
+                  background: `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`,
+                  borderColor: `${colors[2]}40`,
+                }}
+              >
+                <div className="cat-card-glow" style={{ background: `radial-gradient(circle at 50% 0%, ${colors[2]}30, transparent 70%)` }} />
+                <div className="cat-card-emoji">{emoji}</div>
+                <div className="cat-card-name">{c}</div>
+                <div className="cat-card-count" style={{ color: colors[2] }}>
+                  {count > 0 ? `${count} ${count === 1 ? 'evento' : 'eventi'}` : 'Esplora'}
+                </div>
+                <div className="cat-card-arrow" style={{ color: colors[2] }}>→</div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

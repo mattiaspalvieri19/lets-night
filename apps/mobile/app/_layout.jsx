@@ -1,12 +1,13 @@
 import '../global.css';
-import { useEffect, useRef } from 'react';
-import { Linking } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Linking, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
+import { isOnboarded, getGuestPrefs, clearGuestPrefs } from '../lib/onboarding';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -36,12 +37,41 @@ async function handlePaymentReturnUrl(url) {
 
 export default function RootLayout() {
   const responseListener = useRef(null);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  // Gate onboarding: al primo avvio porta a /onboarding, poi mai più (flag in AsyncStorage).
+  useEffect(() => {
+    (async () => {
+      try {
+        const done = await isOnboarded();
+        if (!done) router.replace('/onboarding');
+      } catch {}
+      setOnboardingChecked(true);
+    })();
+  }, []);
 
   useEffect(() => {
-    // Registra push token al login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user?.id) {
-        registerForPushNotifications(session.user.id);
+    // Registra push token al login + import preferenze raccolte durante onboarding ospite.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== 'SIGNED_IN' || !session?.user?.id) return;
+      registerForPushNotifications(session.user.id);
+      try {
+        const prefs = await getGuestPrefs();
+        if (!prefs) return;
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('city, interests')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        const patch = {};
+        if (prefs.city && !prof?.city) patch.city = prefs.city;
+        if (prefs.interests?.length && !(prof?.interests?.length)) patch.interests = prefs.interests;
+        if (Object.keys(patch).length > 0) {
+          await supabase.from('profiles').update(patch).eq('id', session.user.id);
+        }
+        await clearGuestPrefs();
+      } catch (e) {
+        console.warn('Guest prefs import failed:', e);
       }
     });
 
@@ -71,6 +101,11 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Splash neutro finché non sappiamo se l'utente è già onboarded — evita flash della home prima del redirect.
+  if (!onboardingChecked) {
+    return <View style={{ flex: 1, backgroundColor: '#0a0a0f' }} />;
+  }
+
   return (
     <>
       <StatusBar style="light" />
@@ -87,6 +122,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(business)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding/index" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="event/[id]" options={{ title: 'Evento' }} />
         <Stack.Screen name="venue/[id]" options={{ title: 'Locale' }} />

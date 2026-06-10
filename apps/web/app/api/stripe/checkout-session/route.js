@@ -3,7 +3,11 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { computeBookingPrice } from '@lets-night/shared';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+let _stripe;
+function stripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -47,6 +51,21 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Evento non trovato' }, { status: 404 });
   }
 
+  // Blocco preventivo doppio booking: se l'utente ha già una prenotazione attiva per questo evento,
+  // rifiutiamo PRIMA di addebitarlo. Senza questo check Stripe incasserebbe e poi fulfillBooking
+  // catcherebbe il 23505 nel DB, lasciando l'utente con un pagamento orfano.
+  const { data: existingBooking } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('event_id', eventId)
+    .neq('status', 'cancelled')
+    .maybeSingle();
+
+  if (existingBooking) {
+    return NextResponse.json({ error: 'Hai già prenotato questo evento.', duplicate: true }, { status: 409 });
+  }
+
   if (event.event_date) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -71,7 +90,7 @@ export async function POST(request) {
 
   let session;
   try {
-    session = await stripe.checkout.sessions.create({
+    session = await stripe().checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [

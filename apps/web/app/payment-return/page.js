@@ -14,7 +14,7 @@ function PaymentReturnInner() {
 
   const [qr, setQr] = useState(null);
   const [phase, setPhase] = useState(isSuccess ? 'verifying' : 'cancelled'); // verifying|qr|error|cancelled|refunded
-  const [refundedReason, setRefundedReason] = useState(null);
+  const [refundedReason, setRefundedReason] = useState(null); // oversold|price_changed|duplicate
 
   useEffect(() => {
     // Tentativo deep link mobile (no-op su desktop).
@@ -45,7 +45,9 @@ function PaymentReturnInner() {
         if (cancelled) return;
         if (!res.ok || !json.qrCode) {
           if (json.refunded) {
-            setRefundedReason(json.oversold ? 'oversold' : 'price_changed');
+            if (json.duplicate) setRefundedReason('duplicate');
+            else if (json.oversold) setRefundedReason('oversold');
+            else setRefundedReason('price_changed');
             setPhase('refunded');
             return;
           }
@@ -104,7 +106,9 @@ function PaymentReturnInner() {
             <div style={{ fontSize: 48, marginBottom: 12 }}>💸</div>
             <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Rimborso automatico</h1>
             <p style={{ color: '#94a3b8', marginBottom: 16, fontSize: 14, lineHeight: 1.5 }}>
-              {refundedReason === 'oversold'
+              {refundedReason === 'duplicate'
+                ? 'Avevi già una prenotazione attiva per questo evento. Il rimborso è già stato avviato e lo vedrai sulla tua carta entro 5-10 giorni lavorativi.'
+                : refundedReason === 'oversold'
                 ? 'Posti esauriti dopo il tuo pagamento. Il rimborso è già stato avviato e lo vedrai sulla tua carta entro 5-10 giorni lavorativi.'
                 : 'Il prezzo dell\'evento è cambiato dopo il pagamento. Il rimborso è già stato avviato e lo vedrai sulla tua carta entro 5-10 giorni lavorativi.'}
             </p>

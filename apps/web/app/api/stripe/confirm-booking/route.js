@@ -3,7 +3,11 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { fulfillBookingFromSession } from '../../../../lib/fulfillBooking';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+let _stripe;
+function stripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
 // Chiamato dal client dopo il redirect /payment-return per mostrare subito il QR.
 // Il webhook è la fonte di verità — questa route è un fallback sincrono.
@@ -36,7 +40,7 @@ export async function POST(request) {
 
   let session;
   try {
-    session = await stripe.checkout.sessions.retrieve(sessionId);
+    session = await stripe().checkout.sessions.retrieve(sessionId);
   } catch (e) {
     console.error('Stripe retrieve session:', e);
     return NextResponse.json({ error: 'Sessione non trovata' }, { status: 404 });
@@ -52,6 +56,7 @@ export async function POST(request) {
       error: result.error || 'Errore',
       refunded: !!result.refunded,
       oversold: !!result.oversold,
+      duplicate: !!result.duplicate,
     }, { status: result.status || 500 });
   }
 

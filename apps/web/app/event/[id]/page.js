@@ -39,6 +39,11 @@ function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoadin
       });
       json = await res.json();
       if (!res.ok || !json.url) {
+        if (json?.duplicate) {
+          setBookingError('Hai già prenotato questo evento. Trovi il biglietto nella tua area personale.');
+          setBookingLoading(false);
+          return;
+        }
         throw new Error(json.error || 'Errore creazione pagamento');
       }
     } catch (e) {

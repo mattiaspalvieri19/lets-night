@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
 import {
   CATS_NO_TUTTI as CATS, CITIES, COLORS_BY_CAT,
@@ -32,6 +33,14 @@ const SORT_OPTIONS = [
 ];
 
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0a0a0f' }} />}>
+      <ExplorePageInner />
+    </Suspense>
+  );
+}
+
+function ExplorePageInner() {
   const cursorRef = useRef(null);
   const innerRef = useRef(null);
   const [events, setEvents] = useState([]);
@@ -54,6 +63,19 @@ export default function ExplorePage() {
   const [ageTarget, setAgeTarget] = useState(null);
   const [entryType, setEntryType] = useState('any');
   const [timeSlot, setTimeSlot] = useState(null);
+  const searchParams = useSearchParams();
+
+  // Pre-filtro da query param (es. dalla homepage: /explore?cat=Discoteca)
+  useEffect(() => {
+    const catParam = searchParams.get('cat');
+    if (catParam && CATS.includes(catParam)) {
+      setSelectedCats([catParam]);
+    }
+    const cityParam = searchParams.get('city');
+    if (cityParam && CITIES.includes(cityParam)) {
+      setSelectedCities([cityParam]);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadData() {

@@ -132,6 +132,12 @@ export default function BookingModal({ visible, onClose, event, session }) {
       });
       const json = await res.json();
       if (!res.ok || !json.url) {
+        if (json?.duplicate) {
+          setLoading(false);
+          submitting.current = false;
+          setError('Hai già prenotato questo evento. Lo trovi nella tab Biglietti.');
+          return;
+        }
         throw new Error(json.error || 'Errore creazione pagamento');
       }
 
@@ -165,11 +171,11 @@ export default function BookingModal({ visible, onClose, event, session }) {
 
       if (!confirmRes.ok || !confirmJson.qrCode) {
         if (confirmJson.refunded) {
-          setError(
-            confirmJson.oversold
-              ? 'Posti esauriti dopo il pagamento. Il rimborso è stato avviato automaticamente: lo vedrai sulla tua carta entro 5-10 giorni lavorativi.'
-              : 'Il prezzo dell\'evento è cambiato dopo il pagamento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.'
-          );
+          let msg;
+          if (confirmJson.duplicate) msg = 'Avevi già una prenotazione per questo evento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
+          else if (confirmJson.oversold) msg = 'Posti esauriti dopo il pagamento. Il rimborso è stato avviato automaticamente: lo vedrai sulla tua carta entro 5-10 giorni lavorativi.';
+          else msg = 'Il prezzo dell\'evento è cambiato dopo il pagamento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
+          setError(msg);
         } else {
           setError(confirmJson.error || 'Pagamento riuscito ma prenotazione non confermata. Contatta supporto.');
         }

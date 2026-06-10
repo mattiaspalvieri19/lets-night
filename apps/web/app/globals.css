@@ -251,6 +251,62 @@ em { font-style:normal; background:var(--grad); -webkit-background-clip:text; -w
 .loading-state { text-align:center; padding:4rem 2rem; color:var(--text2); }
 
 
+.cats-section { padding:80px 2rem; max-width:1200px; margin:0 auto; }
+.cats-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:1rem;
+  margin-top:2.5rem;
+}
+.cat-card {
+  position:relative;
+  display:flex; flex-direction:column;
+  padding:1.75rem 1.25rem;
+  border-radius:18px;
+  border:1.5px solid;
+  overflow:hidden;
+  min-height:220px;
+  text-decoration:none;
+  color:#fff;
+  transition:transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s, border-color .35s;
+  isolation:isolate;
+}
+.cat-card:hover {
+  transform:translateY(-6px);
+  box-shadow:0 20px 40px -10px rgba(0,0,0,.6);
+}
+.cat-card-glow {
+  position:absolute; inset:0; pointer-events:none;
+  opacity:.7; transition:opacity .35s;
+  z-index:0;
+}
+.cat-card:hover .cat-card-glow { opacity:1; }
+.cat-card-emoji {
+  font-size:2.5rem; line-height:1; margin-bottom:.75rem;
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,.4));
+  position:relative; z-index:1;
+}
+.cat-card-name {
+  font-size:1.25rem; font-weight:800; letter-spacing:-.3px;
+  color:#fff;
+  position:relative; z-index:1;
+}
+.cat-card-count {
+  font-size:.75rem; font-weight:700;
+  letter-spacing:1.5px; text-transform:uppercase;
+  margin-top:.4rem;
+  position:relative; z-index:1;
+}
+.cat-card-arrow {
+  position:absolute; bottom:1.25rem; right:1.25rem;
+  font-size:1.5rem; font-weight:900;
+  transition:transform .3s;
+  z-index:1;
+}
+.cat-card:hover .cat-card-arrow {
+  transform:translateX(4px);
+}
+
 .how-section { padding:80px 2rem; max-width:1100px; margin:0 auto; }
 .how-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:1.5rem; margin-top:3rem; }
 .how-card { background:var(--dark2); border:1.5px solid var(--border); border-radius:14px; padding:2rem; position:relative; overflow:hidden; transition:border-color .3s,transform .3s; }
