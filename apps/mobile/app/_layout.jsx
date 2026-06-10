@@ -1,6 +1,6 @@
 import '../global.css';
-import { useEffect, useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Linking } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
@@ -37,16 +37,16 @@ async function handlePaymentReturnUrl(url) {
 
 export default function RootLayout() {
   const responseListener = useRef(null);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
-  // Gate onboarding: al primo avvio porta a /onboarding, poi mai più (flag in AsyncStorage).
+  // Gate onboarding: al primo avvio (flag AsyncStorage assente) redirige a /onboarding.
+  // NB: lo <Stack> sotto va renderizzato SEMPRE — montare il navigatore in modo
+  // condizionale rompe la navigazione di Expo Router e lascia lo schermo nero.
   useEffect(() => {
     (async () => {
       try {
         const done = await isOnboarded();
         if (!done) router.replace('/onboarding');
       } catch {}
-      setOnboardingChecked(true);
     })();
   }, []);
 
@@ -100,11 +100,6 @@ export default function RootLayout() {
       linkingSub?.remove?.();
     };
   }, []);
-
-  // Splash neutro finché non sappiamo se l'utente è già onboarded — evita flash della home prima del redirect.
-  if (!onboardingChecked) {
-    return <View style={{ flex: 1, backgroundColor: '#0a0a0f' }} />;
-  }
 
   return (
     <>
