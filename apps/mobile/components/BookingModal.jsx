@@ -3,8 +3,9 @@ import { Modal, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ScreenCapture from 'expo-screen-capture';
 import QRCode from 'react-native-qrcode-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice } from '@lets-night/shared';
 import { sendLocalNotification } from '../lib/notifications';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -18,6 +19,11 @@ function parseReturnUrl(url) {
     status: statusMatch ? decodeURIComponent(statusMatch[1]) : null,
     sessionId: sessionMatch ? decodeURIComponent(sessionMatch[1]) : null,
   };
+}
+
+// Prezzi in formato italiano: "16,50 €"
+function euro(v) {
+  return v.toFixed(2).replace('.', ',') + ' €';
 }
 
 export default function BookingModal({ visible, onClose, event, session }) {
@@ -201,82 +207,79 @@ export default function BookingModal({ visible, onClose, event, session }) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)' }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }}
           onPress={handleClose}
         />
-        <View style={{ backgroundColor: '#111118', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderTopWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}>
-          <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
+        <View style={{ backgroundColor: COLORS.bgElev2, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 }}>
+          <View style={{ width: 36, height: 4, backgroundColor: COLORS.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 22 }} />
 
           {success ? (
-            <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-              <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1.5, borderColor: 'rgba(74,222,128,0.4)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 24 }}>✓</Text>
+            <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(74,222,128,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                <Ionicons name="checkmark" size={28} color={COLORS.success} />
               </View>
-              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '900', marginBottom: 4 }}>Prenotato!</Text>
-              <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 18 }}>
-                Mostra questo QR all&apos;ingresso. Lo ritrovi sempre in &quot;Biglietti&quot;.
+              <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 22, letterSpacing: -0.4, marginBottom: 6 }}>
+                Prenotato!
+              </Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 20 }}>
+                Mostra questo QR all'ingresso.{'\n'}Lo ritrovi sempre nella tab Biglietti.
               </Text>
               {lastQR && (
-                <View style={{ backgroundColor: '#fff', padding: 14, borderRadius: 14, marginBottom: 18 }}>
+                <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 22 }}>
                   <QRCode value={lastQR} size={180} />
                 </View>
               )}
               <Pressable
                 onPress={handleClose}
-                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 40, paddingVertical: 14, borderRadius: 12, width: '100%' }}
+                style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 15, borderRadius: 12, width: '100%', alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
               >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>Chiudi</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Chiudi</Text>
               </Pressable>
             </View>
           ) : (
             <>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              {/* Header */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Prenota</Text>
-                  <Text numberOfLines={2} style={{ color: '#fff', fontSize: 18, fontWeight: '800', lineHeight: 23 }}>{event.title}</Text>
-                  <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>{event.venues?.name}</Text>
+                  <Text numberOfLines={2} style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, lineHeight: 24, letterSpacing: -0.3 }}>
+                    {event.title}
+                  </Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>
+                    {event.venues?.name ? `${event.venues.name} · ` : ''}{formatDateFull(event.event_date)} · {formatTime(event.event_time) || '—'}
+                  </Text>
                 </View>
-                <Pressable onPress={handleClose} hitSlop={8}>
-                  <Text style={{ color: '#64748B', fontSize: 22 }}>×</Text>
+                <Pressable onPress={handleClose} hitSlop={10}>
+                  <Ionicons name="close" size={22} color={COLORS.textMuted} />
                 </Pressable>
               </View>
 
-              <View style={{ backgroundColor: '#18181f', borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View>
-                    <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 3 }}>Data</Text>
-                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{formatDateFull(event.event_date)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 3 }}>Orario</Text>
-                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{formatTime(event.event_time) || '—'}</Text>
-                  </View>
-                </View>
-              </View>
+              <View style={{ height: 1, backgroundColor: COLORS.borderSubtle, marginVertical: 16 }} />
 
+              {/* Tipo prenotazione */}
               {hasTables && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                <View style={{ marginBottom: 18 }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
                     Tipo prenotazione
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     {[
-                      { id: 'ticket', label: '🎟️ Ingresso', sub: getPriceLabel(safePrice) },
-                      { id: 'table',  label: '🍾 Tavolo',   sub: safeTablePrice > 0 ? `EUR ${safeTablePrice}` : 'Su richiesta' },
+                      { id: 'ticket', label: 'Ingresso', sub: getPriceLabel(safePrice) },
+                      { id: 'table',  label: 'Tavolo',   sub: safeTablePrice > 0 ? `${safeTablePrice} €` : 'Su richiesta' },
                     ].map(opt => {
                       const active = bookingType === opt.id;
                       return (
-                        <Pressable key={opt.id} onPress={() => { setError(''); setBookingType(opt.id); }}
+                        <Pressable
+                          key={opt.id}
+                          onPress={() => { setError(''); setBookingType(opt.id); }}
                           style={{
                             flex: 1, padding: 14, borderRadius: 12,
-                            backgroundColor: active ? 'rgba(124,58,237,0.15)' : '#18181f',
-                            borderWidth: 1.5,
-                            borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)',
-                          }}>
-                          <Text style={{ color: active ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: '700', marginBottom: 3 }}>
+                            backgroundColor: active ? '#FAFAFA' : COLORS.bgElev3,
+                          }}
+                        >
+                          <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
                             {opt.label}
                           </Text>
-                          <Text style={{ color: active ? '#A855F7' : '#64748B', fontSize: 11 }}>
+                          <Text style={{ color: active ? '#52525B' : COLORS.textMuted, fontSize: 12 }}>
                             {opt.sub}
                           </Text>
                         </Pressable>
@@ -286,58 +289,73 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 </View>
               )}
 
+              {/* Quantità */}
               {pricing.bookingType !== 'table' && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Posti</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '600' }}>Posti</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
                     <Pressable
                       onPress={() => setQuantity(q => Math.max(1, q - 1))}
-                      style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(168,85,247,0.3)', alignItems: 'center', justifyContent: 'center' }}
+                      hitSlop={6}
+                      style={({ pressed }) => ({
+                        width: 36, height: 36, borderRadius: 18,
+                        borderWidth: 1, borderColor: COLORS.borderStrong,
+                        alignItems: 'center', justifyContent: 'center',
+                        opacity: pressed ? 0.6 : 1,
+                      })}
                     >
-                      <Text style={{ color: '#A855F7', fontSize: 20, fontWeight: '700', lineHeight: 24 }}>−</Text>
+                      <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
                     </Pressable>
-                    <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', minWidth: 24, textAlign: 'center' }}>{quantity}</Text>
+                    <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, minWidth: 26, textAlign: 'center' }}>
+                      {quantity}
+                    </Text>
                     <Pressable
                       onPress={() => setQuantity(q => Math.min(10, q + 1))}
-                      style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(168,85,247,0.3)', alignItems: 'center', justifyContent: 'center' }}
+                      hitSlop={6}
+                      style={({ pressed }) => ({
+                        width: 36, height: 36, borderRadius: 18,
+                        borderWidth: 1, borderColor: COLORS.borderStrong,
+                        alignItems: 'center', justifyContent: 'center',
+                        opacity: pressed ? 0.6 : 1,
+                      })}
                     >
-                      <Text style={{ color: '#A855F7', fontSize: 20, fontWeight: '700', lineHeight: 24 }}>+</Text>
+                      <Ionicons name="add" size={16} color={COLORS.textPrimary} />
                     </Pressable>
                   </View>
                 </View>
               )}
 
               {/* Riepilogo costi */}
-              <View style={{ paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.12)', marginBottom: 20 }}>
+              <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, marginBottom: 16 }}>
                 {!pricing.isFree && (
                   <>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ color: '#64748B', fontSize: 13 }}>Subtotale</Text>
-                      <Text style={{ color: '#fff', fontSize: 13 }}>EUR {pricing.lineTotal.toFixed(2)}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Subtotale</Text>
+                      <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{euro(pricing.lineTotal)}</Text>
                     </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <Text style={{ color: '#64748B', fontSize: 13 }}>Commissione</Text>
-                      <Text style={{ color: '#fff', fontSize: 13 }}>EUR {pricing.fee.toFixed(2)}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Commissione</Text>
+                      <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{euro(pricing.fee)}</Text>
                     </View>
                   </>
                 )}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ color: '#64748B', fontSize: 14 }}>Totale</Text>
-                  <Text style={{ color: '#fff', fontSize: 20, fontWeight: '900' }}>
-                    {pricing.isFree ? 'Gratuito' : `EUR ${pricing.total.toFixed(2)}`}
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>Totale</Text>
+                  <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, letterSpacing: -0.4 }}>
+                    {pricing.isFree ? 'Gratuito' : euro(pricing.total)}
                   </Text>
                 </View>
               </View>
 
               {!pricing.isFree && (
-                <Text style={{ color: '#475569', fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
-                  Rimborso solo se il locale ti nega l&apos;ingresso. Nessun rimborso per mancata presentazione.
+                <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
+                  Rimborso solo se il locale ti nega l'ingresso. Nessun rimborso per mancata presentazione.
                 </Text>
               )}
 
               {error ? (
-                <View style={{ backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
-                  <Text style={{ color: '#fca5a5', fontSize: 13, textAlign: 'center' }}>{error}</Text>
+                <View style={{ backgroundColor: 'rgba(248,113,113,0.08)', borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                  <Text style={{ color: '#FCA5A5', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>{error}</Text>
                 </View>
               ) : null}
 
@@ -345,23 +363,22 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 onPress={handleConfirm}
                 disabled={loading}
                 style={({ pressed }) => ({
-                  backgroundColor: '#7C3AED',
+                  backgroundColor: COLORS.brandStrong,
                   paddingVertical: 16,
-                  borderRadius: 12,
+                  borderRadius: 14,
                   alignItems: 'center',
-                  opacity: loading || pressed ? 0.7 : 1,
+                  opacity: loading || pressed ? 0.75 : 1,
                 })}
               >
                 {loading
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
-                      {pricing.isFree ? 'Conferma prenotazione' : `Paga EUR ${pricing.total.toFixed(2)}`}
+                  : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
+                      {pricing.isFree ? 'Conferma prenotazione' : `Paga ${euro(pricing.total)}`}
                     </Text>
                 }
               </Pressable>
             </>
           )}
-          <View style={{ height: 8 }} />
         </View>
       </View>
     </Modal>
