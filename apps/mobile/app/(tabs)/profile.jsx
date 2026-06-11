@@ -136,6 +136,8 @@ export default function MyProfileScreen() {
       </Pressable>
 
       <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
       >
         {/* Header identità */}
