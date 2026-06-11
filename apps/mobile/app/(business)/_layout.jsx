@@ -13,11 +13,15 @@ export default function BusinessLayout() {
   // i Tabs sono sempre montati, durante il check li copre un overlay.
   useEffect(() => {
     async function check() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.replace('/auth/login'); return; }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
-      if (profile?.role !== 'business') { router.replace('/(tabs)'); return; }
-      setChecking(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { router.replace('/auth/login'); return; }
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle();
+        if (profile && profile.role !== 'business') { router.replace('/(tabs)'); return; }
+      } catch {} finally {
+        // Sempre: un errore di rete non deve lasciare l'overlay a bloccare i touch.
+        setChecking(false);
+      }
     }
     check();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
