@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
@@ -11,6 +11,10 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email || !password || loading) return;
+    // Chiudi la tastiera PRIMA di navigare: una replace con tastiera aperta può
+    // lasciare alla schermata di destinazione una cornice nativa accorciata
+    // (fascia inferiore non toccabile → tab bar "morta").
+    Keyboard.dismiss();
     setLoading(true);
     setError('');
 

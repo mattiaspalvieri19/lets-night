@@ -35,12 +35,12 @@ export default function BusinessLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
+          // NB: niente height/padding custom — l'altezza forzata disallineava
+          // l'area touch della barra (tap "morti"); il default gestisce la safe area.
           tabBarStyle: {
             backgroundColor: COLORS.bgElev1,
             borderTopColor: COLORS.borderSubtle,
             borderTopWidth: 1,
-            height: 80,
-            paddingBottom: 16,
           },
           tabBarActiveTintColor: '#FAFAFA',
           tabBarInactiveTintColor: COLORS.textDisabled,
