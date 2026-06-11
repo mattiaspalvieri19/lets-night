@@ -3,9 +3,10 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, M
 import QRCode from 'react-native-qrcode-svg';
 import * as ScreenCapture from 'expo-screen-capture';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 
 function TicketCard({ booking, onPress, onShowQR }) {
@@ -13,11 +14,11 @@ function TicketCard({ booking, onPress, onShowQR }) {
   const past = event ? isPastDate(event.event_date) : false;
 
   const statusColor = {
-    confirmed: '#4ADE80',
-    pending: '#FBBF24',
-    cancelled: '#F87171',
-    denied: '#F87171',
-  }[booking.status] || '#9CA3AF';
+    confirmed: COLORS.success,
+    pending: COLORS.warning,
+    cancelled: COLORS.danger,
+    denied: COLORS.danger,
+  }[booking.status] || COLORS.textSecondary;
 
   const statusLabel = {
     confirmed: 'Confermato',
@@ -30,48 +31,43 @@ function TicketCard({ booking, onPress, onShowQR }) {
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: '#18181f',
+        backgroundColor: COLORS.bgElev2,
         borderRadius: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: past ? 'rgba(168,85,247,0.06)' : 'rgba(168,85,247,0.18)',
+        marginBottom: 10,
         overflow: 'hidden',
         opacity: pressed ? 0.85 : past ? 0.65 : 1,
       })}
     >
-      {/* Accent line */}
-      <View style={{ height: 3, backgroundColor: past ? '#374151' : '#7C3AED' }} />
-
       <View style={{ padding: 16 }}>
         {/* Header row */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
               {event?.venues?.name || 'Locale'}
             </Text>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', lineHeight: 20 }} numberOfLines={2}>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16, lineHeight: 20, letterSpacing: -0.2 }} numberOfLines={2}>
               {event?.title || 'Evento'}
             </Text>
           </View>
-          <View style={{ backgroundColor: past ? 'rgba(55,65,81,0.4)' : 'rgba(74,222,128,0.1)', borderWidth: 1, borderColor: past ? 'rgba(55,65,81,0.6)' : `${statusColor}40`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-            <Text style={{ color: past ? '#6B7280' : statusColor, fontSize: 11, fontWeight: '700' }}>
+          <View style={{ backgroundColor: past ? COLORS.bgElev3 : `${statusColor}14`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+            <Text style={{ color: past ? COLORS.textMuted : statusColor, fontSize: 11, fontWeight: '700' }}>
               {past ? 'Passato' : statusLabel}
             </Text>
           </View>
         </View>
 
         {/* Date + time */}
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ flexDirection: 'row', gap: 18 }}>
           <View>
-            <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 2 }}>Data</Text>
-            <Text style={{ color: past ? '#6B7280' : '#fff', fontWeight: '600', fontSize: 13 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Data</Text>
+            <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '600', fontSize: 13 }}>
               {event ? formatDateFull(event.event_date) : '—'}
             </Text>
           </View>
           {event?.event_time && (
             <View>
-              <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 2 }}>Orario</Text>
-              <Text style={{ color: past ? '#6B7280' : '#fff', fontWeight: '600', fontSize: 13 }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Orario</Text>
+              <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '600', fontSize: 13 }}>
                 {formatTime(event.event_time)}
               </Text>
             </View>
@@ -79,20 +75,21 @@ function TicketCard({ booking, onPress, onShowQR }) {
         </View>
 
         {/* Footer */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.08)' }}>
-          <Text style={{ color: '#64748B', fontSize: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
             {event?.venues?.zona}, {event?.venues?.city}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ color: past ? '#6B7280' : '#A855F7', fontWeight: '700', fontSize: 14 }}>
+            <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
               {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
             </Text>
             {!past && booking.qr_code && onShowQR && (
               <Pressable
                 onPress={onShowQR}
-                style={{ backgroundColor: 'rgba(124,58,237,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandSubtle, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}
               >
-                <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '700' }}>QR</Text>
+                <Ionicons name="qr-code-outline" size={12} color={COLORS.brand} />
+                <Text style={{ color: COLORS.brand, fontSize: 12, fontWeight: '700' }}>QR</Text>
               </Pressable>
             )}
           </View>
@@ -160,48 +157,51 @@ export default function TicketsScreen() {
 
   if (loadingAuth) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} />
       </View>
     );
   }
 
   if (!session) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ fontSize: 44, marginBottom: 16 }}>🎟️</Text>
-        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textAlign: 'center', marginBottom: 8 }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.bgElev2, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="ticket-outline" size={32} color={COLORS.textSecondary} />
+        </View>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 8 }}>
           I tuoi biglietti
         </Text>
-        <Text style={{ color: '#64748B', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 32 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 30 }}>
           Accedi per vedere le tue prenotazioni e i biglietti degli eventi.
         </Text>
         <Pressable
           onPress={() => router.push('/auth/login')}
           style={({ pressed }) => ({
-            backgroundColor: '#7C3AED',
-            paddingHorizontal: 32,
-            paddingVertical: 14,
-            borderRadius: 10,
+            backgroundColor: COLORS.brandStrong,
+            paddingVertical: 15,
+            borderRadius: 12,
             width: '100%',
+            alignItems: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>Accedi</Text>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Accedi</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/auth/register')}
           style={({ pressed }) => ({
-            marginTop: 12,
-            paddingVertical: 14,
+            marginTop: 10,
+            paddingVertical: 15,
             width: '100%',
-            borderWidth: 1.5,
-            borderColor: 'rgba(168,85,247,0.3)',
-            borderRadius: 10,
+            borderWidth: 1,
+            borderColor: COLORS.borderStrong,
+            borderRadius: 12,
+            alignItems: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: '#A855F7', fontWeight: '600', fontSize: 14, textAlign: 'center' }}>
+          <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>
             Registrati gratis
           </Text>
         </Pressable>
@@ -216,53 +216,55 @@ export default function TicketsScreen() {
   const past = bookings.filter(b => b.events && (b.events.event_date < today || inactive(b)));
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(168,85,247,0.12)' }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 5 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 18 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
           I tuoi acquisti
         </Text>
-        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: -0.5 }}>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 28, letterSpacing: -0.6 }}>
           Biglietti
         </Text>
       </View>
 
       {loadingBookings ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color="#A855F7" size="large" />
+          <ActivityIndicator color={COLORS.brand} size="large" />
         </View>
       ) : fetchError ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>⚠️</Text>
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+          <Ionicons name="cloud-offline-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>
             Errore di connessione
           </Text>
-          <Text style={{ color: '#64748B', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
             Non riusciamo a caricare i tuoi biglietti. Controlla la connessione e riprova.
           </Text>
           <Pressable
             onPress={() => { setLoadingBookings(true); fetchBookings(session.user.id).finally(() => setLoadingBookings(false)); }}
-            style={({ pressed }) => ({ backgroundColor: '#7C3AED', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 10, opacity: pressed ? 0.85 : 1 })}
+            style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12, opacity: pressed ? 0.85 : 1 })}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Riprova</Text>
           </Pressable>
         </View>
       ) : bookings.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>🎟️</Text>
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+          <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.bgElev2, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+            <Ionicons name="ticket-outline" size={32} color={COLORS.textSecondary} />
+          </View>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>
             Nessuna prenotazione
           </Text>
-          <Text style={{ color: '#64748B', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
             Prenota il tuo primo evento e lo troverai qui.
           </Text>
           <Pressable
             onPress={() => router.push('/(tabs)')}
             style={({ pressed }) => ({
-              backgroundColor: '#7C3AED',
+              backgroundColor: COLORS.brandStrong,
               paddingHorizontal: 28,
-              paddingVertical: 12,
-              borderRadius: 10,
+              paddingVertical: 13,
+              borderRadius: 12,
               opacity: pressed ? 0.85 : 1,
             })}
           >
@@ -271,8 +273,8 @@ export default function TicketsScreen() {
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: 100 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
         >
           {/* Loyalty card sempre in evidenza */}
           <LoyaltyBlock points={loyaltyPoints} />
@@ -280,7 +282,7 @@ export default function TicketsScreen() {
           <View style={{ paddingHorizontal: 20 }}>
           {upcoming.length > 0 && (
             <View style={{ marginBottom: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 14 }}>
+              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, letterSpacing: -0.3, marginBottom: 12 }}>
                 Prossimi ({upcoming.length})
               </Text>
               {upcoming.map(b => (
@@ -296,7 +298,7 @@ export default function TicketsScreen() {
 
           {past.length > 0 && (
             <View>
-              <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '700', marginBottom: 14 }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '700', marginBottom: 12 }}>
                 Passati ({past.length})
               </Text>
               {past.map(b => (
@@ -317,19 +319,19 @@ export default function TicketsScreen() {
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}
           onPress={() => setQrModal(null)}
         >
-          <Pressable style={{ backgroundColor: '#111118', borderRadius: 24, padding: 28, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', width: '100%' }}>
-            <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Il tuo biglietto</Text>
-            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>{qrModal?.eventTitle}</Text>
-            <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 24 }}>{qrModal?.eventDate}</Text>
+          <Pressable style={{ backgroundColor: COLORS.bgElev2, borderRadius: 22, padding: 28, alignItems: 'center', width: '100%' }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Il tuo biglietto</Text>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>{qrModal?.eventTitle}</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 22 }}>{qrModal?.eventDate}</Text>
             <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 20 }}>
               {qrModal?.qr_code ? <QRCode value={qrModal.qr_code} size={200} /> : null}
             </View>
-            <Text style={{ color: '#64748B', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>Mostra questo QR code all&apos;ingresso</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20 }}>Mostra questo QR code all'ingresso</Text>
             <Pressable
               onPress={() => setQrModal(null)}
-              style={({ pressed }) => ({ paddingVertical: 12, paddingHorizontal: 40, borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)', borderRadius: 10, opacity: pressed ? 0.7 : 1 })}
+              style={({ pressed }) => ({ paddingVertical: 13, paddingHorizontal: 44, borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 12, opacity: pressed ? 0.7 : 1 })}
             >
-              <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>Chiudi</Text>
+              <Text style={{ color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 }}>Chiudi</Text>
             </Pressable>
           </Pressable>
         </Pressable>

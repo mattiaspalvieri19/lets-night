@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import EventCard from '../../components/EventCard';
 
 export default function VenueDetailScreen() {
@@ -37,7 +38,7 @@ export default function VenueDetailScreen() {
       const [{ data: upcoming }, { data: past }] = await Promise.all([
         supabase
           .from('events')
-          .select('*, venues(name, zona, city)')
+          .select('*, venues(name, zona, city, cover_image)')
           .eq('venue_id', id)
           .eq('is_active', true)
           .gte('event_date', today)
@@ -118,44 +119,62 @@ export default function VenueDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} size="large" />
       </View>
     );
   }
 
   if (notFound || !venue) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 8 }}>Locale non trovato</Text>
-        <Text style={{ color: '#64748B', textAlign: 'center' }}>Questo locale non esiste o è stato rimosso.</Text>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, marginBottom: 8 }}>Locale non trovato</Text>
+        <Text style={{ color: COLORS.textMuted, textAlign: 'center' }}>Questo locale non esiste o è stato rimosso.</Text>
       </View>
     );
   }
 
-  const heroColors = ['#1a0533', '#0d0d1a'];
-
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-      {/* Hero */}
-      <View style={{ height: 180, backgroundColor: heroColors[0], justifyContent: 'flex-end', padding: 20 }}>
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(124,58,237,0.08)' }} />
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+    <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      {/* Hero compatto: foto solo se il locale l'ha caricata */}
+      <View style={{ height: 190, backgroundColor: COLORS.bgElev1, justifyContent: 'flex-end', padding: 20, overflow: 'hidden' }}>
+        {venue.cover_image ? (
+          <>
+            <Image source={{ uri: venue.cover_image }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' }} />
+          </>
+        ) : (
+          <Text
+            numberOfLines={1}
+            style={{
+              position: 'absolute', bottom: -16, left: -6,
+              fontFamily: FONT_FAMILY.displayHeavy,
+              fontSize: 92, letterSpacing: -3,
+              color: COLORS.brand, opacity: 0.1,
+            }}
+          >
+            {(venue.category || 'Night').toUpperCase()}
+          </Text>
+        )}
+
+        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
           {venue.is_partner && (
-            <View style={{ backgroundColor: 'rgba(124,58,237,0.3)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-              <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '700' }}>★ PARTNER</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 6 }}>
+              <Ionicons name="star" size={10} color={COLORS.brand} />
+              <Text style={{ color: COLORS.brand, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>PARTNER</Text>
             </View>
           )}
           {venue.is_verified && (
-            <View style={{ backgroundColor: 'rgba(34,197,94,0.15)', borderWidth: 1, borderColor: 'rgba(74,222,128,0.4)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-              <Text style={{ color: '#4ADE80', fontSize: 11, fontWeight: '700' }}>✓ VERIFICATO</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 6 }}>
+              <Ionicons name="checkmark-circle" size={11} color={COLORS.success} />
+              <Text style={{ color: COLORS.success, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>VERIFICATO</Text>
             </View>
           )}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', lineHeight: 30 }}>{venue.name}</Text>
-            <Text style={{ color: '#A855F7', fontSize: 13, marginTop: 4 }}>{venue.zona}, {venue.city}</Text>
+            <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 27, lineHeight: 31, letterSpacing: -0.6 }}>{venue.name}</Text>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 4 }}>{venue.zona}, {venue.city}</Text>
           </View>
           <Pressable
             onPress={toggleFavorite}
@@ -163,16 +182,14 @@ export default function VenueDetailScreen() {
             hitSlop={8}
             style={({ pressed }) => ({
               width: 44, height: 44, borderRadius: 22,
-              backgroundColor: isFav ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.08)',
-              borderWidth: 1.5,
-              borderColor: isFav ? '#EF4444' : 'rgba(255,255,255,0.18)',
+              backgroundColor: 'rgba(0,0,0,0.55)',
               alignItems: 'center', justifyContent: 'center',
               opacity: favBusy || pressed ? 0.7 : 1,
             })}
           >
             {favBusy
-              ? <ActivityIndicator color={isFav ? '#EF4444' : '#fff'} size="small" />
-              : <Text style={{ fontSize: 20 }}>{isFav ? '❤️' : '🤍'}</Text>
+              ? <ActivityIndicator color={isFav ? COLORS.danger : '#fff'} size="small" />
+              : <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={20} color={isFav ? COLORS.danger : '#fff'} />
             }
           </Pressable>
         </View>
@@ -180,59 +197,67 @@ export default function VenueDetailScreen() {
 
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 100 }}>
         {/* Info */}
-        <View style={{ backgroundColor: '#18181f', borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)' }}>
+        <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 18, marginBottom: 16 }}>
           {venue.category && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-              <Text style={{ color: '#64748B', fontSize: 13 }}>Tipo</Text>
-              <Text style={{ color: '#fff', fontWeight: '600' }}>{venue.category}</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Tipo</Text>
+              <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{venue.category}</Text>
             </View>
           )}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: venue.phone ? 14 : 0 }}>
-            <Text style={{ color: '#64748B', fontSize: 13 }}>Zona</Text>
-            <Text style={{ color: '#fff', fontWeight: '600' }}>{venue.zona}, {venue.city}</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Zona</Text>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{venue.zona}, {venue.city}</Text>
           </View>
           {venue.phone && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: '#64748B', fontSize: 13 }}>Telefono</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Telefono</Text>
               <Pressable onPress={handlePhone}>
-                <Text style={{ color: '#A855F7', fontWeight: '600' }}>{venue.phone}</Text>
+                <Text style={{ color: COLORS.brand, fontWeight: '600' }}>{venue.phone}</Text>
               </Pressable>
             </View>
           )}
         </View>
 
         {/* Azioni */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 26 }}>
           <Pressable
             onPress={handleMaps}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#18181f', borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}
+            style={({ pressed }) => ({
+              flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 13,
+              opacity: pressed ? 0.8 : 1,
+            })}
           >
-            <Text style={{ fontSize: 18 }}>📍</Text>
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Apri in Maps</Text>
+            <Ionicons name="navigate-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>Apri in Maps</Text>
           </Pressable>
           {venue.phone && (
             <Pressable
               onPress={handlePhone}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#18181f', borderRadius: 12, paddingVertical: 13, borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}
+              style={({ pressed }) => ({
+                flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 13,
+                opacity: pressed ? 0.8 : 1,
+              })}
             >
-              <Text style={{ fontSize: 18 }}>📞</Text>
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Chiama</Text>
+              <Ionicons name="call-outline" size={16} color={COLORS.textSecondary} />
+              <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>Chiama</Text>
             </Pressable>
           )}
         </View>
 
         {/* Descrizione */}
         {venue.description ? (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 8 }}>Info</Text>
-            <Text style={{ color: '#9CA3AF', lineHeight: 22 }}>{venue.description}</Text>
+          <View style={{ marginBottom: 26 }}>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 8 }}>Info</Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 22 }}>{venue.description}</Text>
           </View>
         ) : null}
 
         {/* Prossimi eventi */}
         {upcomingEvents.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 14 }}>
+          <View style={{ marginBottom: 26 }}>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 12 }}>
               Prossimi eventi ({upcomingEvents.length})
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -246,10 +271,10 @@ export default function VenueDetailScreen() {
         )}
 
         {upcomingEvents.length === 0 && (
-          <View style={{ backgroundColor: '#18181f', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(168,85,247,0.1)' }}>
-            <Text style={{ fontSize: 32, marginBottom: 8 }}>🎉</Text>
-            <Text style={{ color: '#fff', fontWeight: '700', marginBottom: 4 }}>Nessun evento in programma</Text>
-            <Text style={{ color: '#64748B', textAlign: 'center', fontSize: 13 }}>Al momento non ci sono eventi programmati per questo locale.</Text>
+          <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 24, alignItems: 'center', marginBottom: 26 }}>
+            <Ionicons name="calendar-outline" size={26} color={COLORS.textMuted} style={{ marginBottom: 10 }} />
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4 }}>Nessun evento in programma</Text>
+            <Text style={{ color: COLORS.textMuted, textAlign: 'center', fontSize: 13 }}>Al momento non ci sono eventi programmati per questo locale.</Text>
           </View>
         )}
 
@@ -258,28 +283,35 @@ export default function VenueDetailScreen() {
           <View>
             <Pressable
               onPress={() => setShowPast(!showPast)}
-              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}
+              style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}
             >
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>
                 Ultimi eventi ({pastEvents.length})
               </Text>
-              <Text style={{ color: '#A855F7', fontSize: 14 }}>{showPast ? '▲ Nascondi' : '▼ Mostra'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{showPast ? 'Nascondi' : 'Mostra'}</Text>
+                <Ionicons name={showPast ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.textMuted} />
+              </View>
             </Pressable>
             {showPast && (
-              <View style={{ gap: 10 }}>
+              <View style={{ gap: 8 }}>
                 {pastEvents.map(ev => (
                   <Pressable
                     key={ev.id}
                     onPress={() => router.push(`/event/${ev.id}`)}
-                    style={{ backgroundColor: '#18181f', borderRadius: 12, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.08)', opacity: 0.7 }}
+                    style={({ pressed }) => ({
+                      backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14,
+                      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                      opacity: pressed ? 0.85 : 0.75,
+                    })}
                   >
                     <View style={{ flex: 1, marginRight: 12 }}>
-                      <Text style={{ color: '#fff', fontWeight: '600' }} numberOfLines={1}>{ev.title}</Text>
-                      <Text style={{ color: '#64748B', fontSize: 12, marginTop: 3 }}>
+                      <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }} numberOfLines={1}>{ev.title}</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
                         {formatDate(ev.event_date)} · {formatTime(ev.event_time)}
                       </Text>
                     </View>
-                    <Text style={{ color: '#64748B', fontSize: 13 }}>{getPriceLabel(ev.price)}</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{getPriceLabel(ev.price)}</Text>
                   </Pressable>
                 ))}
               </View>

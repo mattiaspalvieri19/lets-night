@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, I
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { getLoyaltyLevel } from '@lets-night/shared';
+import { getLoyaltyLevel, COLORS, FONT_FAMILY } from '@lets-night/shared';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 import EmptyState from '../../components/EmptyState';
 import ActivityCard from '../../components/ActivityCard';
@@ -85,7 +85,7 @@ export default function MyProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#A855F7" size="large" />
       </View>
     );
@@ -93,11 +93,11 @@ export default function MyProfileScreen() {
 
   if (!session) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(168,85,247,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
           <Text style={{ fontSize: 36 }}>🌙</Text>
         </View>
-        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', marginBottom: 8 }}>Il tuo profilo</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, marginBottom: 8 }}>Il tuo profilo</Text>
         <Text style={{ color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 21 }}>
           Accedi per vedere badge, livello e seguire i tuoi amici.
         </Text>
@@ -125,7 +125,7 @@ export default function MyProfileScreen() {
   const needsCompletion = profile && (!profile.avatar_url || !profile.phone);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       {/* Impostazioni — icona in alto a destra */}
       <Pressable
         onPress={() => router.push('/settings')}
@@ -159,7 +159,7 @@ export default function MyProfileScreen() {
             </View>
           )}
 
-          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{display}</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, letterSpacing: -0.5 }}>{display}</Text>
 
           {/* @handle + livello loyalty inline */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -245,7 +245,7 @@ export default function MyProfileScreen() {
         {/* Riga social compatta — toccabile */}
         <View style={{
           flexDirection: 'row', marginHorizontal: 20, marginTop: 14, marginBottom: 18,
-          backgroundColor: '#111118', borderRadius: 14,
+          backgroundColor: COLORS.bgElev2, borderRadius: 14,
           borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
         }}>
           <StatCell value={stats.followers} label="follower" onPress={() => router.push(`/user/${myId}`)} />
@@ -306,7 +306,7 @@ export default function MyProfileScreen() {
                 {unlockedBadges.map(m => (
                   <View key={m.id} style={{
                     width: '31%', alignItems: 'center',
-                    backgroundColor: '#111118', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
+                    backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
                     borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)',
                   }}>
                     <Text style={{ fontSize: 30, marginBottom: 6 }}>{m.icon || '🏆'}</Text>
@@ -340,7 +340,7 @@ function StatCell({ value, label, onPress }) {
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, alignItems: 'center', paddingVertical: 14, opacity: pressed ? 0.6 : 1 })}
     >
-      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>{value}</Text>
+      <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18 }}>{value}</Text>
       <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>{label}</Text>
     </Pressable>
   );
@@ -353,7 +353,7 @@ function VenueRow({ venue }) {
       onPress={() => router.push(`/venue/${venue.id}`)}
       style={({ pressed }) => ({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: '#111118', borderRadius: 12, padding: 14, marginBottom: 10,
+        backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 10,
         borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
         opacity: pressed ? 0.85 : 1,
       })}
