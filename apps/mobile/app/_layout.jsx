@@ -120,12 +120,14 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#0a0a0f' },
-          headerTintColor: '#A855F7',
-          headerTitleStyle: { fontWeight: 'bold', color: '#ffffff' },
-          contentStyle: { backgroundColor: '#0a0a0f' },
+          headerStyle: { backgroundColor: '#0A0A0C' },
+          headerTintColor: '#FAFAFA',
+          headerTitleStyle: { fontFamily: 'BricolageGrotesque_700Bold', color: '#FAFAFA', fontSize: 17 },
+          contentStyle: { backgroundColor: '#0A0A0C' },
           headerBackVisible: true,
-          headerBackTitleVisible: false,
+          // RN7: headerBackTitleVisible non esiste più — 'minimal' mostra solo il chevron
+          // (prima compariva il nome della route precedente, es. "(tabs)").
+          headerBackButtonDisplayMode: 'minimal',
           headerShadowVisible: false,
         }}
       >

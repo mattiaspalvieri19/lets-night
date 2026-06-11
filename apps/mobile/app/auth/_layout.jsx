@@ -4,10 +4,12 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#0a0a0f' },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: { fontWeight: 'bold' },
-        contentStyle: { backgroundColor: '#0a0a0f' },
+        headerStyle: { backgroundColor: '#0A0A0C' },
+        headerTintColor: '#FAFAFA',
+        headerTitleStyle: { fontFamily: 'BricolageGrotesque_700Bold', color: '#FAFAFA', fontSize: 17 },
+        contentStyle: { backgroundColor: '#0A0A0C' },
+        headerBackButtonDisplayMode: 'minimal',
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen name="login" options={{ title: 'Accedi' }} />

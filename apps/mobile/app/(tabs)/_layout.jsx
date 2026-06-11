@@ -1,20 +1,21 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '@lets-night/shared';
 
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         tabBarStyle: {
-          backgroundColor: '#09090f',
-          borderTopColor: 'rgba(168,85,247,0.2)',
+          backgroundColor: COLORS.bgElev1,
+          borderTopColor: COLORS.borderSubtle,
           borderTopWidth: 1,
         },
-        tabBarActiveTintColor: '#A855F7',
-        tabBarInactiveTintColor: '#3f3f5a',
-        headerStyle: { backgroundColor: '#09090f' },
-        headerTintColor: '#ffffff',
-        headerTitleStyle: { fontWeight: 'bold' },
+        tabBarActiveTintColor: '#FAFAFA',
+        tabBarInactiveTintColor: COLORS.textDisabled,
+        headerStyle: { backgroundColor: COLORS.bg },
+        headerTintColor: '#FAFAFA',
+        headerTitleStyle: { fontFamily: 'BricolageGrotesque_700Bold', fontSize: 17 },
       }}
     >
       <Tabs.Screen
@@ -33,7 +34,7 @@ export default function TabsLayout() {
           title: 'Cerca',
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" size={size} color={color} />
+            <Ionicons name="search" size={size} color={color} />
           ),
         }}
       />
