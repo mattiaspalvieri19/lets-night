@@ -1,34 +1,50 @@
-// Design tokens condivisi tra web e mobile.
-// Su web usare anche le CSS variables definite in globals.css.
-// Su mobile importare e usare i valori inline negli StyleSheet.
+// Design tokens condivisi tra web e mobile — direzione "Editoriale notturna".
+// Regole d'uso (non solo valori):
+// - Il viola è SOLO accento: CTA, stati attivi, link. Mai bordi decorativi o sfondi di sezione.
+// - Gerarchia data da tipografia (display) e spazio, non da bordi/gradienti.
+// - Niente emoji come icone: Ionicons (mobile) / SVG (web).
+// - Foto protagoniste dove esistono (events.cover_image, venues.cover_image);
+//   fallback tipografico, mai gradienti di categoria a tutta card.
 
 export const COLORS = {
-  // Backgrounds
-  bg:           '#09090f',
-  bgElev1:      '#0f0f17',
-  bgElev2:      '#111118',
-  bgElev3:      '#18181f',
+  // Backgrounds — neri neutri (niente dominante blu)
+  bg:           '#0A0A0C',
+  bgElev1:      '#101013',
+  bgElev2:      '#131316',
+  bgElev3:      '#1A1A1F',
 
-  // Text
-  textPrimary:   '#ffffff',
-  textSecondary: '#94A3B8',
-  textMuted:     '#64748B',
-  textDisabled:  '#475569',
+  // Text — scala zinc neutra
+  textPrimary:   '#FAFAFA',
+  textSecondary: '#A1A1AA',
+  textMuted:     '#71717A',
+  textDisabled:  '#52525B',
 
-  // Brand
+  // Brand — un solo accento, uso parco
   brand:         '#A855F7',
   brandStrong:   '#7C3AED',
   brandSubtle:   'rgba(168,85,247,0.12)',
   brandBorder:   'rgba(168,85,247,0.3)',
 
   // Borders
-  borderSubtle: 'rgba(255,255,255,0.06)',
-  borderStrong: 'rgba(255,255,255,0.12)',
+  borderSubtle: 'rgba(255,255,255,0.07)',
+  borderStrong: 'rgba(255,255,255,0.14)',
+
+  // Overlay fotografico (scrim per leggibilità testo su immagine)
+  scrim:        'rgba(0,0,0,0.55)',
 
   // Status
   success:      '#4ADE80',
   warning:      '#F59E0B',
   danger:       '#F87171',
+};
+
+// Famiglie font. Mobile: caricate in app/_layout via expo-font.
+// Web: caricare con next/font e mappare sulle stesse CSS variables.
+export const FONT_FAMILY = {
+  display:      'BricolageGrotesque_700Bold',
+  displayHeavy: 'BricolageGrotesque_800ExtraBold',
+  displayMedium:'BricolageGrotesque_600SemiBold',
+  // body = font di sistema (niente fontFamily): più leggibile e zero peso
 };
 
 export const RADIUS = {

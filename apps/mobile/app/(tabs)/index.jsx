@@ -3,7 +3,7 @@ import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator } from 
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { CATS, CITIES, QUICK_TAGS, isInDateRange } from '@lets-night/shared';
+import { CATS, CITIES, QUICK_TAGS, COLORS, FONT_FAMILY, isInDateRange, formatDate, todayLocal } from '@lets-night/shared';
 import EventCard from '../../components/EventCard';
 import FeaturedCard from '../../components/FeaturedCard';
 import EmptyState from '../../components/EmptyState';
@@ -53,7 +53,7 @@ export default function HomeScreen() {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('events')
-        .select('*, venues(name, zona, city, is_partner)')
+        .select('*, venues(name, zona, city, is_partner, cover_image)')
         .eq('is_active', true)
         .gte('event_date', today)
         .order('event_date', { ascending: true });
@@ -141,21 +141,23 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 4 }}>
-          <Text style={{ color: '#fff', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }}>
-            {"Let's"}<Text style={{ color: '#A855F7' }}>{"Night"}</Text>
+        {/* Header editoriale */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 4 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+            Milano · {formatDate(todayLocal())}
           </Text>
-          <Text style={{ color: '#64748B', marginTop: 4, fontSize: 14 }}>Cosa fai stasera?</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 34, lineHeight: 38, letterSpacing: -1 }}>
+            Cosa fai{'\n'}stasera?
+          </Text>
         </View>
 
         {/* City toggle — nascosto in modalità single-city */}
@@ -179,23 +181,23 @@ export default function HomeScreen() {
         )}
 
         {/* Search bar + filter button */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 14, gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginTop: 18, marginBottom: 14, gap: 10 }}>
           <View style={{
             flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
-            backgroundColor: '#111118', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)',
-            borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+            backgroundColor: COLORS.bgElev2,
+            borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
           }}>
-            <Text style={{ color: '#64748B', fontSize: 16 }}>🔍</Text>
+            <Ionicons name="search" size={16} color={COLORS.textMuted} />
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Cerca evento, locale o zona..."
-              placeholderTextColor="#64748B"
-              style={{ flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 }}
+              placeholder="Cerca evento, locale o zona"
+              placeholderTextColor={COLORS.textMuted}
+              style={{ flex: 1, color: COLORS.textPrimary, fontSize: 14, paddingVertical: 0 }}
             />
             {search.length > 0 && (
               <Pressable onPress={() => setSearch('')} hitSlop={8}>
-                <Text style={{ color: '#64748B', fontSize: 20, lineHeight: 22 }}>×</Text>
+                <Ionicons name="close" size={16} color={COLORS.textMuted} />
               </Pressable>
             )}
           </View>
@@ -203,50 +205,49 @@ export default function HomeScreen() {
             onPress={() => setAdvOpen(true)}
             style={({ pressed }) => ({
               width: 44, height: 44, borderRadius: 12,
-              backgroundColor: advActiveCount > 0 ? '#7C3AED' : '#111118',
-              borderWidth: 1,
-              borderColor: advActiveCount > 0 ? '#7C3AED' : 'rgba(168,85,247,0.25)',
+              backgroundColor: advActiveCount > 0 ? COLORS.brandStrong : COLORS.bgElev2,
               alignItems: 'center', justifyContent: 'center',
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Ionicons name="options" size={18} color={advActiveCount > 0 ? '#fff' : '#A855F7'} />
+            <Ionicons name="options" size={18} color={advActiveCount > 0 ? '#fff' : COLORS.textSecondary} />
             {advActiveCount > 0 && (
               <View style={{
                 position: 'absolute', top: -4, right: -4,
-                backgroundColor: '#FBBF24', borderRadius: 9, minWidth: 18, height: 18,
+                backgroundColor: '#fff', borderRadius: 9, minWidth: 18, height: 18,
                 alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
               }}>
-                <Text style={{ color: '#09090f', fontSize: 10, fontWeight: '800' }}>{advActiveCount}</Text>
+                <Text style={{ color: COLORS.bg, fontSize: 10, fontWeight: '800' }}>{advActiveCount}</Text>
               </View>
             )}
           </Pressable>
         </View>
 
-        {/* Category chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, paddingBottom: 6 }}>
-          {CATS.map(c => (
-            <Pressable
-              key={c}
-              onPress={() => setCat(c)}
-              style={{
-                paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                borderWidth: 1,
-                borderColor: cat === c ? '#A855F7' : 'rgba(255,255,255,0.08)',
-                backgroundColor: cat === c ? 'rgba(168,85,247,0.15)' : 'transparent',
-              }}
-            >
-              <Text style={{
-                color: cat === c ? '#fff' : '#94A3B8',
-                fontWeight: cat === c ? '600' : '500',
-                fontSize: 12,
-              }}>{c}</Text>
-            </Pressable>
-          ))}
+        {/* Category chips — attiva: bianco pieno */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 8 }}>
+          {CATS.map(c => {
+            const active = cat === c;
+            return (
+              <Pressable
+                key={c}
+                onPress={() => setCat(c)}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                  backgroundColor: active ? '#fff' : COLORS.bgElev2,
+                }}
+              >
+                <Text style={{
+                  color: active ? COLORS.bg : COLORS.textSecondary,
+                  fontWeight: active ? '700' : '500',
+                  fontSize: 13,
+                }}>{c}</Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
 
-        {/* Quick tags chips (Live Music, Gratis, Tavoli, Guestlist, After dinner) */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, paddingTop: 6 }}>
+        {/* Quick tags */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 2 }}>
           {QUICK_TAGS.map(t => {
             const active = quickTag === t;
             return (
@@ -254,15 +255,15 @@ export default function HomeScreen() {
                 key={t}
                 onPress={() => setQuickTag(active ? null : t)}
                 style={{
-                  paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
-                  backgroundColor: 'transparent',
+                  paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999,
                   borderWidth: 1,
-                  borderColor: active ? '#A855F7' : 'rgba(255,255,255,0.06)',
+                  borderColor: active ? '#fff' : COLORS.borderSubtle,
+                  backgroundColor: 'transparent',
                 }}
               >
                 <Text style={{
-                  color: active ? '#A855F7' : '#64748B',
-                  fontSize: 11,
+                  color: active ? '#fff' : COLORS.textMuted,
+                  fontSize: 12,
                   fontWeight: active ? '600' : '500',
                 }}>
                   {t}
@@ -273,13 +274,12 @@ export default function HomeScreen() {
         </ScrollView>
 
         {/* Section title */}
-        <View style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 16 }}>
-          <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 5 }}>
-            Stasera a {city}
+        <View style={{ paddingHorizontal: 20, marginTop: 28, marginBottom: 14, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 21, letterSpacing: -0.3 }}>
+            In programma
           </Text>
-          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.5 }}>
-            {'Trova il tuo '}
-            <Text style={{ color: '#A855F7' }}>momento</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
+            {sorted.length} {sorted.length === 1 ? 'evento' : 'eventi'}
           </Text>
         </View>
 
@@ -298,10 +298,10 @@ export default function HomeScreen() {
                 <FeaturedCard event={featured} onPress={() => router.push(`/event/${featured.id}`)} />
               </View>
             )}
-            {grid.length > 0 && (
+            {featured && grid.length > 0 && (
               <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
-                <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                  {featured ? 'Altri eventi' : 'Tutti gli eventi'}
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                  Altri eventi
                 </Text>
               </View>
             )}

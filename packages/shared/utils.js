@@ -30,10 +30,10 @@ export function formatTime(timeStr) {
   return timeStr ? timeStr.substring(0, 5) : '';
 }
 
-// "EUR 15" oppure "Gratuito" oppure "—" se prezzo non impostato
+// "15 €" oppure "Gratuito" oppure "—" se prezzo non impostato
 export function getPriceLabel(price) {
   if (price == null) return '—';
-  return price > 0 ? 'EUR ' + price : 'Gratuito';
+  return price > 0 ? price + ' €' : 'Gratuito';
 }
 
 export function isPastDate(dateStr) {

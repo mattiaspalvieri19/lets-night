@@ -11,6 +11,11 @@
 
 ALTER FUNCTION public.update_event_booked_count() SET search_path = public;
 
+-- La CREATE OR REPLACE della 20260610 aveva fatto perdere SECURITY DEFINER:
+-- senza, il trigger gira coi permessi dell'utente e la RLS su events blocca
+-- in silenzio l'aggiornamento di booked_count per le prenotazioni free client-side.
+ALTER FUNCTION public.update_event_booked_count() SECURITY DEFINER;
+
 REVOKE EXECUTE ON FUNCTION public.enforce_event_capacity()        FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.update_event_booked_count()     FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.update_loyalty_on_booking()     FROM PUBLIC, anon, authenticated;

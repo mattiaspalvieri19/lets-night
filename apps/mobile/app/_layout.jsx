@@ -1,10 +1,16 @@
 import '../global.css';
 import { useEffect, useRef } from 'react';
-import { Linking } from 'react-native';
+import { Linking, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
+import {
+  useFonts,
+  BricolageGrotesque_600SemiBold,
+  BricolageGrotesque_700Bold,
+  BricolageGrotesque_800ExtraBold,
+} from '@expo-google-fonts/bricolage-grotesque';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { isOnboarded, getGuestPrefs, clearGuestPrefs } from '../lib/onboarding';
@@ -37,6 +43,14 @@ async function handlePaymentReturnUrl(url) {
 
 export default function RootLayout() {
   const responseListener = useRef(null);
+  // Font display (Bricolage Grotesque). Lo Stack resta SEMPRE montato (vedi nota sotto):
+  // finché i font non sono pronti copriamo con un overlay — RN fa fallback al font di
+  // sistema sotto, e al load il re-render del layout applica il font corretto.
+  const [fontsLoaded] = useFonts({
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold,
+    BricolageGrotesque_800ExtraBold,
+  });
 
   // Gate onboarding: al primo avvio (flag AsyncStorage assente) redirige a /onboarding.
   // NB: lo <Stack> sotto va renderizzato SEMPRE — montare il navigatore in modo
@@ -130,6 +144,9 @@ export default function RootLayout() {
         <Stack.Screen name="settings/account" options={{ title: 'Elimina account' }} />
         <Stack.Screen name="business-event/[id]" options={{ title: 'Dettaglio evento' }} />
       </Stack>
+      {!fontsLoaded && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0A0A0C' }} />
+      )}
     </>
   );
 }

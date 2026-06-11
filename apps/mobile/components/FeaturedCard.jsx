@@ -1,65 +1,81 @@
-import { Pressable, View, Text } from 'react-native';
+import { Pressable, View, Text, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS_BY_CAT, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 
+// Card "in evidenza" editoriale: foto a tutta card con scrim per il testo.
+// Senza foto: fondo neutro + categoria in display gigante.
 export default function FeaturedCard({ event, onPress }) {
-  const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
-  const accent = accent || '#c084fc';
+  const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
+  const photo = event.cover_image || event.venues?.cover_image || null;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        borderRadius: 16,
+        height: 240,
+        borderRadius: 20,
         overflow: 'hidden',
-        borderWidth: 1.5,
-        borderColor: 'rgba(168,85,247,0.35)',
-        opacity: pressed ? 0.9 : 1,
+        backgroundColor: COLORS.bgElev2,
+        opacity: pressed ? 0.92 : 1,
       })}
     >
+      {photo ? (
+        <Image source={{ uri: photo }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+      ) : (
+        <Text
+          numberOfLines={1}
+          style={{
+            position: 'absolute', top: 44, left: -6,
+            fontFamily: FONT_FAMILY.displayHeavy,
+            fontSize: 110, letterSpacing: -4,
+            color: accent, opacity: 0.13,
+          }}
+        >
+          {(event.category || 'Night').toUpperCase()}
+        </Text>
+      )}
+      {/* Scrim fotografico: garantisce la leggibilità del testo in basso */}
       <LinearGradient
-        colors={[colors[0], colors[1]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ height: 200, padding: 16, justifyContent: 'space-between' }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ backgroundColor: 'rgba(124,58,237,0.35)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)' }}>
-            <Text style={{ color: '#A855F7', fontSize: 10, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase' }}>
-              ★ In Evidenza
-            </Text>
-          </View>
-          <View style={{ backgroundColor: accent + '33', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: accent, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>
-              {event.category}
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.85)']}
+        locations={[0.35, 0.65, 1]}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+
+      <View style={{ flex: 1, padding: 18, justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>
+              In evidenza · {event.category}
             </Text>
           </View>
         </View>
 
         <View>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+            {formatDate(event.event_date)} · {formatTime(event.event_time)}
+          </Text>
           <Text
             numberOfLines={2}
-            style={{ color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.5, lineHeight: 27, marginBottom: 10 }}
+            style={{
+              fontFamily: FONT_FAMILY.displayHeavy,
+              color: '#fff', fontSize: 27, lineHeight: 31, letterSpacing: -0.6,
+              marginBottom: 10,
+            }}
           >
             {event.title}
           </Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text numberOfLines={1} style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 3 }}>
-                {event.venues?.name}{event.venues?.zona ? ` · ${event.venues.zona}` : ''}
-              </Text>
-              <Text style={{ color: '#A855F7', fontSize: 12, fontWeight: '600' }}>
-                {formatDate(event.event_date)} · {formatTime(event.event_time)}
-              </Text>
-            </View>
-            <View style={{ backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' }}>
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <Text numberOfLines={1} style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, flex: 1, marginRight: 12 }}>
+              {event.venues?.name}{event.venues?.zona ? ` · ${event.venues.zona}` : ''}
+            </Text>
+            <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}>
+              <Text style={{ color: '#0A0A0C', fontSize: 14, fontWeight: '800' }}>
                 {getPriceLabel(event.price)}
               </Text>
             </View>
           </View>
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
