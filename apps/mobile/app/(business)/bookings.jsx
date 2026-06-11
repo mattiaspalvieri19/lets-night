@@ -25,7 +25,7 @@ export default function BusinessBookings() {
       supabase.from('bookings')
         .select('*, events!inner(id, title, event_date, event_time, venue_id), profiles(full_name, phone)')
         .eq('events.venue_id', v.id)
-        .neq('status', 'cancelled')
+        .not('status', 'in', '("cancelled","denied")')
         .order('created_at', { ascending: false }),
     ]);
     setEvents(evs || []);
@@ -39,10 +39,11 @@ export default function BusinessBookings() {
   async function handleCheckIn(bookingId, alreadyIn) {
     if (alreadyIn) return;
     setCheckingIn(bookingId);
+    // Conditional come lo scanner: se un altro device ha già fatto check-in, no-op.
     const { error } = await supabase.from('bookings').update({
       checked_in: true,
       checked_in_at: new Date().toISOString(),
-    }).eq('id', bookingId);
+    }).eq('id', bookingId).eq('checked_in', false);
     setCheckingIn(null);
     if (error) { Alert.alert('Errore', error.message); return; }
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: true } : b));

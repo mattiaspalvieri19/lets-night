@@ -28,7 +28,7 @@ const ENTRY_OPTIONS = [
 ];
 
 const EMPTY = {
-  cities: ['Milano', 'Roma'],
+  cities: [...CITIES],
   zone: 'all',
   cats: [],
   dateRange: 'all',

@@ -145,7 +145,7 @@ export default function SearchScreen() {
           Trova nella community
         </Text>
         <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>
-          Utenti, locali ed eventi a Milano e Roma
+          Utenti, locali ed eventi a Milano
         </Text>
       </View>
 

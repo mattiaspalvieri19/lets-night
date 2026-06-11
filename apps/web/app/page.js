@@ -112,7 +112,7 @@ export default function Home() {
       <div className="hero">
         <div className="hero-bg" />
         <div className="hero-content">
-          <div className="hero-badge" data-anim="up">Milano - Roma</div>
+          <div className="hero-badge" data-anim="up">Milano</div>
           <h1 className="hero-title" data-anim="up">Cosa fai<br /><em>stasera?!</em></h1>
           <p className="hero-sub" data-anim="up" data-delay="200">
             Discoteche, feste universitarie, cene show e molto altro.<br />
@@ -144,8 +144,6 @@ export default function Home() {
         <div className="stat"><span className="sn">{events.length}+</span><span className="sl">eventi attivi</span></div>
         <div className="stat-div" />
         <div className="stat"><span className="sn">80+</span><span className="sl">locali partner</span></div>
-        <div className="stat-div" />
-        <div className="stat"><span className="sn">2</span><span className="sl">citta</span></div>
         <div className="stat-div" />
         <div className="stat"><span className="sn">12k+</span><span className="sl">utenti attivi</span></div>
       </div>
@@ -368,7 +366,7 @@ export default function Home() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="ln-logo-sm">Let&apos;s<span>Night</span></div>
-            <p>Il TripAdvisor del divertimento.<br />Milano - Roma</p>
+            <p>Il TripAdvisor del divertimento.<br />Milano</p>
           </div>
           <div className="footer-links">
             <div className="fcol">

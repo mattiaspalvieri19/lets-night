@@ -3,7 +3,7 @@ import CustomCursor from "../components/CustomCursor";
 
 export const metadata = {
   title: "Let's Night — Cosa fai stasera?!",
-  description: "Discoteche, feste universitarie, cene show e molto altro a Milano e Roma.",
+  description: "Discoteche, feste universitarie, cene show e molto altro a Milano.",
 };
 
 export default function RootLayout({ children }) {

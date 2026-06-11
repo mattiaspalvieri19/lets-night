@@ -118,7 +118,7 @@ export default function PublicProfileScreen() {
         .from('bookings')
         .select('id, event_id, events(id, title, event_date, event_time, price, venues(name, zona, city))')
         .eq('user_id', id)
-        .neq('status', 'cancelled')
+        .not('status', 'in', '("cancelled","denied")')
         .order('created_at', { ascending: false });
       if (bErr) console.error('Errore bookings profilo:', bErr);
       const list = (all || []).filter(b => b.events);

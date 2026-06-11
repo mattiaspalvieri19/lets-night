@@ -54,7 +54,7 @@ export default function BusinessEventDetailScreen() {
       .from('bookings')
       .select('*, profiles(full_name, phone, birth_date, gender)')
       .eq('event_id', id)
-      .neq('status', 'cancelled')
+      .not('status', 'in', '("cancelled","denied")')
       .order('created_at', { ascending: false });
     setBookings(bks || []);
   }
@@ -72,10 +72,11 @@ export default function BusinessEventDetailScreen() {
 
   async function toggleCheckIn(bookingId, alreadyIn) {
     setCheckingIn(bookingId);
-    const { error } = await supabase.from('bookings').update({
-      checked_in: !alreadyIn,
-      checked_in_at: !alreadyIn ? new Date().toISOString() : null,
-    }).eq('id', bookingId);
+    // L'un-check NON azzera checked_in_at: preserva l'audit trail (parità col web).
+    const patch = alreadyIn
+      ? { checked_in: false }
+      : { checked_in: true, checked_in_at: new Date().toISOString() };
+    const { error } = await supabase.from('bookings').update(patch).eq('id', bookingId);
     setCheckingIn(null);
     if (error) { Alert.alert('Errore', error.message); return; }
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: !alreadyIn } : b));

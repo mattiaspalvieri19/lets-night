@@ -117,7 +117,7 @@ export default function SearchPage() {
       <div className="search-container">
         <div className="search-hero">
           <h1>Cerca</h1>
-          <p>Utenti, locali ed eventi a Milano e Roma</p>
+          <p>Utenti, locali ed eventi a Milano</p>
         </div>
 
         <div className="search-bar">

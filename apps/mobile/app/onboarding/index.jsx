@@ -40,9 +40,8 @@ export default function OnboardingScreen() {
 
   async function handleNotifPermission() {
     try {
-      const { status } = await Notifications.requestPermissionsAsync();
       // Risposta utente: success o deny — in entrambi i casi avanziamo.
-      console.log('Notif permission:', status);
+      await Notifications.requestPermissionsAsync();
     } catch (e) {
       console.warn('Notif permission error:', e);
     } finally {
@@ -117,7 +116,7 @@ export default function OnboardingScreen() {
                 Benvenuto su{'\n'}<Text style={{ color: '#A855F7' }}>Let&apos;s Night</Text>
               </Text>
               <Text style={{ color: '#94A3B8', fontSize: 15, textAlign: 'center', marginTop: 16, lineHeight: 22 }}>
-                Il TripAdvisor del divertimento.{'\n'}Milano · Roma
+                Il TripAdvisor del divertimento.{'\n'}Milano
               </Text>
             </View>
             <View style={{ gap: 14, marginBottom: 30 }}>

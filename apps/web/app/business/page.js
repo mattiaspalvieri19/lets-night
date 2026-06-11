@@ -71,7 +71,7 @@ export default function BusinessLanding() {
         </div>
         <div className="biz-grid">
           {[
-            { t:'Visibilita immediata', d:'Appari subito agli utenti di Milano e Roma che cercano eventi stasera. Algoritmo di scoperta intelligente.' },
+            { t:'Visibilita immediata', d:'Appari subito agli utenti di Milano che cercano eventi stasera. Algoritmo di scoperta intelligente.' },
             { t:'Prenotazioni automatiche', d:'I clienti prenotano direttamente dall app. Tu ricevi conferma istantanea via email e vedi tutto in dashboard.' },
             { t:'Dashboard completa', d:'Statistiche in tempo reale, gestione eventi, modifica prezzi e capienza. Controllo totale sul tuo locale.' },
             { t:'Sponsorizzazioni', d:'Vuoi massima visibilita? Attiva il badge sponsorizzato e appari in cima ai risultati nella tua categoria.' },

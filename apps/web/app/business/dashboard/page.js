@@ -84,10 +84,11 @@ export default function BusinessDashboard() {
 
   async function handleCheckIn(bookingId, alreadyIn) {
     if (alreadyIn) return;
+    // Conditional come lo scanner: se un altro device ha già fatto check-in, no-op.
     const { error } = await supabase.from('bookings').update({
       checked_in: true,
       checked_in_at: new Date().toISOString(),
-    }).eq('id', bookingId);
+    }).eq('id', bookingId).eq('checked_in', false);
     if (error) { alert('Errore: ' + error.message); return; }
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: true } : b));
   }

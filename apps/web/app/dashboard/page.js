@@ -76,8 +76,9 @@ export default function DashboardPage() {
   const display = profile?.display_name || profile?.full_name || user?.email?.split('@')[0] || 'Utente';
   const handle = profile?.username ? `@${profile.username}` : null;
   const today = todayLocal();
-  const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && b.status !== 'cancelled');
-  const past = bookings.filter(b => b.events && (b.events.event_date < today || b.status === 'cancelled'));
+  const inactive = b => b.status === 'cancelled' || b.status === 'denied';
+  const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && !inactive(b));
+  const past = bookings.filter(b => b.events && (b.events.event_date < today || inactive(b)));
   const ll = getLoyaltyLevel(profile?.loyalty_points || 0);
 
   return (
@@ -168,7 +169,7 @@ export default function DashboardPage() {
                         <span className="dash-booking-date">{formatDateFull(b.events?.event_date)}</span>
                       </div>
                       <div className="dash-booking-status">
-                        <span className={'dash-status dash-status-' + b.status}>{b.status === 'cancelled' ? 'annullato' : 'passato'}</span>
+                        <span className={'dash-status dash-status-' + b.status}>{b.status === 'cancelled' ? 'annullato' : b.status === 'denied' ? 'rimborsato' : 'passato'}</span>
                         <strong>EUR {b.total_price}</strong>
                       </div>
                     </div>

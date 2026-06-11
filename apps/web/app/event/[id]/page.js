@@ -575,7 +575,7 @@ export default function EventDetailPage({ params }) {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="ln-logo-sm">Let&apos;s<span>Night</span></div>
-            <p>Il TripAdvisor del divertimento.<br />Milano - Roma</p>
+            <p>Il TripAdvisor del divertimento.<br />Milano</p>
           </div>
           <div className="footer-links">
             <div className="fcol">

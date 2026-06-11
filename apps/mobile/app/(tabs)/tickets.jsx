@@ -16,12 +16,14 @@ function TicketCard({ booking, onPress, onShowQR }) {
     confirmed: '#4ADE80',
     pending: '#FBBF24',
     cancelled: '#F87171',
+    denied: '#F87171',
   }[booking.status] || '#9CA3AF';
 
   const statusLabel = {
     confirmed: 'Confermato',
     pending: 'In attesa',
     cancelled: 'Annullato',
+    denied: 'Rimborsato',
   }[booking.status] || booking.status;
 
   return (
@@ -209,8 +211,9 @@ export default function TicketsScreen() {
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && b.status !== 'cancelled');
-  const past = bookings.filter(b => b.events && (b.events.event_date < today || b.status === 'cancelled'));
+  const inactive = b => b.status === 'cancelled' || b.status === 'denied';
+  const upcoming = bookings.filter(b => b.events && b.events.event_date >= today && !inactive(b));
+  const past = bookings.filter(b => b.events && (b.events.event_date < today || inactive(b)));
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
