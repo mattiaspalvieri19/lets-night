@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Linking, Image } from 'react-native';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Linking } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatDate, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
 import BookingModal from '../../components/BookingModal';
 import { scheduleEventReminder, cancelReminder } from '../../lib/notifications';
 
@@ -25,7 +23,7 @@ export default function EventDetailScreen() {
       setLoading(true);
       const { data, error } = await supabase
         .from('events')
-        .select('*, venues(id, name, zona, city, address, phone, description, category, cover_image)')
+        .select('*, venues(id, name, zona, city, address, phone, description, category)')
         .eq('id', id)
         .eq('is_active', true)
         .maybeSingle();
@@ -54,7 +52,7 @@ export default function EventDetailScreen() {
   async function handleShare() {
     if (!event) return;
     await Share.share({
-      message: `${event.title} — ${event.venues?.name}\n${formatDate(event.event_date)} alle ${formatTime(event.event_time)}\n\nTrova questo evento su Let's Night!`,
+      message: `${event.title} — ${event.venues?.name}\n${formatDateFull(event.event_date)} alle ${formatTime(event.event_time)}\n\nTrova questo evento su Let's Night!`,
     });
   }
 
@@ -106,236 +104,182 @@ export default function EventDetailScreen() {
     );
   }
 
-  async function toggleReminder() {
-    if (reminderId) {
-      await cancelReminder(reminderId);
-      setReminderId(null);
-      Alert.alert('Promemoria rimosso', 'Non riceverai più la notifica per questo evento.');
-    } else {
-      const rid = await scheduleEventReminder(event);
-      if (rid) {
-        setReminderId(rid);
-        Alert.alert('Promemoria impostato', 'Ti avviseremo 24 ore prima dell\'evento.');
-      } else {
-        Alert.alert('Non disponibile', 'L\'evento è tra meno di 24 ore o già passato.');
-      }
-    }
-  }
-
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <Stack.Screen options={{ title: '', headerTransparent: true }} />
-        <ActivityIndicator color={COLORS.brand} size="large" />
+      <View className="flex-1 bg-dark items-center justify-center">
+        <ActivityIndicator color="#A855F7" size="large" />
       </View>
     );
   }
 
   if (notFound || !event) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-        <Stack.Screen options={{ title: '', headerTransparent: true }} />
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, marginBottom: 8 }}>Evento non trovato</Text>
-        <Text style={{ color: COLORS.textMuted, textAlign: 'center' }}>Questo evento non esiste o è stato rimosso.</Text>
+      <View className="flex-1 bg-dark items-center justify-center px-6">
+        <Text className="text-white text-xl font-bold mb-2">Evento non trovato</Text>
+        <Text className="text-gray-400 text-center">Questo evento non esiste o è stato rimosso.</Text>
       </View>
     );
   }
 
-  const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
-  const photo = event.cover_image || event.venues?.cover_image || null;
-  const past = isPastDate(event.event_date);
-
-  const hasCapacity = event.capacity != null && event.capacity > 0;
-  const available = hasCapacity ? event.capacity - (event.booked_count || 0) : null;
-  const availPct = hasCapacity ? Math.round((available / event.capacity) * 100) : null;
-  const availColor = !hasCapacity || availPct >= 50 ? COLORS.success : availPct >= 20 ? COLORS.warning : COLORS.danger;
-  const soldOut = hasCapacity && available <= 0;
-
-  const detailChips = [
-    event.music_type,
-    event.dress_code,
-    event.age_target,
-    ...(event.tags || []),
-  ].filter(Boolean);
+  const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
+  const isPast = isPastDate(event.event_date);
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <Stack.Screen options={{ title: '', headerTransparent: true }} />
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-        {/* Hero foto-first */}
-        <View style={{ height: 380, backgroundColor: COLORS.bgElev1, overflow: 'hidden' }}>
-          {photo ? (
-            <Image source={{ uri: photo }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-          ) : (
-            <Text
-              numberOfLines={1}
-              style={{
-                position: 'absolute', top: 120, left: -8,
-                fontFamily: FONT_FAMILY.displayHeavy,
-                fontSize: 130, letterSpacing: -5,
-                color: accent, opacity: 0.12,
-              }}
-            >
-              {(event.category || 'Night').toUpperCase()}
-            </Text>
-          )}
-          {/* Scrim alto (leggibilità back chevron) + basso (testo) */}
-          <LinearGradient
-            colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']}
-            locations={[0, 1]}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 120 }}
-          />
-          <LinearGradient
-            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
-            locations={[0.3, 0.65, 1]}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          />
-
-          {/* Badge in alto a destra */}
-          <View style={{ position: 'absolute', top: 64, right: 16, flexDirection: 'row', gap: 6 }}>
-            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                {event.category}
-              </Text>
+    <>
+      <ScrollView className="flex-1 bg-dark">
+        {/* Hero */}
+        <View style={{ backgroundColor: colors[0], height: 200 }} className="relative justify-end p-5">
+          <View className="absolute top-4 right-4">
+            <View className="bg-black/40 px-3 py-1 rounded-full">
+              <Text className="text-white text-xs font-semibold">{event.category}</Text>
             </View>
+          </View>
+          <View style={{ position: 'absolute', top: 16, left: 16, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
             {event.is_sponsored && (
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
-                <Text style={{ color: COLORS.warning, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>SPONSOR</Text>
+              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(202,138,4,0.25)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)' }}>
+                <Text style={{ color: '#FBBF24', fontSize: 11, fontWeight: '700' }}>★ SPONSOR</Text>
               </View>
             )}
-            {past && (
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>PASSATO</Text>
+            {event.is_hot && !isPast && (
+              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(239,68,68,0.2)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }}>
+                <Text style={{ color: '#F87171', fontSize: 11, fontWeight: '700' }}>🔥 HOT</Text>
+              </View>
+            )}
+            {isPast && (
+              <View className="bg-gray-800/80 px-3 py-1 rounded-full">
+                <Text className="text-gray-400 text-xs">Evento passato</Text>
               </View>
             )}
           </View>
-
-          {/* Blocco titolo */}
-          <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 20 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8 }}>
-              {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'}
-            </Text>
-            <Text
-              numberOfLines={3}
-              style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 32, lineHeight: 36, letterSpacing: -0.8, marginBottom: 10 }}
-            >
-              {event.title}
-            </Text>
-            {event.venues?.id && (
-              <Pressable onPress={() => router.push(`/venue/${event.venues.id}`)} hitSlop={6} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600' }}>
-                  {event.venues.name} · {event.venues.zona}
-                </Text>
-                <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.55)" />
-              </Pressable>
-            )}
-          </View>
+          <Text className="text-white text-2xl font-bold leading-tight">{event.title}</Text>
+          <Text className="text-gray-300 mt-1">{event.venues?.name}</Text>
         </View>
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          {/* Chip dettagli (musica, dress code, età, tag) */}
-          {detailChips.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {detailChips.map(c => (
-                <View key={c} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6 }}>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '500' }}>{c}</Text>
+        <View className="px-5 pt-5 pb-10">
+          {/* Info principali */}
+          <View className="bg-card rounded-2xl p-5 mb-4">
+            <View className="flex-row justify-between mb-4">
+              <View>
+                <Text className="text-gray-400 text-xs mb-1">Data</Text>
+                <Text className="text-white font-semibold">{formatDateFull(event.event_date)}</Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-gray-400 text-xs mb-1">Orario</Text>
+                <Text className="text-white font-semibold">{formatTime(event.event_time) || '—'}</Text>
+              </View>
+            </View>
+            <View className="flex-row justify-between">
+              <View>
+                <Text className="text-gray-400 text-xs mb-1">Dove</Text>
+                {event.venues?.id ? (
+                  <Pressable onPress={() => router.push(`/venue/${event.venues.id}`)}>
+                    <Text className="text-brand-light font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
+                  </Pressable>
+                ) : (
+                  <Text className="text-white font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
+                )}
+              </View>
+              <View className="items-end">
+                <Text className="text-gray-400 text-xs mb-1">Prezzo</Text>
+                <Text className="text-brand font-bold text-lg">{getPriceLabel(event.price)}</Text>
+              </View>
+            </View>
+            {event.capacity != null && event.capacity > 0 && (() => {
+              const available = event.capacity - (event.booked_count || 0);
+              const pct = Math.round((available / event.capacity) * 100);
+              const color = pct >= 50 ? '#4ADE80' : pct >= 20 ? '#FBBF24' : '#F87171';
+              return (
+                <View className="flex-row justify-between mt-4 pt-4 border-t border-gray-800">
+                  <Text className="text-gray-400 text-xs self-center">Disponibilità</Text>
+                  <Text style={{ color, fontWeight: '600', fontSize: 13 }}>{available} / {event.capacity} posti</Text>
                 </View>
-              ))}
-            </View>
-          )}
-
-          {/* Disponibilità */}
-          {hasCapacity && !past && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: availColor }} />
-              <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>
-                {soldOut
-                  ? 'Posti esauriti'
-                  : `${available} ${available === 1 ? 'posto disponibile' : 'posti disponibili'} su ${event.capacity}`}
-              </Text>
-            </View>
-          )}
-
-          {/* Azioni secondarie */}
-          {!past && (
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
-              <Pressable
-                onPress={handleShare}
-                style={({ pressed }) => ({
-                  flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 13,
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Ionicons name="share-outline" size={16} color={COLORS.textSecondary} />
-                <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>Condividi</Text>
-              </Pressable>
-              <Pressable
-                onPress={toggleReminder}
-                style={({ pressed }) => ({
-                  flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  backgroundColor: reminderId ? COLORS.brandSubtle : COLORS.bgElev2,
-                  borderRadius: 12, paddingVertical: 13,
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Ionicons name={reminderId ? 'notifications' : 'notifications-outline'} size={16} color={reminderId ? COLORS.brand : COLORS.textSecondary} />
-                <Text style={{ color: reminderId ? COLORS.brand : COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>
-                  {reminderId ? 'Promemoria attivo' : 'Ricordamelo'}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-
-          {/* Descrizione */}
-          {event.description ? (
-            <View style={{ marginBottom: 28 }}>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 10 }}>
-                Descrizione
-              </Text>
-              <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 22 }}>{event.description}</Text>
-            </View>
-          ) : null}
+              );
+            })()}
+          </View>
 
           {/* Locale */}
           {event.venues?.id && (
-            <View style={{ marginBottom: 28 }}>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 10 }}>
-                Il locale
+            <Pressable
+              onPress={() => router.push(`/venue/${event.venues.id}`)}
+              className="bg-card rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+            >
+              <View className="flex-1">
+                <Text className="text-gray-400 text-xs mb-1">Locale</Text>
+                <Text className="text-white font-semibold">{event.venues.name}</Text>
+                <Text className="text-gray-400 text-sm">{event.venues.zona}, {event.venues.city}</Text>
+              </View>
+              <Text className="text-brand-light text-lg">›</Text>
+            </Pressable>
+          )}
+
+          {/* Mappa */}
+          <Pressable
+            onPress={handleMaps}
+            className="bg-card rounded-2xl p-4 mb-4 flex-row items-center gap-3"
+          >
+            <Text style={{ fontSize: 22 }}>📍</Text>
+            <View className="flex-1">
+              <Text className="text-white font-semibold">Apri in Maps</Text>
+              <Text className="text-gray-400 text-sm" numberOfLines={1}>
+                {event.venues?.address || `${event.venues?.zona}, ${event.venues?.city}`}
               </Text>
+            </View>
+            <Text className="text-brand-light">›</Text>
+          </Pressable>
+
+          {/* Descrizione */}
+          {event.description ? (
+            <View className="mb-4">
+              <Text className="text-white font-semibold text-base mb-2">Descrizione</Text>
+              <Text className="text-gray-400 leading-6">{event.description}</Text>
+            </View>
+          ) : null}
+
+          {/* Bottoni azione */}
+          {!isPast && (
+            <View className="gap-3 mb-6">
+              <View className="flex-row gap-3">
+                <Pressable
+                  onPress={handleBook}
+                  className="flex-1 bg-brand rounded-xl py-4 items-center"
+                >
+                  <Text className="text-white font-bold text-base">Prenota</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleShare}
+                  className="border border-gray-700 rounded-xl py-4 px-5 items-center"
+                >
+                  <Text className="text-white">Condividi</Text>
+                </Pressable>
+              </View>
+              {/* Promemoria */}
               <Pressable
-                onPress={() => router.push(`/venue/${event.venues.id}`)}
+                onPress={async () => {
+                  if (reminderId) {
+                    await cancelReminder(reminderId);
+                    setReminderId(null);
+                    Alert.alert('Promemoria rimosso', 'Non riceverai più la notifica per questo evento.');
+                  } else {
+                    const id = await scheduleEventReminder(event);
+                    if (id) {
+                      setReminderId(id);
+                      Alert.alert('Promemoria impostato', 'Ti avviseremo 24 ore prima dell\'evento.');
+                    } else {
+                      Alert.alert('Non disponibile', 'L\'evento è tra meno di 24 ore o già passato.');
+                    }
+                  }
+                }}
                 style={({ pressed }) => ({
-                  backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16,
-                  flexDirection: 'row', alignItems: 'center', gap: 12,
-                  opacity: pressed ? 0.85 : 1,
+                  borderWidth: 1,
+                  borderColor: reminderId ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)',
+                  borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+                  backgroundColor: reminderId ? 'rgba(168,85,247,0.1)' : 'transparent',
+                  opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 15, marginBottom: 2 }}>{event.venues.name}</Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
-                    {event.venues.category} · {event.venues.zona}, {event.venues.city}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-              </Pressable>
-              <Pressable
-                onPress={handleMaps}
-                style={({ pressed }) => ({
-                  backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, marginTop: 8,
-                  flexDirection: 'row', alignItems: 'center', gap: 12,
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Ionicons name="navigate-outline" size={18} color={COLORS.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }}>Apri in Maps</Text>
-                  <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
-                    {event.venues.address || `${event.venues.zona}, ${event.venues.city}`}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                <Text style={{ color: reminderId ? '#A855F7' : '#9CA3AF', fontSize: 14, fontWeight: '600' }}>
+                  {reminderId ? '🔔 Promemoria impostato' : '🔔 Ricordami 24h prima'}
+                </Text>
               </Pressable>
             </View>
           )}
@@ -343,27 +287,23 @@ export default function EventDetailScreen() {
           {/* Altri eventi del locale */}
           {otherEvents.length > 0 && (
             <View>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 10 }}>
+              <Text className="text-white font-semibold text-base mb-3">
                 Altri eventi a {event.venues?.name}
               </Text>
-              <View style={{ gap: 8 }}>
+              <View className="gap-3">
                 {otherEvents.map(ev => (
                   <Pressable
                     key={ev.id}
                     onPress={() => router.push(`/event/${ev.id}`)}
-                    style={({ pressed }) => ({
-                      backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 14,
-                      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                      opacity: pressed ? 0.85 : 1,
-                    })}
+                    className="bg-card rounded-xl p-4 flex-row justify-between items-center"
                   >
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                      <Text numberOfLines={1} style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }}>{ev.title}</Text>
-                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
-                        {formatDate(ev.event_date)} · {formatTime(ev.event_time)}
+                    <View className="flex-1 mr-3">
+                      <Text className="text-white font-semibold" numberOfLines={1}>{ev.title}</Text>
+                      <Text className="text-gray-400 text-sm mt-1">
+                        {formatDateFull(ev.event_date)} · {formatTime(ev.event_time)}
                       </Text>
                     </View>
-                    <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 13 }}>{getPriceLabel(ev.price)}</Text>
+                    <Text className="text-brand font-semibold">{getPriceLabel(ev.price)}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -372,46 +312,12 @@ export default function EventDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Barra prenotazione fissa */}
-      <View style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0,
-        backgroundColor: COLORS.bg,
-        borderTopWidth: 1, borderTopColor: COLORS.borderSubtle,
-        paddingHorizontal: 20, paddingTop: 14, paddingBottom: 34,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <View>
-          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 2 }}>
-            Prezzo
-          </Text>
-          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 22, letterSpacing: -0.4 }}>
-            {getPriceLabel(event.price)}
-          </Text>
-        </View>
-        {past ? (
-          <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingHorizontal: 26, paddingVertical: 14 }}>
-            <Text style={{ color: COLORS.textMuted, fontWeight: '700', fontSize: 15 }}>Evento passato</Text>
-          </View>
-        ) : (
-          <Pressable
-            onPress={handleBook}
-            style={({ pressed }) => ({
-              backgroundColor: COLORS.brandStrong, borderRadius: 12,
-              paddingHorizontal: 34, paddingVertical: 14,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Prenota</Text>
-          </Pressable>
-        )}
-      </View>
-
       <BookingModal
         visible={bookingVisible}
         onClose={() => setBookingVisible(false)}
         event={event}
         session={session}
       />
-    </View>
+    </>
   );
 }
