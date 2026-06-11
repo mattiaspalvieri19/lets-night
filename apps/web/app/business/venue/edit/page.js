@@ -212,11 +212,13 @@ export default function BusinessVenueEdit() {
                   {CATS_NO_TUTTI.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </Field>
-              <Field label="Città" required>
-                <select className="auth-input" value={form.city} onChange={e => setField('city', e.target.value)}>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </Field>
+              {CITIES.length > 1 && (
+                <Field label="Città" required>
+                  <select className="auth-input" value={form.city} onChange={e => setField('city', e.target.value)}>
+                    {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+              )}
               <Field label="Zona">
                 <input className="auth-input" value={form.zona} onChange={e => setField('zona', e.target.value)} maxLength={50} placeholder="Es. Navigli, Trastevere" />
               </Field>

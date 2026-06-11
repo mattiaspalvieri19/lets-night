@@ -143,13 +143,15 @@ export default function AdvancedFiltersModal({
 
           <ScrollView style={{ paddingHorizontal: 20 }} contentContainerStyle={{ paddingTop: 18, paddingBottom: 20 }}>
 
-            {/* Città */}
-            <Section title="Città">
-              {CITIES.map(c => (
-                <Chip key={c} label={c} active={state.cities.includes(c)}
-                  onPress={() => toggle('cities', c)} />
-              ))}
-            </Section>
+            {/* Città — nascosta in modalità single-city (CITIES.length === 1) */}
+            {CITIES.length > 1 && (
+              <Section title="Città">
+                {CITIES.map(c => (
+                  <Chip key={c} label={c} active={state.cities.includes(c)}
+                    onPress={() => toggle('cities', c)} />
+                ))}
+              </Section>
+            )}
 
             {/* Zona */}
             {zones.length > 1 && (

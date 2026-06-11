@@ -50,7 +50,7 @@ function ExplorePageInner() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [search, setSearch] = useState('');
-  const [selectedCities, setSelectedCities] = useState(['Milano','Roma']);
+  const [selectedCities, setSelectedCities] = useState([...CITIES]);
   const [selectedCats, setSelectedCats] = useState([]);
   const [selectedZone, setSelectedZone] = useState('all');
   const [dateRange, setDateRange] = useState('all');
@@ -130,7 +130,7 @@ function ExplorePageInner() {
   }
   function resetFilters() {
     setSearch('');
-    setSelectedCities(['Milano','Roma']);
+    setSelectedCities([...CITIES]);
     setSelectedCats([]);
     setSelectedZone('all');
     setDateRange('all');
@@ -201,7 +201,7 @@ function ExplorePageInner() {
 
   const activeFiltersCount =
     (search ? 1 : 0) +
-    (selectedCities.length < 2 ? 1 : 0) +
+    (selectedCities.length < CITIES.length ? 1 : 0) +
     selectedCats.length +
     (selectedZone !== 'all' ? 1 : 0) +
     (dateRange !== 'all' ? 1 : 0) +
@@ -255,17 +255,19 @@ function ExplorePageInner() {
             <button className="xp-filters-close" onClick={() => setFiltersOpen(false)}>×</button>
           </div>
 
-          <div className="xp-filter-group">
-            <label className="xp-filter-label">Citta</label>
-            <div className="xp-checkbox-grid">
-              {CITIES.map(c => (
-                <label key={c} className={'xp-chip ' + (selectedCities.includes(c) ? 'active' : '')}>
-                  <input type="checkbox" checked={selectedCities.includes(c)} onChange={() => toggleCity(c)} />
-                  <span>{c}</span>
-                </label>
-              ))}
+          {CITIES.length > 1 && (
+            <div className="xp-filter-group">
+              <label className="xp-filter-label">Citta</label>
+              <div className="xp-checkbox-grid">
+                {CITIES.map(c => (
+                  <label key={c} className={'xp-chip ' + (selectedCities.includes(c) ? 'active' : '')}>
+                    <input type="checkbox" checked={selectedCities.includes(c)} onChange={() => toggleCity(c)} />
+                    <span>{c}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="xp-filter-group">
             <label className="xp-filter-label">Categoria</label>

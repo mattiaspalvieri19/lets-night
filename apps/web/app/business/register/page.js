@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
-import { CATS_NO_TUTTI } from '@lets-night/shared';
+import { CATS_NO_TUTTI, CITIES } from '@lets-night/shared';
 
 export default function BusinessRegister() {
   const router = useRouter();
@@ -104,13 +104,14 @@ export default function BusinessRegister() {
                 {CATS_NO_TUTTI.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div className="auth-field">
-              <label>Citta</label>
-              <select value={form.city} onChange={handleChange('city')}>
-                <option value="Milano">Milano</option>
-                <option value="Roma">Roma</option>
-              </select>
-            </div>
+            {CITIES.length > 1 && (
+              <div className="auth-field">
+                <label>Citta</label>
+                <select value={form.city} onChange={handleChange('city')}>
+                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="auth-field">

@@ -262,12 +262,14 @@ export default function EditProfilePage() {
             </div>
 
             <div className="auth-row">
-              <div className="auth-field">
-                <label>Città</label>
-                <select value={form.city} onChange={e => update('city', e.target.value)}>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+              {CITIES.length > 1 && (
+                <div className="auth-field">
+                  <label>Città</label>
+                  <select value={form.city} onChange={e => update('city', e.target.value)}>
+                    {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="auth-field">
                 <label>Data di nascita</label>
                 <input type="text" value={birthDate

@@ -344,30 +344,32 @@ export default function EditProfileScreen() {
           </View>
         ) : null}
 
-        {/* Città */}
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-            Città
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {CITIES.map(c => (
-              <Pressable
-                key={c}
-                onPress={() => update('city', c)}
-                style={{
-                  flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                  backgroundColor: form.city === c ? '#7C3AED' : '#18181f',
-                  borderWidth: 1,
-                  borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)',
-                }}
-              >
-                <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>
-                  {c}
-                </Text>
-              </Pressable>
-            ))}
+        {/* Città — nascosta in modalità single-city */}
+        {CITIES.length > 1 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              Città
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {CITIES.map(c => (
+                <Pressable
+                  key={c}
+                  onPress={() => update('city', c)}
+                  style={{
+                    flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
+                    backgroundColor: form.city === c ? '#7C3AED' : '#18181f',
+                    borderWidth: 1,
+                    borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+                  }}
+                >
+                  <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>
+                    {c}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Interessi */}
         <View style={{ marginBottom: 28 }}>

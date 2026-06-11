@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import { CITIES } from '@lets-night/shared';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -124,13 +125,14 @@ export default function RegisterPage() {
                 <option value="X">Altro</option>
               </select>
             </div>
-            <div className="auth-field">
-              <label>Città</label>
-              <select value={city} onChange={e => setCity(e.target.value)}>
-                <option value="Milano">Milano</option>
-                <option value="Roma">Roma</option>
-              </select>
-            </div>
+            {CITIES.length > 1 && (
+              <div className="auth-field">
+                <label>Città</label>
+                <select value={city} onChange={e => setCity(e.target.value)}>
+                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {error && <div className="auth-error">{error}</div>}

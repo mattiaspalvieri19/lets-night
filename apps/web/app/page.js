@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { CATS, CATS_NO_TUTTI, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { CATS, CATS_NO_TUTTI, CITIES, COLORS_BY_CAT, QUICK_TAGS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import Navbar from '../components/Navbar';
 
 export default function Home() {
@@ -119,11 +119,13 @@ export default function Home() {
             Prenota il tuo posto in pochi secondi.
           </p>
           <div className="hero-search-wrap" data-anim="up" data-delay="400">
-            <div className="city-toggle">
-              {['Milano','Roma'].map(c => (
-                <button key={c} className={city===c ? 'active' : ''} onClick={() => setCity(c)}>{c}</button>
-              ))}
-            </div>
+            {CITIES.length > 1 && (
+              <div className="city-toggle">
+                {CITIES.map(c => (
+                  <button key={c} className={city===c ? 'active' : ''} onClick={() => setCity(c)}>{c}</button>
+                ))}
+              </div>
+            )}
             <div className="hero-search">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>

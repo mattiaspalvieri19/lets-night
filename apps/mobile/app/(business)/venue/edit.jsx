@@ -226,9 +226,13 @@ export default function EditVenue() {
         <FieldLabel label="Categoria" required />
         <ChipRow value={form.category} options={CATS_NO_TUTTI} onChange={v => setField('category', v)} />
 
-        {/* Città */}
-        <FieldLabel label="Città" required />
-        <ChipRow value={form.city} options={CITIES} onChange={v => setField('city', v)} />
+        {/* Città — nascosta in modalità single-city */}
+        {CITIES.length > 1 && (
+          <>
+            <FieldLabel label="Città" required />
+            <ChipRow value={form.city} options={CITIES} onChange={v => setField('city', v)} />
+          </>
+        )}
 
         {/* Zona */}
         <FieldLabel label="Zona" />

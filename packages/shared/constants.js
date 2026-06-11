@@ -20,7 +20,10 @@ export const INTERESTS_OPTIONS = [
   'Techno', 'House', 'Hip Hop', 'Cena Show', 'Lounge',
 ];
 
-export const CITIES = ['Milano', 'Roma'];
+// Lancio Milano-only. Per espandere (es. Roma): aggiungi qui la città e i selettori
+// città ricompaiono ovunque automaticamente (sono nascosti finché CITIES.length === 1).
+export const CITIES = ['Milano'];
+export const DEFAULT_CITY = CITIES[0];
 
 // [gradiente-scuro, gradiente-chiaro, colore-accento]
 export const COLORS_BY_CAT = {

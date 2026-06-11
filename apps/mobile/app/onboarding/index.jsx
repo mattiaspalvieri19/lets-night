@@ -4,16 +4,16 @@ import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
+import { DEFAULT_CITY, INTERESTS_OPTIONS } from '@lets-night/shared';
 import { markOnboarded, saveGuestPrefs } from '../../lib/onboarding';
 
 const { width } = Dimensions.get('window');
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 4;
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
-  const [city, setCity] = useState(null);
+  const city = DEFAULT_CITY; // single-city: nessuna selezione, default Milano
   const [interests, setInterests] = useState([]);
   const [pushDecided, setPushDecided] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -129,44 +129,12 @@ export default function OnboardingScreen() {
           <BottomCTA label="Iniziamo" onPress={goNext} />
         </View>
 
-        {/* Step 1 — Città */}
-        <View style={[styles.slide, { width }]}>
-          <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 30 }}>
-            <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 1 di 4</Text>
-            <Text style={styles.h1}>Dove vivi la notte?</Text>
-            <Text style={styles.subtitle}>Vedrai prima gli eventi della tua città.</Text>
-            <View style={{ marginTop: 28, gap: 12 }}>
-              {CITIES.map(c => {
-                const active = city === c;
-                return (
-                  <Pressable
-                    key={c}
-                    onPress={() => setCity(c)}
-                    style={({ pressed }) => ({
-                      paddingVertical: 22, paddingHorizontal: 22, borderRadius: 16,
-                      backgroundColor: active ? 'rgba(124,58,237,0.18)' : '#18181f',
-                      borderWidth: 2, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.15)',
-                      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                      opacity: pressed ? 0.85 : 1,
-                    })}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                      <Text style={{ fontSize: 28 }}>{c === 'Milano' ? '🏙️' : '🏛️'}</Text>
-                      <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>{c}</Text>
-                    </View>
-                    {active && <Ionicons name="checkmark-circle" size={26} color="#A855F7" />}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <BottomCTA label="Continua" onPress={goNext} disabled={!city} />
-        </View>
+        {/* Step città rimosso — lancio Milano-only (vedi CITIES in shared) */}
 
-        {/* Step 2 — Interessi */}
+        {/* Step 1 — Interessi */}
         <View style={[styles.slide, { width }]}>
           <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 30 }}>
-            <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 2 di 4</Text>
+            <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 1 di 2</Text>
             <Text style={styles.h1}>Cosa ti piace?</Text>
             <Text style={styles.subtitle}>
               Scegli almeno 1 categoria — personalizziamo il tuo feed.
@@ -211,7 +179,7 @@ export default function OnboardingScreen() {
               <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(168,85,247,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
                 <Text style={{ fontSize: 52 }}>🔔</Text>
               </View>
-              <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 3 di 4</Text>
+              <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 2 di 2</Text>
               <Text style={[styles.h1, { textAlign: 'center' }]}>Non perdere un colpo</Text>
               <Text style={[styles.subtitle, { textAlign: 'center', paddingHorizontal: 8 }]}>
                 Ti avvisiamo solo quando arriva un evento che potrebbe piacerti e per ricordarti le tue prenotazioni.

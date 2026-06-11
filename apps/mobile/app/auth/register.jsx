@@ -225,20 +225,22 @@ export default function RegisterScreen() {
               </View>
             </View>
 
-            <View>
-              <Text className="text-gray-400 text-sm mb-2">Città</Text>
-              <View className="flex-row gap-3">
-                {CITIES.map(c => (
-                  <Pressable
-                    key={c}
-                    onPress={() => setCity(c)}
-                    className={`flex-1 py-4 rounded-xl border items-center ${city === c ? 'bg-brand border-brand' : 'bg-card border-gray-700'}`}
-                  >
-                    <Text className={city === c ? 'text-white font-semibold' : 'text-gray-400'}>{c}</Text>
-                  </Pressable>
-                ))}
+            {CITIES.length > 1 && (
+              <View>
+                <Text className="text-gray-400 text-sm mb-2">Città</Text>
+                <View className="flex-row gap-3">
+                  {CITIES.map(c => (
+                    <Pressable
+                      key={c}
+                      onPress={() => setCity(c)}
+                      className={`flex-1 py-4 rounded-xl border items-center ${city === c ? 'bg-brand border-brand' : 'bg-card border-gray-700'}`}
+                    >
+                      <Text className={city === c ? 'text-white font-semibold' : 'text-gray-400'}>{c}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </View>
+            )}
           </View>
 
           <Pressable

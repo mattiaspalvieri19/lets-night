@@ -150,15 +150,19 @@ export default function BusinessRegisterScreen() {
             </View>
           </ScrollView>
 
-          <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8 }}>Città</Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-            {CITIES.map(c => (
-              <Pressable key={c} onPress={() => update('city')(c)}
-                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: form.city === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}>
-                <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{c}</Text>
-              </Pressable>
-            ))}
-          </View>
+          {CITIES.length > 1 && (
+            <>
+              <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8 }}>Città</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+                {CITIES.map(c => (
+                  <Pressable key={c} onPress={() => update('city')(c)}
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: form.city === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}>
+                    <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{c}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
 
           <Field label="Zona *" value={form.zona} onChange={update('zona')} placeholder="Es. Navigli, Trastevere" />
           <Field label="Indirizzo" value={form.address} onChange={update('address')} placeholder="Via, numero civico" />

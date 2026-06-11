@@ -10,7 +10,7 @@ import EmptyState from '../../components/EmptyState';
 import AdvancedFiltersModal from '../../components/AdvancedFiltersModal';
 
 const DEFAULT_ADV = {
-  cities: ['Milano', 'Roma'],
+  cities: [...CITIES],
   zone: 'all',
   cats: [],
   dateRange: 'all',
@@ -158,23 +158,25 @@ export default function HomeScreen() {
           <Text style={{ color: '#64748B', marginTop: 4, fontSize: 14 }}>Cosa fai stasera?</Text>
         </View>
 
-        {/* City toggle */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20, marginTop: 16, marginBottom: 14, gap: 8 }}>
-          {CITIES.map(c => (
-            <Pressable
-              key={c}
-              onPress={() => setCity(c)}
-              style={{
-                paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
-                borderWidth: 1.5,
-                borderColor: city === c ? '#7C3AED' : 'rgba(255,255,255,0.1)',
-                backgroundColor: city === c ? '#7C3AED' : 'transparent',
-              }}
-            >
-              <Text style={{ color: '#fff', fontWeight: city === c ? '700' : '400', fontSize: 13 }}>{c}</Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* City toggle — nascosto in modalità single-city */}
+        {CITIES.length > 1 && (
+          <View style={{ flexDirection: 'row', paddingHorizontal: 20, marginTop: 16, marginBottom: 14, gap: 8 }}>
+            {CITIES.map(c => (
+              <Pressable
+                key={c}
+                onPress={() => setCity(c)}
+                style={{
+                  paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20,
+                  borderWidth: 1.5,
+                  borderColor: city === c ? '#7C3AED' : 'rgba(255,255,255,0.1)',
+                  backgroundColor: city === c ? '#7C3AED' : 'transparent',
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: city === c ? '700' : '400', fontSize: 13 }}>{c}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         {/* Search bar + filter button */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 14, gap: 10 }}>
