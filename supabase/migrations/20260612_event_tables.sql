@@ -4,12 +4,14 @@
 -- utenti (public/private) + quote come bookings (QR/scanner/rimborsi riusati).
 -- Regole: quote flessibili fino a coprire il totale; tavoli FUORI dalla
 -- capienza ingressi; disponibilità per tipologia enforced atomicamente.
+-- NB ordine: bookings.table_id va creato PRIMA della policy di visibilità dei
+-- tavoli che lo referenzia. Script idempotente (rilanciabile).
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- 1) TIPOLOGIE DI TAVOLO (es. Standard 300€ / Premium 400€ / Privé 500€)
 -- ----------------------------------------------------------------------------
-CREATE TABLE public.event_table_types (
+CREATE TABLE IF NOT EXISTS public.event_table_types (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id     uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
   name         text NOT NULL,
@@ -22,10 +24,12 @@ CREATE TABLE public.event_table_types (
 
 ALTER TABLE public.event_table_types ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Table types readable by all" ON public.event_table_types;
 CREATE POLICY "Table types readable by all"
   ON public.event_table_types FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Venue owners manage table types" ON public.event_table_types;
 CREATE POLICY "Venue owners manage table types"
   ON public.event_table_types FOR ALL
   TO authenticated
@@ -40,14 +44,15 @@ CREATE POLICY "Venue owners manage table types"
     WHERE v.owner_id = auth.uid()
   ));
 
-CREATE INDEX event_table_types_event_idx ON public.event_table_types(event_id);
+CREATE INDEX IF NOT EXISTS event_table_types_event_idx ON public.event_table_types(event_id);
 
 -- ----------------------------------------------------------------------------
 -- 2) TAVOLI APERTI DAGLI UTENTI
--- total_price/max_people sono SNAPSHOT della tipologia al momento dell'apertura
--- (il locale può cambiare i listini senza alterare i tavoli già aperti).
+-- total_price/max_people sono SNAPSHOT della tipologia al momento dell'apertura.
+-- people_count/collected: aggregati mantenuti da trigger (la RLS su bookings
+-- impedisce ai non-membri di vedere le quote altrui).
 -- ----------------------------------------------------------------------------
-CREATE TABLE public.event_tables (
+CREATE TABLE IF NOT EXISTS public.event_tables (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id    uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
   type_id     uuid NOT NULL REFERENCES public.event_table_types(id),
@@ -56,41 +61,19 @@ CREATE TABLE public.event_tables (
   status      text NOT NULL DEFAULT 'open'  CHECK (status IN ('open','covered','cancelled')),
   total_price numeric NOT NULL,
   max_people  int NOT NULL,
-  -- Aggregati mantenuti da trigger: la RLS su bookings impedisce ai non-membri
-  -- di vedere le quote altrui, quindi raccolto/persone vivono qui.
   people_count int NOT NULL DEFAULT 0,
   collected    numeric NOT NULL DEFAULT 0,
+  stripe_session_id text UNIQUE,   -- dedup apertura (webhook + confirm in parallelo)
   created_at  timestamptz DEFAULT now()
 );
 
 ALTER TABLE public.event_tables ENABLE ROW LEVEL SECURITY;
 
--- Visibili: i public a tutti (per unirsi), i private a creatore/membri/locale/admin.
-CREATE POLICY "Tables visible by visibility"
-  ON public.event_tables FOR SELECT
-  USING (
-    visibility = 'public'
-    OR created_by = auth.uid()
-    OR id IN (SELECT b.table_id FROM public.bookings b WHERE b.user_id = auth.uid() AND b.table_id IS NOT NULL)
-    OR event_id IN (
-      SELECT e.id FROM public.events e
-      JOIN public.venues v ON v.id = e.venue_id
-      WHERE v.owner_id = auth.uid()
-    )
-    OR auth.uid() IN (SELECT user_id FROM public.admins)
-  );
--- INSERT/UPDATE solo server-side (service role bypassa RLS): l'apertura del
--- tavolo avviene nel fulfillment Stripe, mai dal client diretto.
-
-CREATE INDEX event_tables_event_idx ON public.event_tables(event_id);
-CREATE INDEX event_tables_type_idx  ON public.event_tables(type_id);
-
--- Dedup apertura tavolo: webhook e confirm-booking possono correre in parallelo
--- sulla stessa session Stripe — il secondo insert fallisce e recupera l'esistente.
-ALTER TABLE public.event_tables ADD COLUMN stripe_session_id text UNIQUE;
+CREATE INDEX IF NOT EXISTS event_tables_event_idx ON public.event_tables(event_id);
+CREATE INDEX IF NOT EXISTS event_tables_type_idx  ON public.event_tables(type_id);
 
 -- ----------------------------------------------------------------------------
--- 3) QUOTE = BOOKINGS (riusa QR, scanner, rimborsi, biglietti)
+-- 3) QUOTE = BOOKINGS (PRIMA della policy che referenzia bookings.table_id)
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS table_id uuid REFERENCES public.event_tables(id);
@@ -104,12 +87,34 @@ DROP INDEX IF EXISTS public.bookings_user_event_active_unique;
 CREATE UNIQUE INDEX bookings_user_event_active_unique
   ON public.bookings (user_id, event_id)
   WHERE status <> 'cancelled' AND table_id IS NULL;
+DROP INDEX IF EXISTS public.bookings_user_table_active_unique;
 CREATE UNIQUE INDEX bookings_user_table_active_unique
   ON public.bookings (user_id, table_id)
   WHERE status NOT IN ('cancelled','denied') AND table_id IS NOT NULL;
 
 -- ----------------------------------------------------------------------------
--- 4) DISPONIBILITÀ TAVOLI PER TIPOLOGIA (atomica, stesso pattern anti-oversell)
+-- 4) VISIBILITÀ TAVOLI (ora bookings.table_id esiste)
+-- Visibili: i public a tutti (per unirsi), i private a creatore/membri/locale/admin.
+-- INSERT/UPDATE solo server-side (service role bypassa RLS): l'apertura del
+-- tavolo avviene nel fulfillment Stripe, mai dal client diretto.
+-- ----------------------------------------------------------------------------
+DROP POLICY IF EXISTS "Tables visible by visibility" ON public.event_tables;
+CREATE POLICY "Tables visible by visibility"
+  ON public.event_tables FOR SELECT
+  USING (
+    visibility = 'public'
+    OR created_by = auth.uid()
+    OR id IN (SELECT b.table_id FROM public.bookings b WHERE b.user_id = auth.uid() AND b.table_id IS NOT NULL)
+    OR event_id IN (
+      SELECT e.id FROM public.events e
+      JOIN public.venues v ON v.id = e.venue_id
+      WHERE v.owner_id = auth.uid()
+    )
+    OR auth.uid() IN (SELECT user_id FROM public.admins)
+  );
+
+-- ----------------------------------------------------------------------------
+-- 5) DISPONIBILITÀ TAVOLI PER TIPOLOGIA (atomica, stesso pattern anti-oversell)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.enforce_table_availability()
 RETURNS trigger
@@ -147,8 +152,7 @@ CREATE TRIGGER trg_enforce_table_availability
 REVOKE EXECUTE ON FUNCTION public.enforce_table_availability() FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 5) VALIDAZIONE QUOTE (posti max, quota ≤ residuo, min 10€ se a pagamento)
---    + auto-passaggio a 'covered' quando il totale è raccolto.
+-- 6) VALIDAZIONE QUOTE (posti max, quota ≤ residuo, min 10€ se a pagamento)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.enforce_table_share()
 RETURNS trigger
@@ -206,9 +210,9 @@ CREATE TRIGGER trg_enforce_table_share
 REVOKE EXECUTE ON FUNCTION public.enforce_table_share() FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 5b) AGGREGATI TAVOLO (people_count, collected, open<->covered)
---     Ricalcolo completo a ogni insert/cambio quota: semplice e sempre corretto
---     (anche quando una quota viene negata/rimborsata e libera posto e importo).
+-- 7) AGGREGATI TAVOLO (people_count, collected, open<->covered)
+--    Ricalcolo completo a ogni insert/cambio quota: semplice e sempre corretto
+--    (anche quando una quota viene negata/rimborsata e libera posto e importo).
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.sync_table_aggregates()
 RETURNS trigger
@@ -250,7 +254,7 @@ CREATE TRIGGER trg_sync_table_aggregates
 REVOKE EXECUTE ON FUNCTION public.sync_table_aggregates() FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
--- 6) I TAVOLI NON SCALANO LA CAPIENZA INGRESSI (decisione 2026-06-12)
+-- 8) I TAVOLI NON SCALANO LA CAPIENZA INGRESSI (decisione 2026-06-12)
 --    capienza e booked_count contano SOLO i biglietti.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.enforce_event_capacity()
