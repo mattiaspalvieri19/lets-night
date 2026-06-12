@@ -25,6 +25,10 @@ export const INTERESTS_OPTIONS = [
 export const CITIES = ['Milano'];
 export const DEFAULT_CITY = CITIES[0];
 
+// Tavoli condivisi: quota minima (€) per le quote a pagamento.
+// Gli invitati su tavolo già coperto entrano a 0€ (posto pagato dal capotavola).
+export const TABLE_MIN_SHARE = 10;
+
 // [gradiente-scuro, gradiente-chiaro, colore-accento]
 export const COLORS_BY_CAT = {
   'Discoteca':     ['#1a0533', '#0d0d1a', '#c084fc'],
