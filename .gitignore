@@ -53,3 +53,7 @@ yarn-error.log*
 # Supabase CLI temp
 supabase/.temp/
 supabase/.branches/
+
+# Artefatti TypeScript auto-generati da expo/nativewind (progetto JS puro)
+apps/mobile/tsconfig.json
+apps/mobile/nativewind-env.d.ts
