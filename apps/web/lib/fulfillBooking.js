@@ -41,12 +41,17 @@ export async function fulfillBookingFromSession(stripeSession) {
   // Idempotency: se già processata questa session, ritorna il booking esistente.
   const { data: existing } = await supabase
     .from('bookings')
-    .select('id, qr_code')
+    .select('id, qr_code, table_id')
     .eq('stripe_session_id', stripeSession.id)
     .maybeSingle();
 
   if (existing) {
-    return { ok: true, bookingId: existing.id, qrCode: existing.qr_code, alreadyExisted: true };
+    return { ok: true, bookingId: existing.id, qrCode: existing.qr_code, tableId: existing.table_id, alreadyExisted: true };
+  }
+
+  // Quote tavolo: flusso dedicato (apertura/join con trigger di guardia + auto-refund).
+  if (md.kind === 'table') {
+    return fulfillTableShare(supabase, stripeSession, md);
   }
 
   const eventId = md.eventId;
@@ -133,6 +138,125 @@ export async function fulfillBookingFromSession(stripeSession) {
   }
 
   return { ok: true, bookingId: booking.id, qrCode: booking.qr_code };
+}
+
+// Fulfillment quota tavolo (open/join). I trigger DB sono la verità atomica:
+// TABLES_FULL / TABLE_SEATS_FULL / SHARE_EXCEEDS_REMAINING / TABLE_NOT_OPEN
+// → qui li catturiamo e rimborsiamo automaticamente.
+async function fulfillTableShare(supabase, stripeSession, md) {
+  const share = Math.max(0, Number(md.share) || 0);
+  const expectedCents = Math.round((share + BOOKING_FEE) * 100);
+  if (stripeSession.amount_total !== expectedCents) {
+    await refundAndAlert(stripeSession, 'table_amount_mismatch', { expectedCents, actualCents: stripeSession.amount_total });
+    return { error: 'Importo non coerente. Rimborso elaborato automaticamente.', status: 409, refunded: true };
+  }
+
+  let tableId = md.tableId || null;
+
+  if (md.tableAction === 'open') {
+    // Dedup apertura: la session può essere processata da webhook E confirm-booking.
+    const { data: already } = await supabase
+      .from('event_tables')
+      .select('id')
+      .eq('stripe_session_id', stripeSession.id)
+      .maybeSingle();
+
+    if (already) {
+      tableId = already.id;
+    } else {
+      const { data: type } = await supabase
+        .from('event_table_types')
+        .select('id, event_id, total_price, max_people')
+        .eq('id', md.typeId)
+        .maybeSingle();
+      if (!type || type.event_id !== md.eventId) {
+        await refundAndAlert(stripeSession, 'table_type_missing', { typeId: md.typeId });
+        return { error: 'Tipologia tavolo non più disponibile. Rimborso elaborato automaticamente.', status: 409, refunded: true };
+      }
+
+      const { data: created, error: tErr } = await supabase
+        .from('event_tables')
+        .insert({
+          event_id: md.eventId,
+          type_id: md.typeId,
+          created_by: md.userId,
+          visibility: md.visibility === 'private' ? 'private' : 'public',
+          total_price: type.total_price,
+          max_people: type.max_people,
+          stripe_session_id: stripeSession.id,
+        })
+        .select('id')
+        .single();
+
+      if (tErr) {
+        if (tErr.code === '23505') {
+          // Race sull'UNIQUE session_id: l'altro processo ha già creato il tavolo.
+          const { data: again } = await supabase
+            .from('event_tables').select('id').eq('stripe_session_id', stripeSession.id).maybeSingle();
+          if (again) tableId = again.id;
+        } else if (tErr.code === '23514' || /TABLES_FULL/.test(tErr.message || '')) {
+          await refundAndAlert(stripeSession, 'tables_full', { typeId: md.typeId });
+          return { error: 'Tavoli esauriti per questa tipologia. Rimborso elaborato automaticamente.', status: 409, refunded: true };
+        }
+        if (!tableId) {
+          console.error('Insert event_tables fallita:', tErr);
+          return { error: 'Errore creazione tavolo', status: 500 };
+        }
+      } else {
+        tableId = created.id;
+      }
+    }
+  }
+
+  if (!tableId) {
+    return { error: 'Tavolo mancante', status: 400 };
+  }
+
+  const { data: prof } = await supabase
+    .from('profiles').select('full_name').eq('id', md.userId).maybeSingle();
+
+  const qrCode = generateBookingQR();
+  const { data: booking, error: bookErr } = await supabase
+    .from('bookings')
+    .insert({
+      user_id: md.userId,
+      event_id: md.eventId,
+      status: 'confirmed',
+      quantity: 1,
+      total_price: share,
+      fee: BOOKING_FEE,
+      qr_code: qrCode,
+      booking_type: 'table_share',
+      table_id: tableId,
+      stripe_session_id: stripeSession.id,
+      snapshot_full_name: prof?.full_name || null,
+    })
+    .select('id, qr_code')
+    .single();
+
+  if (bookErr) {
+    if (bookErr.code === '23505') {
+      const { data: now } = await supabase
+        .from('bookings').select('id, qr_code').eq('stripe_session_id', stripeSession.id).maybeSingle();
+      if (now) return { ok: true, bookingId: now.id, qrCode: now.qr_code, tableId, alreadyExisted: true };
+      // UNIQUE (user, table): aveva già una quota in questo tavolo.
+      await refundAndAlert(stripeSession, 'table_duplicate_member', { userId: md.userId, tableId });
+      return { error: 'Fai già parte di questo tavolo. Il pagamento è stato rimborsato automaticamente.', status: 409, refunded: true };
+    }
+    if (bookErr.code === '23514' || /TABLE_SEATS_FULL|SHARE_EXCEEDS_REMAINING|TABLE_NOT_OPEN|TABLE_CANCELLED|SHARE_BELOW_MIN/.test(bookErr.message || '')) {
+      await refundAndAlert(stripeSession, 'table_share_rejected', { tableId, detail: bookErr.message });
+      const msg = /SEATS_FULL/.test(bookErr.message || '')
+        ? 'Il tavolo si è riempito durante il pagamento. Rimborso elaborato automaticamente.'
+        : /EXCEEDS/.test(bookErr.message || '')
+        ? 'La quota superava il residuo del tavolo. Rimborso elaborato automaticamente.'
+        : 'Il tavolo non è più disponibile. Rimborso elaborato automaticamente.';
+      return { error: msg, status: 409, refunded: true };
+    }
+    console.error('Insert quota tavolo fallita:', bookErr);
+    return { error: 'Errore creazione quota', status: 500 };
+  }
+
+  return { ok: true, bookingId: booking.id, qrCode: booking.qr_code, tableId };
 }
 
 // Refund automatico + log anomalia. Best-effort: se Stripe è down, logghiamo e procediamo.

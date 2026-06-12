@@ -81,6 +81,10 @@ CREATE POLICY "Tables visible by visibility"
 CREATE INDEX event_tables_event_idx ON public.event_tables(event_id);
 CREATE INDEX event_tables_type_idx  ON public.event_tables(type_id);
 
+-- Dedup apertura tavolo: webhook e confirm-booking possono correre in parallelo
+-- sulla stessa session Stripe — il secondo insert fallisce e recupera l'esistente.
+ALTER TABLE public.event_tables ADD COLUMN stripe_session_id text UNIQUE;
+
 -- ----------------------------------------------------------------------------
 -- 3) QUOTE = BOOKINGS (riusa QR, scanner, rimborsi, biglietti)
 -- ----------------------------------------------------------------------------
@@ -88,6 +92,17 @@ ALTER TABLE public.bookings
   ADD COLUMN IF NOT EXISTS table_id uuid REFERENCES public.event_tables(id);
 
 CREATE INDEX IF NOT EXISTS bookings_table_idx ON public.bookings(table_id) WHERE table_id IS NOT NULL;
+
+-- Il vecchio UNIQUE (user_id, event_id) bloccherebbe chi ha un biglietto E vuole
+-- unirsi a un tavolo dello stesso evento → vale solo per i biglietti (table_id NULL);
+-- per i tavoli: max 1 quota per utente PER TAVOLO.
+DROP INDEX IF EXISTS public.bookings_user_event_active_unique;
+CREATE UNIQUE INDEX bookings_user_event_active_unique
+  ON public.bookings (user_id, event_id)
+  WHERE status <> 'cancelled' AND table_id IS NULL;
+CREATE UNIQUE INDEX bookings_user_table_active_unique
+  ON public.bookings (user_id, table_id)
+  WHERE status NOT IN ('cancelled','denied') AND table_id IS NOT NULL;
 
 -- ----------------------------------------------------------------------------
 -- 4) DISPONIBILITÀ TAVOLI PER TIPOLOGIA (atomica, stesso pattern anti-oversell)
