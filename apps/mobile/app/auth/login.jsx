@@ -43,21 +43,13 @@ export default function LoginScreen() {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    // Naviga SOLO a tastiera completamente chiusa (vedi waitKeyboardHidden).
+    // Naviga SOLO a tastiera completamente chiusa, e SEMPRE passando dall'index:
+    // app/index.js smista già per ruolo (business → dashboard). Entrare in
+    // /(business) direttamente dal form login lasciava la tab bar con una fascia
+    // touch nativa morta; il percorso via index è l'unico dimostrato sano.
     await waitKeyboardHidden();
     setLoading(false);
-
-    if (profile?.role === 'business') {
-      router.replace('/(business)');
-    } else {
-      router.replace('/(tabs)');
-    }
+    router.replace('/');
   }
 
   return (
