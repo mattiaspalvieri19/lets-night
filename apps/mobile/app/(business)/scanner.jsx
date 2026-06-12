@@ -61,7 +61,7 @@ export default function ScannerScreen() {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('*, events(title, event_date, event_time, venue_id), profiles(full_name, phone, birth_date)')
+      .select('*, events(title, event_date, event_time, venue_id), profiles(full_name, birth_date), event_tables(people_count, max_people, collected, total_price, event_table_types(name))')
       .eq('qr_code', qrCode)
       .maybeSingle();
 
@@ -265,10 +265,24 @@ export default function ScannerScreen() {
           <View style={{ backgroundColor: '#18181f', borderRadius: 12, padding: 14, marginBottom: 16 }}>
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>{result.events?.title}</Text>
             <Text style={{ color: '#A855F7', fontSize: 13 }}>{formatDateFull(result.events?.event_date)} · {formatTime(result.events?.event_time)}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text style={{ color: '#64748B', fontSize: 12 }}>{result.quantity} {result.quantity > 1 ? 'posti' : 'posto'}</Text>
-              <Text style={{ color: '#9CA3AF', fontSize: 12 }}>EUR {result.total_price}</Text>
-            </View>
+            {result.event_tables ? (
+              <View style={{ marginTop: 10, backgroundColor: 'rgba(168,85,247,0.1)', borderRadius: 8, padding: 10 }}>
+                <Text style={{ color: '#A855F7', fontWeight: '800', fontSize: 13 }}>
+                  TAVOLO {result.event_tables.event_table_types?.name || ''}
+                </Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 3 }}>
+                  {result.event_tables.people_count}/{result.event_tables.max_people} persone · raccolti {Number(result.event_tables.collected).toFixed(0)}/{Number(result.event_tables.total_price).toFixed(0)} €
+                </Text>
+                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>
+                  Quota di questo ospite: {Number(result.total_price).toFixed(2).replace('.', ',')} €
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                <Text style={{ color: '#64748B', fontSize: 12 }}>{result.quantity} {result.quantity > 1 ? 'posti' : 'posto'}</Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 12 }}>{Number(result.total_price).toFixed(2).replace('.', ',')} €</Text>
+              </View>
+            )}
           </View>
 
           {alreadyIn ? (
