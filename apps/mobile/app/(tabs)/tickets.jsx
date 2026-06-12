@@ -49,10 +49,17 @@ function TicketCard({ booking, onPress, onShowQR }) {
               {event?.title || 'Evento'}
             </Text>
           </View>
-          <View style={{ backgroundColor: past ? COLORS.bgElev3 : `${statusColor}14`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-            <Text style={{ color: past ? COLORS.textMuted : statusColor, fontSize: 11, fontWeight: '700' }}>
-              {past ? 'Passato' : statusLabel}
-            </Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {booking.booking_type === 'table_share' && (
+              <View style={{ backgroundColor: COLORS.bgElev3, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 }}>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' }}>Tavolo</Text>
+              </View>
+            )}
+            <View style={{ backgroundColor: past ? COLORS.bgElev3 : `${statusColor}14`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+              <Text style={{ color: past ? COLORS.textMuted : statusColor, fontSize: 11, fontWeight: '700' }}>
+                {past ? 'Passato' : statusLabel}
+              </Text>
+            </View>
           </View>
         </View>
 

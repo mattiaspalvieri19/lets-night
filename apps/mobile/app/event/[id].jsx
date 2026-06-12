@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
 import BookingModal from '../../components/BookingModal';
+import TableBookingModal from '../../components/TableBookingModal';
 import { scheduleEventReminder, cancelReminder } from '../../lib/notifications';
 
 export default function EventDetailScreen() {
@@ -17,6 +18,27 @@ export default function EventDetailScreen() {
   const [reminderId, setReminderId] = useState(null);
   const { session } = useSession();
   const [bookingVisible, setBookingVisible] = useState(false);
+  const [tableTypes, setTableTypes] = useState([]);
+  const [tables, setTables] = useState([]);
+  const [tableModal, setTableModal] = useState(null); // { action:'open', type } | { action:'join', table }
+
+  async function loadTables() {
+    const [{ data: tt }, { data: ts }] = await Promise.all([
+      supabase
+        .from('event_table_types')
+        .select('*')
+        .eq('event_id', id)
+        .order('total_price', { ascending: true }),
+      supabase
+        .from('event_tables')
+        .select('*, event_table_types(name)')
+        .eq('event_id', id)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: true }),
+    ]);
+    setTableTypes(tt || []);
+    setTables(ts || []);
+  }
 
   useEffect(() => {
     async function load() {
@@ -30,6 +52,7 @@ export default function EventDetailScreen() {
 
       if (error || !data) { setNotFound(true); setLoading(false); return; }
       setEvent(data);
+      loadTables();
 
       if (data.venues?.id) {
         const today = new Date().toISOString().split('T')[0];
@@ -56,7 +79,8 @@ export default function EventDetailScreen() {
     });
   }
 
-  async function handleBook() {
+  // Guard comune: serve un account utente (non business) loggato.
+  async function guardBooking() {
     if (!session) {
       Alert.alert(
         'Accedi per prenotare',
@@ -66,7 +90,7 @@ export default function EventDetailScreen() {
           { text: 'Accedi', onPress: () => router.push('/auth/login') },
         ]
       );
-      return;
+      return false;
     }
     // Coerenza con il web: gli account business non prenotano eventi.
     const { data: prof } = await supabase
@@ -76,9 +100,17 @@ export default function EventDetailScreen() {
       .maybeSingle();
     if (prof?.role === 'business') {
       Alert.alert('Account business', 'Gli account business non possono prenotare eventi. Accedi con un account utente.');
-      return;
+      return false;
     }
-    setBookingVisible(true);
+    return true;
+  }
+
+  async function handleBook() {
+    if (await guardBooking()) setBookingVisible(true);
+  }
+
+  async function handleTable(mode) {
+    if (await guardBooking()) setTableModal(mode);
   }
 
   function handleMaps() {
@@ -284,6 +316,72 @@ export default function EventDetailScreen() {
             </View>
           )}
 
+          {/* Tavoli */}
+          {!isPast && tableTypes.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-white font-semibold text-base mb-1">Tavoli</Text>
+              <Text className="text-gray-400 text-xs mb-3">
+                Apri un tavolo per il tuo gruppo o unisciti a uno aperto pagando la tua quota.
+              </Text>
+
+              {tableTypes.map(t => {
+                const used = tables.filter(x => x.type_id === t.id).length;
+                const left = Math.max(0, (t.tables_count || 0) - used);
+                return (
+                  <View key={t.id} className="bg-card rounded-2xl p-4 mb-3">
+                    <View className="flex-row justify-between items-start mb-1">
+                      <Text className="text-white font-semibold text-base flex-1 mr-3">{t.name}</Text>
+                      <Text className="text-white font-bold text-base">{Number(t.total_price)} €</Text>
+                    </View>
+                    <Text className="text-gray-400 text-xs mb-1">
+                      Fino a {t.max_people} persone · {left === 0 ? 'esauriti' : `${left} ${left === 1 ? 'disponibile' : 'disponibili'}`}
+                    </Text>
+                    {t.includes ? (
+                      <Text className="text-gray-400 text-sm mb-3 leading-5">{t.includes}</Text>
+                    ) : (
+                      <View className="mb-2" />
+                    )}
+                    <Pressable
+                      disabled={left === 0}
+                      onPress={() => handleTable({ action: 'open', type: t })}
+                      className={`rounded-xl py-3 items-center ${left === 0 ? 'bg-card2' : 'bg-brand'}`}
+                    >
+                      <Text className={left === 0 ? 'text-gray-500 font-semibold' : 'text-white font-bold'}>
+                        {left === 0 ? 'Esauriti' : 'Apri un tavolo'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+
+              {tables.filter(t => t.visibility === 'public' && t.status === 'open').length > 0 && (
+                <View className="mt-1">
+                  <Text className="text-gray-400 text-xs mb-2" style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                    Tavoli aperti — unisciti
+                  </Text>
+                  {tables.filter(t => t.visibility === 'public' && t.status === 'open').map(t => {
+                    const remaining = Math.max(0, Number(t.total_price) - Number(t.collected || 0));
+                    return (
+                      <Pressable
+                        key={t.id}
+                        onPress={() => handleTable({ action: 'join', table: t })}
+                        className="bg-card rounded-2xl p-4 mb-2 flex-row items-center justify-between"
+                      >
+                        <View className="flex-1 mr-3">
+                          <Text className="text-white font-semibold">{t.event_table_types?.name || 'Tavolo'}</Text>
+                          <Text className="text-gray-400 text-xs mt-1">
+                            {t.people_count}/{t.max_people} persone · mancano {remaining.toFixed(0)} €
+                          </Text>
+                        </View>
+                        <Text className="text-brand-light font-semibold">Unisciti</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Altri eventi del locale */}
           {otherEvents.length > 0 && (
             <View>
@@ -315,8 +413,19 @@ export default function EventDetailScreen() {
       <BookingModal
         visible={bookingVisible}
         onClose={() => setBookingVisible(false)}
+        // Con le tipologie tavolo attive, il toggle "Tavolo" legacy della modal
+        // biglietti viene nascosto: i tavoli passano dal nuovo flusso quote.
+        event={tableTypes.length > 0 ? { ...event, has_tables: false } : event}
+        session={session}
+      />
+
+      <TableBookingModal
+        visible={!!tableModal}
+        mode={tableModal}
+        onClose={() => setTableModal(null)}
         event={event}
         session={session}
+        onSuccess={loadTables}
       />
     </>
   );

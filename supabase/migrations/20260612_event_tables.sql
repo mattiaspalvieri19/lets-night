@@ -56,6 +56,10 @@ CREATE TABLE public.event_tables (
   status      text NOT NULL DEFAULT 'open'  CHECK (status IN ('open','covered','cancelled')),
   total_price numeric NOT NULL,
   max_people  int NOT NULL,
+  -- Aggregati mantenuti da trigger: la RLS su bookings impedisce ai non-membri
+  -- di vedere le quote altrui, quindi raccolto/persone vivono qui.
+  people_count int NOT NULL DEFAULT 0,
+  collected    numeric NOT NULL DEFAULT 0,
   created_at  timestamptz DEFAULT now()
 );
 
@@ -188,10 +192,7 @@ BEGIN
     END IF;
   END IF;
   -- Quota 0 (invitato su tavolo coperto dal capotavola): ammessa finché ci sono posti.
-
-  IF paid + NEW.total_price >= t.total_price THEN
-    UPDATE public.event_tables SET status = 'covered' WHERE id = NEW.table_id AND status = 'open';
-  END IF;
+  -- Aggregati e passaggio a 'covered' gestiti dal trigger AFTER (sync_table_aggregates).
 
   RETURN NEW;
 END;
@@ -203,6 +204,50 @@ CREATE TRIGGER trg_enforce_table_share
   FOR EACH ROW EXECUTE FUNCTION public.enforce_table_share();
 
 REVOKE EXECUTE ON FUNCTION public.enforce_table_share() FROM PUBLIC, anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+-- 5b) AGGREGATI TAVOLO (people_count, collected, open<->covered)
+--     Ricalcolo completo a ogni insert/cambio quota: semplice e sempre corretto
+--     (anche quando una quota viene negata/rimborsata e libera posto e importo).
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.sync_table_aggregates()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  tid uuid;
+  seats int;
+  paid numeric;
+BEGIN
+  tid := COALESCE(NEW.table_id, OLD.table_id);
+  IF tid IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;
+
+  SELECT count(*), COALESCE(SUM(total_price), 0) INTO seats, paid
+  FROM public.bookings
+  WHERE table_id = tid AND status NOT IN ('cancelled','denied');
+
+  UPDATE public.event_tables
+  SET people_count = seats,
+      collected = paid,
+      status = CASE
+        WHEN status = 'cancelled' THEN status
+        WHEN paid >= total_price THEN 'covered'
+        ELSE 'open'
+      END
+  WHERE id = tid;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_sync_table_aggregates ON public.bookings;
+CREATE TRIGGER trg_sync_table_aggregates
+  AFTER INSERT OR UPDATE OR DELETE ON public.bookings
+  FOR EACH ROW EXECUTE FUNCTION public.sync_table_aggregates();
+
+REVOKE EXECUTE ON FUNCTION public.sync_table_aggregates() FROM PUBLIC, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 6) I TAVOLI NON SCALANO LA CAPIENZA INGRESSI (decisione 2026-06-12)
