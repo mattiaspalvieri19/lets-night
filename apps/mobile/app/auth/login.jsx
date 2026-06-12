@@ -3,6 +3,19 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingVi
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
+// Risolve quando la tastiera è DAVVERO scomparsa (o dopo 600ms di sicurezza).
+// Navigare durante l'animazione di chiusura lascia alla schermata di destinazione
+// una cornice nativa accorciata → tab bar visibile ma non toccabile.
+function waitKeyboardHidden() {
+  return new Promise(resolve => {
+    if (!Keyboard.isVisible()) { resolve(); return; }
+    let done = false;
+    const finish = () => { if (done) return; done = true; sub.remove(); resolve(); };
+    const sub = Keyboard.addListener('keyboardDidHide', finish);
+    setTimeout(finish, 600);
+  });
+}
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +49,8 @@ export default function LoginScreen() {
       .eq('id', data.user.id)
       .single();
 
+    // Naviga SOLO a tastiera completamente chiusa (vedi waitKeyboardHidden).
+    await waitKeyboardHidden();
     setLoading(false);
 
     if (profile?.role === 'business') {
