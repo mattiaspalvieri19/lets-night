@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, BackHandler } from 'react-native';
 import { Link, router, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { CITIES } from '@lets-night/shared';
 
@@ -112,7 +113,7 @@ export default function RegisterScreen() {
         <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false }} />
         <View className="items-center">
           <View className="w-16 h-16 bg-brand/20 rounded-full items-center justify-center mb-6">
-            <Text className="text-brand text-3xl">✓</Text>
+            <Ionicons name="checkmark" size={30} color="#A855F7" />
           </View>
           <Text className="text-white text-2xl font-bold text-center mb-3">Controlla la tua email</Text>
           <Text className="text-gray-400 text-center text-base leading-6">
@@ -150,7 +151,7 @@ export default function RegisterScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Nome completo</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="Mario Rossi"
                 placeholderTextColor="#555577"
                 value={fullName}
@@ -162,7 +163,7 @@ export default function RegisterScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Email</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="mario@email.com"
                 placeholderTextColor="#555577"
                 value={email}
@@ -176,7 +177,7 @@ export default function RegisterScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Password</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="Minimo 6 caratteri"
                 placeholderTextColor="#555577"
                 value={password}
@@ -188,7 +189,7 @@ export default function RegisterScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Telefono (opzionale)</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="+39 333 000 0000"
                 placeholderTextColor="#555577"
                 value={phone}
@@ -200,7 +201,7 @@ export default function RegisterScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Data di nascita</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="GG/MM/AAAA"
                 placeholderTextColor="#555577"
                 value={birthDate}
@@ -217,9 +218,9 @@ export default function RegisterScreen() {
                   <Pressable
                     key={g.v}
                     onPress={() => setGender(g.v)}
-                    className={`flex-1 py-4 rounded-xl border items-center ${gender === g.v ? 'bg-brand border-brand' : 'bg-card border-gray-700'}`}
+                    className={`flex-1 py-4 rounded-xl border items-center ${gender === g.v ? 'bg-white border-white' : 'bg-card border-white/10'}`}
                   >
-                    <Text className={gender === g.v ? 'text-white font-semibold' : 'text-gray-400'}>{g.l}</Text>
+                    <Text className={gender === g.v ? 'text-black font-bold' : 'text-gray-400'}>{g.l}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -233,9 +234,9 @@ export default function RegisterScreen() {
                     <Pressable
                       key={c}
                       onPress={() => setCity(c)}
-                      className={`flex-1 py-4 rounded-xl border items-center ${city === c ? 'bg-brand border-brand' : 'bg-card border-gray-700'}`}
+                      className={`flex-1 py-4 rounded-xl border items-center ${city === c ? 'bg-white border-white' : 'bg-card border-white/10'}`}
                     >
-                      <Text className={city === c ? 'text-white font-semibold' : 'text-gray-400'}>{c}</Text>
+                      <Text className={city === c ? 'text-black font-bold' : 'text-gray-400'}>{c}</Text>
                     </Pressable>
                   ))}
                 </View>

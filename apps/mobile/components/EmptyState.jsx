@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from 'react-native';
+import { COLORS } from '@lets-night/shared';
 
 export default function EmptyState({ title, subtitle, actionLabel, onAction, compact }) {
   return (
@@ -8,15 +9,15 @@ export default function EmptyState({ title, subtitle, actionLabel, onAction, com
       paddingHorizontal: 28,
       paddingVertical: compact ? 36 : 56,
     }}>
-      {/* Linea sottile decorativa al posto dell'emoji */}
+      {/* Linea sottile decorativa */}
       <View style={{
         width: 32, height: 1,
-        backgroundColor: 'rgba(168,85,247,0.3)',
+        backgroundColor: COLORS.borderStrong,
         marginBottom: 18,
       }} />
       {title && (
         <Text style={{
-          color: '#fff',
+          color: COLORS.textPrimary,
           fontSize: 15,
           fontWeight: '600',
           textAlign: 'center',
@@ -28,7 +29,7 @@ export default function EmptyState({ title, subtitle, actionLabel, onAction, com
       )}
       {subtitle && (
         <Text style={{
-          color: '#64748B',
+          color: COLORS.textMuted,
           fontSize: 13,
           textAlign: 'center',
           lineHeight: 19,
@@ -44,13 +45,13 @@ export default function EmptyState({ title, subtitle, actionLabel, onAction, com
           style={({ pressed }) => ({
             paddingHorizontal: 22,
             paddingVertical: 10,
-            borderRadius: 8,
+            borderRadius: 10,
             borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.18)',
+            borderColor: COLORS.borderStrong,
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>{actionLabel}</Text>
+          <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13 }}>{actionLabel}</Text>
         </Pressable>
       )}
     </View>

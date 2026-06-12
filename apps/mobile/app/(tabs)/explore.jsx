@@ -1,12 +1,13 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, FlatList, Pressable, TextInput,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import UserCard from '../../components/UserCard';
 import EmptyState from '../../components/EmptyState';
 
@@ -128,54 +129,53 @@ export default function SearchScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} size="large" />
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12 }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4, fontWeight: '600' }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 14 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
           Cerca
         </Text>
-        <Text style={{ color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: -0.5 }}>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 28, letterSpacing: -0.6 }}>
           Trova nella community
         </Text>
-        <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 6 }}>
           Utenti, locali ed eventi a Milano
         </Text>
       </View>
 
       {/* Search bar */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 14 }}>
         <View style={{
-          flexDirection: 'row', alignItems: 'center', gap: 8,
-          backgroundColor: '#18181f', borderRadius: 10,
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-          paddingHorizontal: 14, paddingVertical: 10,
+          flexDirection: 'row', alignItems: 'center', gap: 10,
+          backgroundColor: COLORS.bgElev2, borderRadius: 12,
+          paddingHorizontal: 14, paddingVertical: 12,
         }}>
-          <Text style={{ fontSize: 14 }}>🔍</Text>
+          <Ionicons name="search" size={16} color={COLORS.textMuted} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={tab === 'users' ? 'Cerca utenti...' : tab === 'venues' ? 'Cerca locali...' : 'Cerca eventi...'}
-            placeholderTextColor="#475569"
+            placeholder={tab === 'users' ? 'Cerca utenti' : tab === 'venues' ? 'Cerca locali' : 'Cerca eventi'}
+            placeholderTextColor={COLORS.textMuted}
             autoCapitalize="none"
-            style={{ flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 }}
+            style={{ flex: 1, color: COLORS.textPrimary, fontSize: 14, paddingVertical: 0 }}
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={10}>
-              <Text style={{ color: '#64748B', fontSize: 18 }}>×</Text>
+              <Ionicons name="close" size={16} color={COLORS.textMuted} />
             </Pressable>
           )}
         </View>
       </View>
 
       {/* Tabs entity */}
-      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+      <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.borderSubtle }}>
         {ENTITY_TABS.map(t => {
           const active = tab === t.id;
           return (
@@ -185,15 +185,15 @@ export default function SearchScreen() {
               style={{
                 flex: 1, paddingVertical: 12, alignItems: 'center',
                 borderBottomWidth: 1,
-                borderBottomColor: active ? '#A855F7' : 'transparent',
+                borderBottomColor: active ? '#FAFAFA' : 'transparent',
               }}
             >
               <Text style={{
-                color: active ? '#fff' : '#64748B',
-                fontSize: 12, fontWeight: active ? '600' : '500',
+                color: active ? COLORS.textPrimary : COLORS.textMuted,
+                fontSize: 12, fontWeight: active ? '700' : '500',
                 letterSpacing: 0.2,
               }}>
-                {t.label} <Text style={{ color: '#475569', fontWeight: '500' }}>({counts[t.id]})</Text>
+                {t.label} <Text style={{ color: COLORS.textDisabled, fontWeight: '500' }}>({counts[t.id]})</Text>
               </Text>
             </Pressable>
           );
@@ -203,7 +203,7 @@ export default function SearchScreen() {
       {/* Results */}
       {tab === 'users' && (
         filteredUsers.length === 0 ? (
-          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
               title={query ? 'Nessun utente trovato' : 'Nessun utente'}
               subtitle={query ? 'Modifica la ricerca o prova un altro nome.' : 'La community è in crescita.'}
@@ -216,7 +216,7 @@ export default function SearchScreen() {
             data={filteredUsers}
             keyExtractor={u => u.id}
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
             renderItem={({ item }) => (
               <UserCard
                 user={item}
@@ -232,7 +232,7 @@ export default function SearchScreen() {
 
       {tab === 'venues' && (
         filteredVenues.length === 0 ? (
-          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
               title={query ? 'Nessun locale trovato' : 'Nessun locale'}
               subtitle={query ? 'Prova un altro nome, zona o categoria.' : 'Nessun locale verificato.'}
@@ -245,7 +245,7 @@ export default function SearchScreen() {
             data={filteredVenues}
             keyExtractor={v => v.id}
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
             renderItem={({ item }) => <VenueCard venue={item} />}
           />
         )
@@ -253,7 +253,7 @@ export default function SearchScreen() {
 
       {tab === 'events' && (
         filteredEvents.length === 0 ? (
-          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+          <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
               title={query ? 'Nessun evento trovato' : 'Nessun evento'}
               subtitle={query ? 'Prova un altro nome di evento o locale.' : 'Nessun evento in programma.'}
@@ -266,7 +266,7 @@ export default function SearchScreen() {
             data={filteredEvents}
             keyExtractor={e => e.id}
             contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 80 }}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
             renderItem={({ item }) => <EventResultCard event={item} />}
           />
         )
@@ -280,30 +280,33 @@ function VenueCard({ venue }) {
     <Pressable
       onPress={() => router.push(`/venue/${venue.id}`)}
       style={({ pressed }) => ({
-        backgroundColor: '#111118',
-        borderRadius: 10, padding: 14, marginBottom: 8,
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: COLORS.bgElev2,
+        borderRadius: 14, padding: 14, marginBottom: 8,
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600' }}>
           {venue.category}
         </Text>
         {venue.is_partner && (
-          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' }}>
-            <Text style={{ color: '#A855F7', fontSize: 9, fontWeight: '700' }}>PARTNER</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLORS.brandSubtle, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 }}>
+            <Ionicons name="star" size={8} color={COLORS.brand} />
+            <Text style={{ color: COLORS.brand, fontSize: 9, fontWeight: '700' }}>PARTNER</Text>
           </View>
         )}
+        {venue.is_verified && (
+          <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
+        )}
       </View>
-      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, marginBottom: 4, letterSpacing: -0.2 }} numberOfLines={1}>
+      <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15, letterSpacing: -0.2, marginBottom: 4 }} numberOfLines={1}>
         {venue.name}
       </Text>
-      <Text style={{ color: '#94A3B8', fontSize: 12 }}>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>
         {venue.zona}, {venue.city}
       </Text>
       {venue.description && (
-        <Text style={{ color: '#64748B', fontSize: 12, marginTop: 6, lineHeight: 17 }} numberOfLines={2}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 6, lineHeight: 17 }} numberOfLines={2}>
           {venue.description}
         </Text>
       )}
@@ -316,26 +319,25 @@ function EventResultCard({ event }) {
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
       style={({ pressed }) => ({
-        backgroundColor: '#111118',
-        borderRadius: 10, padding: 14, marginBottom: 8,
-        borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+        backgroundColor: COLORS.bgElev2,
+        borderRadius: 14, padding: 14, marginBottom: 8,
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 5 }}>
         {event.category}
       </Text>
-      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, marginBottom: 4, letterSpacing: -0.2 }} numberOfLines={2}>
+      <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15, letterSpacing: -0.2, marginBottom: 4 }} numberOfLines={2}>
         {event.title}
       </Text>
-      <Text style={{ color: '#94A3B8', fontSize: 12 }}>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>
         {event.venues?.name} · {event.venues?.zona}, {event.venues?.city}
       </Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <Text style={{ color: '#64748B', fontSize: 11 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>
           {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'}
         </Text>
-        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+        <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' }}>
           {getPriceLabel(event.price)}
         </Text>
       </View>

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, BackHandler } from 'react-native';
 import { Link, router, Stack } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { CATS_NO_TUTTI, CITIES } from '@lets-night/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { CATS_NO_TUTTI, CITIES, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 export default function BusinessRegisterScreen() {
   const [form, setForm] = useState({
@@ -94,12 +95,12 @@ export default function BusinessRegisterScreen() {
 
   if (sent) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
         <Stack.Screen options={{ gestureEnabled: false, headerBackVisible: false }} />
-        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(168,85,247,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-          <Text style={{ color: '#A855F7', fontSize: 28 }}>✓</Text>
+        <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+          <Ionicons name="checkmark" size={28} color={COLORS.brand} />
         </View>
-        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 12 }}>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 12 }}>
           Richiesta inviata
         </Text>
         <Text style={{ color: '#9CA3AF', textAlign: 'center', lineHeight: 22, marginBottom: 8 }}>
@@ -117,12 +118,12 @@ export default function BusinessRegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#09090f' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
 
-          <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Business</Text>
-          <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', marginBottom: 6 }}>Registra il tuo locale</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Business</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 27, letterSpacing: -0.6, marginBottom: 6 }}>Registra il tuo locale</Text>
           <Text style={{ color: '#64748B', fontSize: 14, lineHeight: 20, marginBottom: 28 }}>
             Compila i dati. Ti contatteremo entro 24 ore per attivare il tuo account.
           </Text>
@@ -143,8 +144,8 @@ export default function BusinessRegisterScreen() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {CATS_NO_TUTTI.map(c => (
                 <Pressable key={c} onPress={() => update('category')(c)}
-                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: form.category === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.category === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}>
-                  <Text style={{ color: form.category === c ? '#fff' : '#9CA3AF', fontSize: 13 }}>{c}</Text>
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: form.category === c ? '#FAFAFA' : COLORS.bgElev3 }}>
+                  <Text style={{ color: form.category === c ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: form.category === c ? '700' : '500' }}>{c}</Text>
                 </Pressable>
               ))}
             </View>
@@ -210,7 +211,7 @@ function Field({ label, value, onChange, placeholder, keyboardType, secureTextEn
         autoCapitalize={autoCapitalize}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
-        style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14, minHeight: multiline ? 80 : undefined, textAlignVertical: multiline ? 'top' : 'center' }}
+        style={{ backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: COLORS.textPrimary, fontSize: 14, minHeight: multiline ? 80 : undefined, textAlignVertical: multiline ? 'top' : 'center' }}
       />
     </View>
   );

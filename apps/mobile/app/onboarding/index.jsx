@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { DEFAULT_CITY, INTERESTS_OPTIONS } from '@lets-night/shared';
+import { DEFAULT_CITY, INTERESTS_OPTIONS, COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { markOnboarded, saveGuestPrefs } from '../../lib/onboarding';
 
 const { width } = Dimensions.get('window');
@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       {/* Top bar: indicator + skip */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 14 }}>
         <Pressable onPress={goBack} disabled={step === 0} hitSlop={10} style={{ opacity: step === 0 ? 0 : 1 }}>
@@ -111,18 +111,18 @@ export default function OnboardingScreen() {
         <View style={[styles.slide, { width }]}>
           <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 28 }}>
             <View style={{ alignItems: 'center', marginBottom: 36 }}>
-              <Text style={{ fontSize: 76, marginBottom: 12 }}>🌙</Text>
-              <Text style={{ color: '#fff', fontSize: 32, fontWeight: '900', textAlign: 'center', letterSpacing: -1, lineHeight: 36 }}>
-                Benvenuto su{'\n'}<Text style={{ color: '#A855F7' }}>Let&apos;s Night</Text>
+              <View style={{ width: 34, height: 2, backgroundColor: COLORS.brand, borderRadius: 1, marginBottom: 24 }} />
+              <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 36, textAlign: 'center', letterSpacing: -1, lineHeight: 40 }}>
+                Benvenuto su{'\n'}<Text style={{ color: COLORS.brand }}>Let&apos;s Night</Text>
               </Text>
               <Text style={{ color: '#94A3B8', fontSize: 15, textAlign: 'center', marginTop: 16, lineHeight: 22 }}>
                 Il TripAdvisor del divertimento.{'\n'}Milano
               </Text>
             </View>
             <View style={{ gap: 14, marginBottom: 30 }}>
-              <Bullet icon="🔥" text="Scopri gli eventi più caldi della tua città" />
-              <Bullet icon="🎟️" text="Prenota in pochi tap, mostra il QR all'ingresso" />
-              <Bullet icon="👥" text="Vedi dove vanno i tuoi amici stasera" />
+              <Bullet icon="flame" text="Scopri gli eventi più caldi della tua città" />
+              <Bullet icon="ticket" text="Prenota in pochi tap, mostra il QR all'ingresso" />
+              <Bullet icon="people" text="Vedi dove vanno i tuoi amici stasera" />
             </View>
           </View>
           <BottomCTA label="Iniziamo" onPress={goNext} />
@@ -133,7 +133,7 @@ export default function OnboardingScreen() {
         {/* Step 1 — Interessi */}
         <View style={[styles.slide, { width }]}>
           <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 30 }}>
-            <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 1 di 2</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Passo 1 di 2</Text>
             <Text style={styles.h1}>Cosa ti piace?</Text>
             <Text style={styles.subtitle}>
               Scegli almeno 1 categoria — personalizziamo il tuo feed.
@@ -150,13 +150,12 @@ export default function OnboardingScreen() {
                       key={t}
                       onPress={() => toggleInterest(t)}
                       style={({ pressed }) => ({
-                        paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24,
-                        backgroundColor: active ? 'rgba(124,58,237,0.2)' : '#18181f',
-                        borderWidth: 1.5, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.15)',
+                        paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999,
+                        backgroundColor: active ? '#FAFAFA' : COLORS.bgElev3,
                         opacity: pressed ? 0.8 : 1,
                       })}
                     >
-                      <Text style={{ color: active ? '#fff' : '#94A3B8', fontWeight: active ? '800' : '600', fontSize: 14 }}>
+                      <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontWeight: active ? '800' : '600', fontSize: 14 }}>
                         {t}
                       </Text>
                     </Pressable>
@@ -175,19 +174,19 @@ export default function OnboardingScreen() {
         <View style={[styles.slide, { width }]}>
           <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center' }}>
             <View style={{ alignItems: 'center', marginBottom: 32 }}>
-              <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(168,85,247,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
-                <Text style={{ fontSize: 52 }}>🔔</Text>
+              <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
+                <Ionicons name="notifications" size={40} color={COLORS.brand} />
               </View>
-              <Text style={{ color: '#A855F7', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Passo 2 di 2</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Passo 2 di 2</Text>
               <Text style={[styles.h1, { textAlign: 'center' }]}>Non perdere un colpo</Text>
               <Text style={[styles.subtitle, { textAlign: 'center', paddingHorizontal: 8 }]}>
                 Ti avvisiamo solo quando arriva un evento che potrebbe piacerti e per ricordarti le tue prenotazioni.
               </Text>
             </View>
             <View style={{ gap: 10, marginBottom: 20 }}>
-              <Bullet icon="🎯" text="Nuovi eventi nella tua categoria preferita" />
-              <Bullet icon="⏰" text="Promemoria 24h prima del tuo evento" />
-              <Bullet icon="👋" text="Quando un amico prenota una serata" />
+              <Bullet icon="compass" text="Nuovi eventi nella tua categoria preferita" />
+              <Bullet icon="alarm" text="Promemoria 24h prima del tuo evento" />
+              <Bullet icon="person-add" text="Quando un amico prenota una serata" />
             </View>
           </View>
           <View style={{ paddingHorizontal: 24, paddingBottom: 36 }}>
@@ -207,7 +206,9 @@ export default function OnboardingScreen() {
         <View style={[styles.slide, { width }]}>
           <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: 'center' }}>
             <View style={{ alignItems: 'center', marginBottom: 28 }}>
-              <Text style={{ fontSize: 56, marginBottom: 16 }}>🚀</Text>
+              <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                <Ionicons name="rocket" size={38} color={COLORS.brand} />
+              </View>
               <Text style={[styles.h1, { textAlign: 'center' }]}>Sei pronto!</Text>
               <Text style={[styles.subtitle, { textAlign: 'center' }]}>
                 Accedi per salvare preferiti, prenotare e seguire amici. Oppure esplora subito.
@@ -246,9 +247,9 @@ export default function OnboardingScreen() {
 
 function Bullet({ icon, text }) {
   return (
-    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: 'rgba(168,85,247,0.06)', padding: 14, borderRadius: 12 }}>
-      <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text style={{ color: '#E2E8F0', fontSize: 14, flex: 1, lineHeight: 20 }}>{text}</Text>
+    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: COLORS.bgElev2, padding: 14, borderRadius: 12 }}>
+      <Ionicons name={icon} size={18} color={COLORS.brand} />
+      <Text style={{ color: COLORS.textSecondary, fontSize: 14, flex: 1, lineHeight: 20 }}>{text}</Text>
     </View>
   );
 }
@@ -273,6 +274,6 @@ function BottomCTA({ label, onPress, disabled }) {
 
 const styles = {
   slide: { flex: 1 },
-  h1: { color: '#fff', fontSize: 28, fontWeight: '900', letterSpacing: -0.5 },
-  subtitle: { color: '#94A3B8', fontSize: 14, marginTop: 6, lineHeight: 21 },
+  h1: { fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 28, letterSpacing: -0.5 },
+  subtitle: { color: COLORS.textSecondary, fontSize: 14, marginTop: 6, lineHeight: 21 },
 };

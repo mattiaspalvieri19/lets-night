@@ -1,5 +1,6 @@
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { COLORS } from '@lets-night/shared';
 
 function initialOf(name) {
   return (name || '?').trim().charAt(0).toUpperCase();
@@ -17,10 +18,8 @@ export default function UserCard({ user, isFollowing, onToggleFollow, busy, hide
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        backgroundColor: '#111118',
+        backgroundColor: COLORS.bgElev2,
         borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.12)',
         padding: 14,
         marginBottom: 10,
         opacity: pressed ? 0.85 : 1,
@@ -28,16 +27,17 @@ export default function UserCard({ user, isFollowing, onToggleFollow, busy, hide
     >
       {/* Avatar */}
       {user.avatar_url ? (
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#18181f', overflow: 'hidden' }}>
-          {/* Placeholder, avatar reali in fase 2 */}
-        </View>
+        <Image
+          source={{ uri: user.avatar_url }}
+          style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: COLORS.bgElev3 }}
+        />
       ) : (
         <View style={{
           width: 52, height: 52, borderRadius: 26,
-          backgroundColor: 'rgba(168,85,247,0.18)',
+          backgroundColor: COLORS.bgElev3,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Text style={{ color: '#A855F7', fontSize: 22, fontWeight: '800' }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 22, fontWeight: '800' }}>
             {initialOf(display)}
           </Text>
         </View>
@@ -45,25 +45,25 @@ export default function UserCard({ user, isFollowing, onToggleFollow, busy, hide
 
       {/* Info */}
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{display}</Text>
+        <Text numberOfLines={1} style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 15 }}>{display}</Text>
         {handle && (
-          <Text numberOfLines={1} style={{ color: '#64748B', fontSize: 12, marginTop: 1 }}>{handle}</Text>
+          <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 1 }}>{handle}</Text>
         )}
         {user.bio ? (
-          <Text numberOfLines={1} style={{ color: '#9CA3AF', fontSize: 12, marginTop: 3 }}>{user.bio}</Text>
+          <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 3 }}>{user.bio}</Text>
         ) : user.city ? (
-          <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 3 }}>{user.city}</Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 3 }}>{user.city}</Text>
         ) : null}
         {Array.isArray(user.interests) && user.interests.length > 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
             {user.interests.slice(0, 3).map(tag => (
               <View key={tag} style={{
-                backgroundColor: 'rgba(168,85,247,0.12)',
+                backgroundColor: COLORS.bgElev3,
                 borderRadius: 8,
-                paddingHorizontal: 6,
+                paddingHorizontal: 7,
                 paddingVertical: 2,
               }}>
-                <Text style={{ color: '#A855F7', fontSize: 10, fontWeight: '600' }}>{tag}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 10, fontWeight: '600' }}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -80,19 +80,19 @@ export default function UserCard({ user, isFollowing, onToggleFollow, busy, hide
             paddingHorizontal: 14,
             paddingVertical: 7,
             borderRadius: 18,
-            backgroundColor: isFollowing ? 'transparent' : '#7C3AED',
+            backgroundColor: isFollowing ? 'transparent' : COLORS.brandStrong,
             borderWidth: 1,
-            borderColor: isFollowing ? 'rgba(168,85,247,0.35)' : '#7C3AED',
+            borderColor: isFollowing ? COLORS.borderStrong : COLORS.brandStrong,
             opacity: busy || pressed ? 0.7 : 1,
             minWidth: 88,
             alignItems: 'center',
           })}
         >
           {busy ? (
-            <ActivityIndicator color={isFollowing ? '#A855F7' : '#fff'} size="small" />
+            <ActivityIndicator color={isFollowing ? COLORS.textSecondary : '#fff'} size="small" />
           ) : (
             <Text style={{
-              color: isFollowing ? '#A855F7' : '#fff',
+              color: isFollowing ? COLORS.textSecondary : '#fff',
               fontSize: 12,
               fontWeight: '700',
             }}>

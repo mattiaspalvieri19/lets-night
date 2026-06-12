@@ -69,8 +69,8 @@ export default function LoginScreen() {
         <View className="flex-1 px-6 pt-10 pb-8">
 
           <View className="mb-10">
-            <Text className="text-white text-3xl font-bold">
-              Let&apos;s<Text className="text-brand">Night</Text>
+            <Text className="text-white" style={{ fontFamily: 'BricolageGrotesque_800ExtraBold', fontSize: 30, letterSpacing: -0.6 }}>
+              Let&apos;s<Text className="text-brand-light">Night</Text>
             </Text>
             <Text className="text-gray-400 mt-2 text-base">Accedi al tuo account</Text>
           </View>
@@ -85,7 +85,7 @@ export default function LoginScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Email</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="la@tua.email"
                 placeholderTextColor="#555577"
                 value={email}
@@ -99,7 +99,7 @@ export default function LoginScreen() {
             <View>
               <Text className="text-gray-400 text-sm mb-2">Password</Text>
               <TextInput
-                className="bg-card border border-gray-700 text-white rounded-xl px-4 py-4"
+                className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="••••••••"
                 placeholderTextColor="#555577"
                 value={password}
