@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatTime, getPriceLabel, CATS_NO_TUTTI } from '@lets-night/shared';
 
@@ -272,12 +273,18 @@ export default function BusinessEvents() {
 
       {/* Create event modal */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={closeModal}>
-        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={closeModal} />
-          <View style={{ backgroundColor: '#111118', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%', borderTopWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}>
-            <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 20 }}>Nuovo evento</Text>
-            <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={{ backgroundColor: '#111118', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24, maxHeight: '90%', borderTopWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}>
+            <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 14 }} />
+            {/* Barra header con "Fatto" per chiudere la tastiera */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Nuovo evento</Text>
+              <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8}>
+                <Text style={{ color: '#A855F7', fontSize: 15, fontWeight: '700' }}>Fatto</Text>
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               {[['Titolo', 'title', 'Es. Saturday Night Fever'], ['Descrizione', 'description', 'Descrivi l\'evento...']].map(([label, key, ph]) => (
                 <View key={key} style={{ marginBottom: 14 }}>
                   <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
@@ -328,9 +335,16 @@ export default function BusinessEvents() {
               >
                 <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{saving ? 'Pubblicazione...' : 'Pubblica evento'}</Text>
               </Pressable>
+              {/* Suggerimento tavoli: si gestiscono dopo, dentro l'evento */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
+                <Ionicons name="information-circle-outline" size={15} color="#64748B" />
+                <Text style={{ color: '#64748B', fontSize: 12, flex: 1, lineHeight: 16 }}>
+                  Dopo aver pubblicato, tocca l'evento per aggiungere i tavoli (tipologie, prezzi, cosa includono).
+                </Text>
+              </View>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
