@@ -9,9 +9,13 @@ function stripe() {
   return _stripe;
 }
 
-// Chiamato dal client dopo il redirect /payment-return per mostrare subito il QR.
-// Il webhook è la fonte di verità — questa route è un fallback sincrono.
-// Tutta la logica è idempotente: stesse session può essere richiesta N volte.
+// Conferma post-pagamento. Due chiamanti:
+//  - app mobile: passa accessToken → verifichiamo che la sessione sia sua e
+//    restituiamo il qrCode (lo mostra subito nella modal).
+//  - pagina /payment-return (in-app browser, NON loggata): passa solo sessionId.
+//    La session Stripe paid è già la prova: fulfilliamo lato server (idempotente,
+//    il booking va a metadata.userId), ma NON restituiamo il qrCode a un chiamante
+//    non autenticato (il QR è il biglietto d'ingresso → lo si vede solo in app).
 export async function POST(request) {
   let body;
   try {
@@ -24,19 +28,11 @@ export async function POST(request) {
   if (!sessionId || typeof sessionId !== 'string') {
     return NextResponse.json({ error: 'sessionId mancante' }, { status: 400 });
   }
-  if (!accessToken || typeof accessToken !== 'string') {
-    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
-  }
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
-  }
 
   let session;
   try {
@@ -46,8 +42,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Sessione non trovata' }, { status: 404 });
   }
 
-  if (session.metadata?.userId !== user.id) {
-    return NextResponse.json({ error: 'Sessione non valida' }, { status: 403 });
+  // Token opzionale: se presente e coerente col proprietario → potremo restituire il QR.
+  let owner = false;
+  if (accessToken && typeof accessToken === 'string') {
+    const { data: { user } } = await supabase.auth.getUser(accessToken);
+    if (user && session.metadata?.userId === user.id) owner = true;
+    else if (user && session.metadata?.userId !== user.id) {
+      // Token di un altro utente: non confermare la sessione altrui.
+      return NextResponse.json({ error: 'Sessione non valida' }, { status: 403 });
+    }
   }
 
   const result = await fulfillBookingFromSession(session);
@@ -61,8 +64,9 @@ export async function POST(request) {
   }
 
   return NextResponse.json({
+    confirmed: true,
     bookingId: result.bookingId,
-    qrCode: result.qrCode,
+    qrCode: owner ? result.qrCode : undefined,
     alreadyExisted: !!result.alreadyExisted,
   });
 }
