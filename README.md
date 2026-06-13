@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Let's Night
 
-## Getting Started
+Piattaforma di scoperta e prenotazione di eventi notturni (Milano).
+Monorepo: **sito web** (Next.js) + **app mobile** (Expo/React Native) con backend **Supabase** condiviso e pagamenti **Stripe**.
 
-First, run the development server:
+> Documentazione operativa completa (convenzioni, tabelle, regole di sviluppo) in **[`CLAUDE.md`](./CLAUDE.md)**.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Stack
+
+| Layer | Tecnologia |
+|---|---|
+| Monorepo | Turborepo + npm workspaces |
+| Web | Next.js 16 (App Router) — `apps/web` |
+| Mobile | Expo SDK 54 + Expo Router — `apps/mobile` |
+| Codice condiviso | `packages/shared` (costanti, utility, design tokens) |
+| Backend | Supabase (Postgres + Auth + RLS) |
+| Pagamenti | Stripe Checkout |
+| Linguaggio | JavaScript puro (no TypeScript) |
+| Deploy web | Vercel (root: `apps/web`) |
+| Deploy app | EAS Build |
+
+## Struttura
+
+```
+lets-night/
+├── apps/
+│   ├── web/                 # Next.js (route in app/, API in app/api/)
+│   └── mobile/              # Expo (route in app/, componenti in components/)
+├── packages/
+│   └── shared/              # @lets-night/shared — costanti + utility + design
+└── supabase/
+    └── migrations/          # schema del DB come codice (vedi sotto)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Avvio rapido
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+**Prerequisiti:** Node ≥ 18, npm ≥ 10.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install                  # dalla root: installa tutti i workspace
+```
 
-## Learn More
+Crea i due file di ambiente partendo dagli esempi (le chiavi si chiedono a Mattia):
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cp apps/web/.env.local.example    apps/web/.env.local
+cp apps/mobile/.env.local.example apps/mobile/.env.local
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Avvio:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev          # web + mobile in parallelo
+npm run dev:web      # solo web    → http://localhost:3000
+npm run dev:mobile   # solo Expo   → Expo Go
+npm run build:web    # build di produzione web
+npm run lint         # lint del monorepo
+```
 
-## Deploy on Vercel
+> **Test pagamenti su telefono (Expo Go):** il telefono deve raggiungere il dev server web del Mac.
+> L'URL dell'API viene ricavato in automatico dall'host di Expo (`apps/mobile/lib/apiUrl.js`),
+> quindi basta che web e Metro girino sullo stesso Mac; avvia il web con host aperto:
+> `npx next dev apps/web -H 0.0.0.0 -p 3000`. Carta di test Stripe: `4242 4242 4242 4242`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Database e migrazioni
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Lo schema del database è versionato come codice in **`supabase/migrations/`** — un file `.sql`
+per modifica, ordinato per data. **È la fonte di verità dello schema.**
+
+Workflow attuale (manuale): ogni modifica = **un file nuovo** in quella cartella, da incollare
+ed eseguire una volta nel **SQL Editor** di Supabase. Le migration sono idempotenti
+(`IF EXISTS` / `CREATE OR REPLACE`), quindi rilanciarle è sicuro.
+Non modificare un file già applicato: aggiungerne sempre uno nuovo.
+
+> In prospettiva (staging/CI) conviene passare alla **CLI Supabase**
+> (`supabase link` + `supabase db push`) che applica i file e ne tiene traccia automaticamente.
+
+## Branch
+
+- `main` → produzione
+- `develop` → integrazione (PR sempre verso `develop`, mai diretti su `main`)
+- `feature/*` → singole funzionalità
+
+## Sicurezza
+
+- I file `.env.local` **non** vanno mai committati (sono in `.gitignore`).
+- Nel mobile, solo variabili `EXPO_PUBLIC_*` (chiavi pubbliche): mai segreti, finiscono nel bundle.
+- La `SUPABASE_SERVICE_ROLE_KEY` e le chiavi `sk_` Stripe sono **solo lato server** (`apps/web`).
