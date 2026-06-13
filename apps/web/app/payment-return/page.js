@@ -1,68 +1,44 @@
-'use client';
-
-import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import QRCode from 'react-qr-code';
-import { useSearchParams } from 'next/navigation';
+import Stripe from 'stripe';
+import { fulfillBookingFromSession } from '../../lib/fulfillBooking';
 
-function PaymentReturnInner() {
-  const params = useSearchParams();
-  const status = params.get('status') || 'cancel';
-  const sessionId = params.get('session_id') || '';
-  const isSuccess = status === 'success';
+// Conferma SERVER-SIDE durante il render: niente fetch lato client, niente deep link,
+// niente dipendenza dalla cache del browser in-app (era la causa del "Verifica
+// pagamento" eterno in Expo Go). La pagina arriva già con l'esito.
+// L'app mobile conferma comunque per conto suo (con token → QR immediato); qui, non
+// autenticati, non mostriamo il QR: lo si vede in app, in Biglietti.
+export const dynamic = 'force-dynamic';
 
-  const [qr, setQr] = useState(null);
-  const [phase, setPhase] = useState(isSuccess ? 'verifying' : 'cancelled'); // verifying|qr|confirmed|refunded|error|cancelled
-  const [msg, setMsg] = useState('');
+let _stripe;
+function stripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
-  useEffect(() => {
-    let cancelled = false;
+async function resolvePhase(status, sessionId) {
+  if (status !== 'success') return { phase: 'cancelled' };
+  if (!sessionId) return { phase: 'error' };
 
-    // Deep link verso l'app, UNA SOLA VOLTA (guard in sessionStorage): nelle dev/prod
-    // build lo scheme letsnight:// fa tornare nell'app; in Expo Go non apre nulla e,
-    // se chiamato in cima/in loop, RICARICA la pagina all'infinito impedendo la conferma.
-    // Per questo lo lanciamo SOLO dopo aver confermato, e con guard anti-loop.
-    function deepLinkOnce() {
-      if (typeof window === 'undefined') return;
-      if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
-      const key = 'ln_dl_' + (sessionId || status);
-      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch {}
-      const deep = `letsnight://payment-return?status=${encodeURIComponent(status)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}`;
-      window.location.href = deep;
-    }
+  let session;
+  try {
+    session = await stripe().checkout.sessions.retrieve(sessionId);
+  } catch (e) {
+    console.error('Stripe retrieve session (payment-return):', e?.message || e);
+    return { phase: 'error' };
+  }
 
-    if (!isSuccess) { deepLinkOnce(); return; }
-    if (!sessionId) { setPhase('error'); return; }
+  const result = await fulfillBookingFromSession(session);
+  if (result.ok) return { phase: 'confirmed' };
+  if (result.refunded) return { phase: 'refunded', msg: result.error || '' };
+  return { phase: 'error' };
+}
 
-    (async () => {
-      try {
-        // La pagina (in-app browser) NON è loggata: confermiamo con il solo sessionId.
-        // Il server fulfilla via metadata della session Stripe (idempotente) e — senza
-        // token — NON restituisce il QR: lo si vede nell'app, in Biglietti.
-        const res = await fetch('/api/stripe/confirm-booking', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId }),
-        });
-        const json = await res.json();
-        if (cancelled) return;
-        if (!res.ok) {
-          if (json.refunded) { setMsg(json.error || ''); setPhase('refunded'); }
-          else setPhase('error');
-        } else if (json.qrCode) {
-          setQr(json.qrCode); setPhase('qr');
-        } else {
-          setPhase('confirmed');
-        }
-      } catch {
-        if (!cancelled) setPhase('error');
-      } finally {
-        // Solo DOPO la conferma (e una volta sola): rientro in app per le build vere.
-        if (!cancelled) deepLinkOnce();
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [isSuccess, sessionId, status]);
+export default async function PaymentReturnPage({ searchParams }) {
+  const sp = (await searchParams) || {};
+  const status = typeof sp.status === 'string' ? sp.status : 'cancel';
+  const sessionId = typeof sp.session_id === 'string' ? sp.session_id : '';
+
+  const { phase, msg } = await resolvePhase(status, sessionId);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui, sans-serif' }}>
@@ -76,41 +52,15 @@ function PaymentReturnInner() {
           </>
         )}
 
-        {phase === 'verifying' && (
-          <>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Verifica pagamento...</h1>
-            <p style={{ color: '#A1A1AA', fontSize: 14 }}>Stiamo confermando la tua prenotazione.</p>
-          </>
-        )}
-
-        {phase === 'qr' && (
-          <>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Prenotato!</h1>
-            <p style={{ color: '#A1A1AA', marginBottom: 18, fontSize: 14 }}>Mostra questo QR all&apos;ingresso del locale.</p>
-            <div style={{ background: '#fff', padding: 16, borderRadius: 12, display: 'inline-block', marginBottom: 18 }}>
-              <QRCode value={qr} size={220} />
-            </div>
-            <p style={{ color: '#71717A', fontSize: 12, marginBottom: 18 }}>
-              Lo ritrovi sempre nella tua area personale.
-            </p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/dashboard" style={{ background: '#7C3AED', color: '#fff', padding: '12px 24px', borderRadius: 10, textDecoration: 'none', fontWeight: 600 }}>I miei biglietti</Link>
-              <Link href="/" style={{ background: 'transparent', color: '#A855F7', padding: '12px 24px', borderRadius: 10, textDecoration: 'none', border: '1px solid rgba(168,85,247,0.35)', fontWeight: 600 }}>Home</Link>
-            </div>
-          </>
-        )}
-
         {phase === 'confirmed' && (
           <>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Prenotazione confermata!</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 10 }}>Pagamento confermato!</h1>
             <p style={{ color: '#A1A1AA', marginBottom: 8, fontSize: 14, lineHeight: 1.5 }}>
-              Il pagamento è andato a buon fine.
+              La tua prenotazione è stata registrata.
             </p>
             <p style={{ color: '#A1A1AA', marginBottom: 24, fontSize: 14, lineHeight: 1.5 }}>
-              Chiudi questa pagina e apri l&apos;app <strong style={{ color: '#fff' }}>Let&apos;s Night</strong>: trovi il biglietto col QR nella sezione <strong style={{ color: '#fff' }}>Biglietti</strong>.
+              Puoi chiudere questa pagina e tornare all&apos;app <strong style={{ color: '#fff' }}>Let&apos;s Night</strong>: trovi il biglietto col QR nella sezione <strong style={{ color: '#fff' }}>Biglietti</strong>.
             </p>
             <Link href="/" style={{ background: '#7C3AED', color: '#fff', padding: '12px 24px', borderRadius: 10, textDecoration: 'none', fontWeight: 600 }}>Torna alla home</Link>
           </>
@@ -143,13 +93,5 @@ function PaymentReturnInner() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function PaymentReturnPage() {
-  return (
-    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0A0A0C' }} />}>
-      <PaymentReturnInner />
-    </Suspense>
   );
 }

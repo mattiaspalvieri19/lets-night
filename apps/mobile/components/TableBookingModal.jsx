@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { COLORS, FONT_FAMILY, BOOKING_FEE, TABLE_MIN_SHARE, formatDateFull } from '@lets-night/shared';
 import { sendLocalNotification } from '../lib/notifications';
+import { API_URL } from '../lib/apiUrl';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const APP_RETURN_SCHEME = 'letsnight://payment-return';
 
 function parseReturnUrl(url) {
@@ -124,8 +124,8 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
 
     try {
       const body = isOpen
-        ? { eventId: event.id, accessToken: session.access_token, tableAction: 'open', typeId: type.id, visibility, share: shareNum }
-        : { eventId: event.id, accessToken: session.access_token, tableAction: 'join', tableId: table.id, share: shareNum };
+        ? { eventId: event.id, accessToken: session.access_token, tableAction: 'open', typeId: type.id, visibility, share: shareNum, returnBase: API_URL }
+        : { eventId: event.id, accessToken: session.access_token, tableAction: 'join', tableId: table.id, share: shareNum, returnBase: API_URL };
 
       const res = await fetch(`${API_URL}/api/stripe/checkout-session`, {
         method: 'POST',
@@ -140,22 +140,25 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
         return;
       }
 
+      // sessionId noto PRIMA del browser: in Expo Go il deep link letsnight:// non torna
+      // nell'app (l'utente chiude il browser a mano → 'dismiss'), quindi confermiamo con
+      // la session che già conosciamo. Nelle dev/prod build arriva anche via result.url.
+      const checkoutSessionId = json.sessionId;
       const result = await WebBrowser.openAuthSessionAsync(json.url, APP_RETURN_SCHEME);
 
-      if (result.type !== 'success' || !result.url) {
-        setLoading(false);
-        submitting.current = false;
-        if (result.type === 'cancel' || result.type === 'dismiss') return;
-        setError('Pagamento annullato o non completato.');
-        return;
+      let sessionId = null;
+      if (result.type === 'success' && result.url) {
+        const parsed = parseReturnUrl(result.url);
+        if (parsed.status === 'success') sessionId = parsed.sessionId;
+      } else if (result.type === 'dismiss' || result.type === 'cancel') {
+        // Può aver pagato e poi chiuso il browser: ritentiamo con la session nota.
+        sessionId = checkoutSessionId;
       }
 
-      const { status, sessionId } = parseReturnUrl(result.url);
-      if (status !== 'success' || !sessionId) {
+      if (!sessionId) {
         setLoading(false);
         submitting.current = false;
-        setError('Pagamento non completato.');
-        return;
+        return; // annullato dall'utente
       }
 
       const confirmRes = await fetch(`${API_URL}/api/stripe/confirm-booking`, {
@@ -167,13 +170,14 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
       setLoading(false);
       submitting.current = false;
 
-      if (!confirmRes.ok || !confirmJson.qrCode) {
-        // Per i tavoli il server manda già il messaggio giusto (anche nei refund automatici).
-        setError(confirmJson.error || 'Pagamento riuscito ma quota non confermata. Contatta supporto.');
+      if (confirmRes.ok && confirmJson.qrCode) {
+        onPaid(confirmJson.qrCode);
         return;
       }
-
-      onPaid(confirmJson.qrCode);
+      // 402 = pagamento non completato → vero annullamento: chiudi in silenzio.
+      if (confirmRes.status === 402) return;
+      // Altri esiti (refund automatici inclusi): il server manda già il messaggio giusto.
+      setError(confirmJson.error || 'Pagamento riuscito ma quota non confermata. Contatta supporto.');
     } catch (e) {
       console.error('Errore checkout tavolo:', e);
       setLoading(false);

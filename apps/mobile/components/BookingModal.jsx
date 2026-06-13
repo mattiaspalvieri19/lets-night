@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import { COLORS, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice } from '@lets-night/shared';
 import { sendLocalNotification } from '../lib/notifications';
+import { API_URL } from '../lib/apiUrl';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 const APP_RETURN_SCHEME = 'letsnight://payment-return';
 
 function parseReturnUrl(url) {
@@ -135,6 +135,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
           quantity: pricing.safeQty,
           bookingType: pricing.bookingType,
           accessToken: session.access_token,
+          returnBase: API_URL,
         }),
       });
       const json = await res.json();
@@ -148,23 +149,25 @@ export default function BookingModal({ visible, onClose, event, session }) {
         throw new Error(json.error || 'Errore creazione pagamento');
       }
 
+      // sessionId noto PRIMA del browser: in Expo Go il deep link letsnight:// non torna
+      // nell'app (l'utente chiude il browser a mano → 'dismiss'), quindi confermiamo con
+      // la session che già conosciamo. Nelle dev/prod build arriva anche via result.url.
+      const checkoutSessionId = json.sessionId;
       const result = await WebBrowser.openAuthSessionAsync(json.url, APP_RETURN_SCHEME);
 
-      if (result.type !== 'success' || !result.url) {
-        setLoading(false);
-        submitting.current = false;
-        if (result.type === 'cancel' || result.type === 'dismiss') return;
-        setError('Pagamento annullato o non completato.');
-        return;
+      let sessionId = null;
+      if (result.type === 'success' && result.url) {
+        const parsed = parseReturnUrl(result.url);
+        if (parsed.status === 'success') sessionId = parsed.sessionId;
+      } else if (result.type === 'dismiss' || result.type === 'cancel') {
+        // Può aver pagato e poi chiuso il browser: ritentiamo con la session nota.
+        sessionId = checkoutSessionId;
       }
 
-      const { status, sessionId } = parseReturnUrl(result.url);
-
-      if (status !== 'success' || !sessionId) {
+      if (!sessionId) {
         setLoading(false);
         submitting.current = false;
-        setError('Pagamento non completato.');
-        return;
+        return; // annullato dall'utente
       }
 
       const confirmRes = await fetch(`${API_URL}/api/stripe/confirm-booking`, {
@@ -176,20 +179,21 @@ export default function BookingModal({ visible, onClose, event, session }) {
       setLoading(false);
       submitting.current = false;
 
-      if (!confirmRes.ok || !confirmJson.qrCode) {
-        if (confirmJson.refunded) {
-          let msg;
-          if (confirmJson.duplicate) msg = 'Avevi già una prenotazione per questo evento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
-          else if (confirmJson.oversold) msg = 'Posti esauriti dopo il pagamento. Il rimborso è stato avviato automaticamente: lo vedrai sulla tua carta entro 5-10 giorni lavorativi.';
-          else msg = 'Il prezzo dell\'evento è cambiato dopo il pagamento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
-          setError(msg);
-        } else {
-          setError(confirmJson.error || 'Pagamento riuscito ma prenotazione non confermata. Contatta supporto.');
-        }
+      if (confirmRes.ok && confirmJson.qrCode) {
+        onBookingSuccess(confirmJson.qrCode);
         return;
       }
-
-      onBookingSuccess(confirmJson.qrCode);
+      // 402 = pagamento non completato → vero annullamento: chiudi in silenzio.
+      if (confirmRes.status === 402) return;
+      if (confirmJson.refunded) {
+        let msg;
+        if (confirmJson.duplicate) msg = 'Avevi già una prenotazione per questo evento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
+        else if (confirmJson.oversold) msg = 'Posti esauriti dopo il pagamento. Il rimborso è stato avviato automaticamente: lo vedrai sulla tua carta entro 5-10 giorni lavorativi.';
+        else msg = 'Il prezzo dell\'evento è cambiato dopo il pagamento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
+        setError(msg);
+      } else {
+        setError(confirmJson.error || 'Pagamento riuscito ma prenotazione non confermata. Contatta supporto.');
+      }
     } catch (e) {
       console.error('Errore checkout:', e);
       setLoading(false);

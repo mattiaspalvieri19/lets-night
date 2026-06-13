@@ -152,6 +152,10 @@ async function fulfillTableShare(supabase, stripeSession, md) {
   }
 
   let tableId = md.tableId || null;
+  // Se apriamo NOI il tavolo in questa chiamata e poi la quota viene rifiutata, il
+  // tavolo resterebbe orfano (0 membri, occupa uno slot tables_count, appare come
+  // tavolo pubblico fantasma). Teniamo traccia per poterlo rimuovere (rollback).
+  let createdTableId = null;
 
   if (md.tableAction === 'open') {
     // Dedup apertura: la session può essere processata da webhook E confirm-booking.
@@ -204,12 +208,25 @@ async function fulfillTableShare(supabase, stripeSession, md) {
         }
       } else {
         tableId = created.id;
+        createdTableId = created.id;
       }
     }
   }
 
   if (!tableId) {
     return { error: 'Tavolo mancante', status: 400 };
+  }
+
+  // Rollback del tavolo appena aperto se la quota non va a buon fine: lo eliminiamo
+  // solo se non ha membri attivi (per definizione, appena creato, 0 → safe).
+  async function rollbackCreatedTable() {
+    if (!createdTableId) return;
+    const { count } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('table_id', createdTableId)
+      .not('status', 'in', '("cancelled","denied")');
+    if (!count) await supabase.from('event_tables').delete().eq('id', createdTableId);
   }
 
   const { data: prof } = await supabase
@@ -241,10 +258,12 @@ async function fulfillTableShare(supabase, stripeSession, md) {
       if (now) return { ok: true, bookingId: now.id, qrCode: now.qr_code, tableId, alreadyExisted: true };
       // UNIQUE (user, table): aveva già una quota in questo tavolo.
       await refundAndAlert(stripeSession, 'table_duplicate_member', { userId: md.userId, tableId });
+      await rollbackCreatedTable();
       return { error: 'Fai già parte di questo tavolo. Il pagamento è stato rimborsato automaticamente.', status: 409, refunded: true };
     }
     if (bookErr.code === '23514' || /TABLE_SEATS_FULL|SHARE_EXCEEDS_REMAINING|TABLE_NOT_OPEN|TABLE_CANCELLED|SHARE_BELOW_MIN/.test(bookErr.message || '')) {
       await refundAndAlert(stripeSession, 'table_share_rejected', { tableId, detail: bookErr.message });
+      await rollbackCreatedTable();
       const msg = /SEATS_FULL/.test(bookErr.message || '')
         ? 'Il tavolo si è riempito durante il pagamento. Rimborso elaborato automaticamente.'
         : /EXCEEDS/.test(bookErr.message || '')
@@ -252,6 +271,7 @@ async function fulfillTableShare(supabase, stripeSession, md) {
         : 'Il tavolo non è più disponibile. Rimborso elaborato automaticamente.';
       return { error: msg, status: 409, refunded: true };
     }
+    await rollbackCreatedTable();
     console.error('Insert quota tavolo fallita:', bookErr);
     return { error: 'Errore creazione quota', status: 500 };
   }

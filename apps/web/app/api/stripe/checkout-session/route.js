@@ -13,6 +13,26 @@ function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 }
 
+// L'app mobile passa il proprio base URL (ricavato dall'host di Expo) così il success_url
+// di Stripe è SEMPRE raggiungibile dal telefono, anche quando l'IP della rete cambia.
+// Per sicurezza accettiamo solo host privati/localhost (dev): in produzione il base
+// non-privato viene scartato e si usa NEXT_PUBLIC_SITE_URL.
+function safeReturnBase(v) {
+  if (!v || typeof v !== 'string') return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    const h = u.hostname;
+    const isPrivate =
+      h === 'localhost' || h === '127.0.0.1' ||
+      /^10\./.test(h) || /^192\.168\./.test(h) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(h);
+    return isPrivate ? `${u.protocol}//${u.host}` : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request) {
   let body;
   try {
@@ -21,7 +41,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body non valido' }, { status: 400 });
   }
 
-  const { eventId, quantity, bookingType, accessToken, tableAction, typeId, tableId, visibility, share } = body || {};
+  const { eventId, quantity, bookingType, accessToken, tableAction, typeId, tableId, visibility, share, returnBase } = body || {};
 
   if (!accessToken || typeof accessToken !== 'string') {
     return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
@@ -60,8 +80,9 @@ export async function POST(request) {
     }
   }
 
-  const successUrl = `${siteUrl()}/payment-return?status=success&session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${siteUrl()}/payment-return?status=cancel`;
+  const base = safeReturnBase(returnBase) || siteUrl();
+  const successUrl = `${base}/payment-return?status=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${base}/payment-return?status=cancel`;
 
   // ============================ RAMO TAVOLI ============================
   // open: apre un tavolo di una tipologia (public/private) pagando la propria quota.
