@@ -16,19 +16,24 @@ function PaymentReturnInner() {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    // Tentativo deep link verso l'app: funziona nelle dev/prod build (scheme letsnight://).
-    // In Expo Go non fa nulla → restiamo sulla pagina e confermiamo lato server qui sotto.
-    if (typeof window !== 'undefined') {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile && (isSuccess || status === 'cancel')) {
-        const deep = `letsnight://payment-return?status=${encodeURIComponent(status)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}`;
-        window.location.href = deep;
-      }
+    let cancelled = false;
+
+    // Deep link verso l'app, UNA SOLA VOLTA (guard in sessionStorage): nelle dev/prod
+    // build lo scheme letsnight:// fa tornare nell'app; in Expo Go non apre nulla e,
+    // se chiamato in cima/in loop, RICARICA la pagina all'infinito impedendo la conferma.
+    // Per questo lo lanciamo SOLO dopo aver confermato, e con guard anti-loop.
+    function deepLinkOnce() {
+      if (typeof window === 'undefined') return;
+      if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
+      const key = 'ln_dl_' + (sessionId || status);
+      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch {}
+      const deep = `letsnight://payment-return?status=${encodeURIComponent(status)}${sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''}`;
+      window.location.href = deep;
     }
 
-    if (!isSuccess || !sessionId) return;
+    if (!isSuccess) { deepLinkOnce(); return; }
+    if (!sessionId) { setPhase('error'); return; }
 
-    let cancelled = false;
     (async () => {
       try {
         // La pagina (in-app browser) NON è loggata: confermiamo con il solo sessionId.
@@ -44,12 +49,16 @@ function PaymentReturnInner() {
         if (!res.ok) {
           if (json.refunded) { setMsg(json.error || ''); setPhase('refunded'); }
           else setPhase('error');
-          return;
+        } else if (json.qrCode) {
+          setQr(json.qrCode); setPhase('qr');
+        } else {
+          setPhase('confirmed');
         }
-        if (json.qrCode) { setQr(json.qrCode); setPhase('qr'); }
-        else setPhase('confirmed');
       } catch {
         if (!cancelled) setPhase('error');
+      } finally {
+        // Solo DOPO la conferma (e una volta sola): rientro in app per le build vere.
+        if (!cancelled) deepLinkOnce();
       }
     })();
     return () => { cancelled = true; };
