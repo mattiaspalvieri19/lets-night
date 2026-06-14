@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ScrollView, View, Text, TextInput, Pressable, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { useSession } from '../../lib/useSession';
 import { CATS, CITIES, QUICK_TAGS, COLORS, FONT_FAMILY, isInDateRange, formatDate, todayLocal } from '@lets-night/shared';
 import EventCard from '../../components/EventCard';
 import FeaturedCard from '../../components/FeaturedCard';
@@ -46,6 +47,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [advOpen, setAdvOpen] = useState(false);
   const [adv, setAdv] = useState(null); // null = nessun filtro avanzato attivo
+  const { session } = useSession();
+  const [unread, setUnread] = useState(0);
+
+  // Conteggio notifiche non lette, aggiornato a ogni focus (es. tornando dalla schermata Notifiche).
+  useFocusEffect(useCallback(() => {
+    if (!session) { setUnread(0); return; }
+    let cancelled = false;
+    supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+      .eq('read', false)
+      .then(({ count }) => { if (!cancelled) setUnread(count || 0); });
+    return () => { cancelled = true; };
+  }, [session]));
 
   useEffect(() => {
     async function loadEvents() {
@@ -152,13 +168,23 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 6 }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 }}>
-            Milano · {formatDate(todayLocal())}
-          </Text>
-          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.8 }}>
-            Let&apos;s Night
-          </Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 }}>
+              Milano · {formatDate(todayLocal())}
+            </Text>
+            <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.8 }}>
+              Let&apos;s Night
+            </Text>
+          </View>
+          <Pressable onPress={() => router.push('/notifications')} hitSlop={8} style={({ pressed }) => ({ marginTop: 6, padding: 4, opacity: pressed ? 0.6 : 1 })}>
+            <Ionicons name="notifications-outline" size={26} color={COLORS.textPrimary} />
+            {unread > 0 && (
+              <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: COLORS.brandStrong, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, borderWidth: 2, borderColor: COLORS.bg }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            )}
+          </Pressable>
         </View>
 
         {/* City toggle — nascosto in modalità single-city */}

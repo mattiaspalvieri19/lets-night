@@ -14,11 +14,13 @@ const DEFAULT_PRIVACY = {
   show_favorite_venues: true,
   show_followers: true,
   show_following: true,
+  notify_followers_on_booking: false, // opt-in: di default non avvisa i follower
 };
 
 const TOGGLES = [
   { key: 'searchable',          label: 'Mostrami nei risultati di ricerca', sub: 'Gli altri utenti possono trovarti dalla sezione Cerca' },
   { key: 'show_future_events',  label: 'Mostra serate a cui andrò',          sub: 'Eventi futuri visibili sul tuo profilo' },
+  { key: 'notify_followers_on_booking', label: 'Avvisa i follower quando prenoto', sub: 'I tuoi follower ricevono "esce stasera, prenota anche tu" — solo se mostri anche le serate a cui vai' },
   { key: 'show_past_events',    label: 'Mostra serate passate',              sub: 'Eventi a cui sei stato' },
   { key: 'show_photos',         label: 'Mostra foto serate',                 sub: 'Foto caricate dopo gli eventi' },
   { key: 'show_badges',         label: 'Mostra badge',                       sub: 'I traguardi sbloccati appaiono sul profilo' },
