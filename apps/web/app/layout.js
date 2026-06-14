@@ -2,7 +2,7 @@ import "./globals.css";
 import CustomCursor from "../components/CustomCursor";
 
 export const metadata = {
-  title: "Let's Night — Cosa fai stasera?!",
+  title: "Let's Night",
   description: "Discoteche, feste universitarie, cene show e molto altro a Milano.",
 };
 

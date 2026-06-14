@@ -116,7 +116,7 @@ export default function OnboardingScreen() {
                 Benvenuto su{'\n'}<Text style={{ color: COLORS.brand }}>Let&apos;s Night</Text>
               </Text>
               <Text style={{ color: '#94A3B8', fontSize: 15, textAlign: 'center', marginTop: 16, lineHeight: 22 }}>
-                Il TripAdvisor del divertimento.{'\n'}Milano
+                Milano
               </Text>
             </View>
             <View style={{ gap: 14, marginBottom: 30 }}>

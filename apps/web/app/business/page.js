@@ -119,7 +119,7 @@ export default function BusinessLanding() {
         <div className="footer-inner">
           <div className="footer-brand">
             <div className="ln-logo-sm">Let&apos;s<span>Night</span></div>
-            <p>Il TripAdvisor del divertimento.<br />Business Portal</p>
+            <p>Business Portal</p>
           </div>
           <div className="footer-links">
             <div className="fcol">
