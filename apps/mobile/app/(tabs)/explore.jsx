@@ -66,8 +66,9 @@ export default function SearchScreen() {
       u.id !== myId && (u.privacy_settings || {}).searchable !== false
     );
     setUsers(usersList);
-    setVenues(venuesRes.data || []);
-    setEvents(eventsRes.data || []);
+    // Milano-only: nasconde locali ed eventi di altre città (es. seed di Roma) dalla ricerca.
+    setVenues((venuesRes.data || []).filter(v => CITIES.includes(v.city)));
+    setEvents((eventsRes.data || []).filter(e => CITIES.includes(e.venues?.city)));
     setFollowingIds(new Set((followsRes.data || []).map(r => r.following_id)));
   }
 

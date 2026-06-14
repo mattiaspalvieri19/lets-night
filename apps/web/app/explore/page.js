@@ -89,7 +89,8 @@ function ExplorePageInner() {
       if (error) console.error('Errore caricamento eventi:', error);
       const list = data || [];
       setEvents(list);
-      const zonesSet = new Set(list.map(e => e.venues?.zona).filter(Boolean));
+      // Solo zone delle città lanciate (Milano-only): niente zone di Roma nei filtri.
+      const zonesSet = new Set(list.filter(e => CITIES.includes(e.venues?.city)).map(e => e.venues?.zona).filter(Boolean));
       setZones(Array.from(zonesSet).sort());
       setLoading(false);
     }

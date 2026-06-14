@@ -220,12 +220,12 @@ export default function BusinessVenueEdit() {
                 </Field>
               )}
               <Field label="Zona">
-                <input className="auth-input" value={form.zona} onChange={e => setField('zona', e.target.value)} maxLength={50} placeholder="Es. Navigli, Trastevere" />
+                <input className="auth-input" value={form.zona} onChange={e => setField('zona', e.target.value)} maxLength={50} placeholder="Es. Navigli, Brera" />
               </Field>
             </div>
 
             <Field label="Indirizzo">
-              <input className="auth-input" value={form.address} onChange={e => setField('address', e.target.value)} maxLength={120} placeholder="Via Roma 1" />
+              <input className="auth-input" value={form.address} onChange={e => setField('address', e.target.value)} maxLength={120} placeholder="Via Tortona 1" />
             </Field>
           </div>
 

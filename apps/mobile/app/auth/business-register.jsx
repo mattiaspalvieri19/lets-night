@@ -165,7 +165,7 @@ export default function BusinessRegisterScreen() {
             </>
           )}
 
-          <Field label="Zona *" value={form.zona} onChange={update('zona')} placeholder="Es. Navigli, Trastevere" />
+          <Field label="Zona *" value={form.zona} onChange={update('zona')} placeholder="Es. Navigli, Brera" />
           <Field label="Indirizzo" value={form.address} onChange={update('address')} placeholder="Via, numero civico" />
           <Field label="Telefono locale *" value={form.phone} onChange={update('phone')} placeholder="+39 02..." keyboardType="phone-pad" />
           <Field label="Descrizione breve" value={form.description} onChange={update('description')} placeholder="Cosa rende speciale il tuo locale?" multiline />

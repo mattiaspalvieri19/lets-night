@@ -116,7 +116,7 @@ export default function BusinessRegister() {
 
           <div className="auth-field">
             <label>Zona</label>
-            <input type="text" value={form.zona} onChange={handleChange('zona')} placeholder="Es. Navigli, Trastevere..." required />
+            <input type="text" value={form.zona} onChange={handleChange('zona')} placeholder="Es. Navigli, Brera..." required />
           </div>
 
           <div className="auth-field">

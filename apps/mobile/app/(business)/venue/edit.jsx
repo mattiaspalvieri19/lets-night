@@ -236,11 +236,11 @@ export default function EditVenue() {
 
         {/* Zona */}
         <FieldLabel label="Zona" />
-        <TextInput style={Styles.input} value={form.zona} onChangeText={t => setField('zona', t)} maxLength={50} placeholder="Navigli, Trastevere..." placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.zona} onChangeText={t => setField('zona', t)} maxLength={50} placeholder="Navigli, Brera..." placeholderTextColor="#475569" />
 
         {/* Indirizzo */}
         <FieldLabel label="Indirizzo" />
-        <TextInput style={Styles.input} value={form.address} onChangeText={t => setField('address', t)} maxLength={120} placeholder="Via Roma 1" placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.address} onChangeText={t => setField('address', t)} maxLength={120} placeholder="Via Tortona 1" placeholderTextColor="#475569" />
 
         <Text style={[Styles.sectionLabel, { marginTop: 18 }]}>Contatti</Text>
 
