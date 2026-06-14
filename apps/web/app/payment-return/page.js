@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Stripe from 'stripe';
 import { fulfillBookingFromSession } from '../../lib/fulfillBooking';
+import AppReturnRedirect from './AppReturnRedirect';
 
 // Conferma SERVER-SIDE durante il render: niente fetch lato client, niente deep link,
 // niente dipendenza dalla cache del browser in-app (era la causa del "Verifica
@@ -42,6 +43,7 @@ export default async function PaymentReturnPage({ searchParams }) {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0A0A0C', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui, sans-serif' }}>
+      <AppReturnRedirect status={status} sessionId={sessionId} />
       <div style={{ maxWidth: 480, textAlign: 'center', width: '100%' }}>
         {phase === 'cancelled' && (
           <>

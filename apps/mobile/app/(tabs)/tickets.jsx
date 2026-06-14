@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as ScreenCapture from 'expo-screen-capture';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
@@ -27,18 +27,22 @@ function TicketCard({ booking, onPress, onShowQR }) {
     denied: 'Rimborsato',
   }[booking.status] || booking.status;
 
+  const showQR = !past && booking.qr_code && onShowQR;
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
+    <View
+      style={{
         backgroundColor: COLORS.bgElev2,
         borderRadius: 16,
-        marginBottom: 10,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         overflow: 'hidden',
-        opacity: pressed ? 0.85 : past ? 0.65 : 1,
-      })}
+        opacity: past ? 0.65 : 1,
+      }}
     >
-      <View style={{ padding: 16 }}>
+      {/* Corpo cliccabile → dettaglio evento */}
+      <Pressable onPress={onPress} style={({ pressed }) => ({ padding: 16, opacity: pressed ? 0.85 : 1 })}>
         {/* Header row */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
           <View style={{ flex: 1, marginRight: 12 }}>
@@ -81,28 +85,34 @@ function TicketCard({ booking, onPress, onShowQR }) {
           )}
         </View>
 
-        {/* Footer */}
+        {/* Footer: luogo + prezzo */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
           <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
-            {event?.venues?.zona}, {event?.venues?.city}
+            {[event?.venues?.zona, event?.venues?.city].filter(Boolean).join(', ')}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
-              {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
-            </Text>
-            {!past && booking.qr_code && onShowQR && (
-              <Pressable
-                onPress={onShowQR}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandSubtle, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}
-              >
-                <Ionicons name="qr-code-outline" size={12} color={COLORS.brand} />
-                <Text style={{ color: COLORS.brand, fontSize: 12, fontWeight: '700' }}>QR</Text>
-              </Pressable>
-            )}
-          </View>
+          <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
+            {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
+          </Text>
         </View>
-      </View>
-    </Pressable>
+
+      </Pressable>
+
+      {/* CTA biglietto: FRATELLO del corpo (non annidato) → niente conflitto di tap su Android */}
+      {showQR && (
+        <Pressable
+          onPress={onShowQR}
+          style={({ pressed }) => ({
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 13,
+            marginHorizontal: 16, marginBottom: 16,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Ionicons name="qr-code" size={17} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Mostra il QR d&apos;ingresso</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -154,6 +164,16 @@ export default function TicketsScreen() {
     setLoadingBookings(true);
     fetchBookings(session.user.id).finally(() => setLoadingBookings(false));
   }, [session]);
+
+  // Refetch SILENZIOSO ogni volta che si torna sulla tab (la tab resta montata, quindi
+  // una prenotazione appena fatta altrove — es. un tavolo — non comparirebbe finché non
+  // si fa pull-to-refresh). Nessuno spinner a tutto schermo: aggiorna la lista e basta.
+  useFocusEffect(
+    useCallback(() => {
+      if (session) fetchBookings(session.user.id);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session])
+  );
 
   const onRefresh = useCallback(async () => {
     if (!session) return;
