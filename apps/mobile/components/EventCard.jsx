@@ -1,83 +1,89 @@
 import { Pressable, View, Text, Image } from 'react-native';
-import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatTime, getPriceLabel } from '@lets-night/shared';
 
-// Card evento foto-first. Senza foto: fallback tipografico (parola categoria
-// in display gigante, ritagliata) — mai gradienti a tutta card.
+const MONTHS = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+
+// Card evento a colonna singola, copertina protagonista (per gli eventi sponsorizzati
+// che avranno cover_image). Senza foto: poster tipografico (categoria gigante ritagliata +
+// tint di categoria) → mai un box vuoto. Stile/colori dell'app, niente gradienti arcobaleno.
 export default function EventCard({ event, onPress }) {
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
   const photo = event.cover_image || event.venues?.cover_image || null;
+
+  const [, m, d] = (event.event_date || '').split('-').map(Number);
+  const dayNum = d || '';
+  const monthAbbr = m ? MONTHS[m - 1] : '';
+  const timeStr = event.end_time
+    ? `${formatTime(event.event_time)} – ${formatTime(event.end_time)}`
+    : formatTime(event.event_time);
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        width: '100%',
         backgroundColor: COLORS.bgElev2,
-        borderRadius: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: COLORS.borderSubtle,
         overflow: 'hidden',
-        opacity: pressed ? 0.88 : 1,
+        marginBottom: 18,
+        opacity: pressed ? 0.92 : 1,
       })}
     >
-      <View style={{ height: 132, backgroundColor: COLORS.bgElev1, overflow: 'hidden' }}>
+      {/* Header: locale + orario · data prominente */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 }}>
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }}>
+            {event.venues?.name || 'Locale'}
+          </Text>
+          {!!timeStr && (
+            <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
+              {timeStr}{event.venues?.zona ? ` · ${event.venues.zona}` : ''}
+            </Text>
+          )}
+        </View>
+        <View style={{ alignItems: 'center', minWidth: 40 }}>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, lineHeight: 25, letterSpacing: -0.5 }}>{dayNum}</Text>
+          <Text style={{ color: accent, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>{monthAbbr}</Text>
+        </View>
+      </View>
+
+      {/* Copertina */}
+      <View style={{ marginHorizontal: 12, borderRadius: 14, overflow: 'hidden', height: 196, backgroundColor: COLORS.bgElev1 }}>
         {photo ? (
           <>
             <Image source={{ uri: photo }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.18)' }} />
+            <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']} locations={[0.55, 1]} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
           </>
         ) : (
-          <Text
-            numberOfLines={1}
-            style={{
-              position: 'absolute', bottom: -14, left: -4,
-              fontFamily: FONT_FAMILY.displayHeavy,
-              fontSize: 64, letterSpacing: -2,
-              color: accent, opacity: 0.16,
-            }}
-          >
-            {(event.category || 'Night').toUpperCase()}
-          </Text>
+          <>
+            {/* tint di categoria sottile + parola categoria ritagliata */}
+            <View style={{ position: 'absolute', top: -50, right: -40, width: 220, height: 220, borderRadius: 110, backgroundColor: accent, opacity: 0.1 }} />
+            <Text numberOfLines={1} style={{ position: 'absolute', bottom: -12, left: -2, fontFamily: FONT_FAMILY.displayHeavy, fontSize: 92, letterSpacing: -3, color: accent, opacity: 0.18 }}>
+              {(event.category || 'NIGHT').toUpperCase()}
+            </Text>
+          </>
         )}
-        <View style={{
-          position: 'absolute', top: 10, left: 10,
-          backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6,
-          paddingHorizontal: 8, paddingVertical: 4,
-        }}>
-          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
-            {formatDate(event.event_date)}
-          </Text>
-        </View>
         {event.is_sponsored && (
-          <View style={{
-            position: 'absolute', top: 10, right: 10,
-            backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6,
-            paddingHorizontal: 7, paddingVertical: 4,
-          }}>
-            <Text style={{ color: COLORS.warning, fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>SPONSOR</Text>
+          <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 }}>
+            <Text style={{ color: COLORS.warning, fontSize: 9, fontWeight: '800', letterSpacing: 1 }}>SPONSOR</Text>
           </View>
         )}
       </View>
 
-      <View style={{ padding: 12 }}>
-        <Text
-          numberOfLines={2}
-          style={{
-            fontFamily: FONT_FAMILY.display,
-            color: COLORS.textPrimary, fontSize: 15, lineHeight: 19,
-            letterSpacing: -0.2, minHeight: 38, marginBottom: 6,
-          }}
-        >
+      {/* Footer: titolo + luogo · prezzo */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 13, paddingBottom: 16 }}>
+        <Text numberOfLines={2} style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, lineHeight: 23, letterSpacing: -0.3, marginBottom: 9 }}>
           {event.title}
         </Text>
-        <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 10 }}>
-          {event.venues?.name}{event.venues?.zona ? ` · ${event.venues.zona}` : ''}
-        </Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '500' }}>
-            {formatTime(event.event_time)}
+          <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 12, flex: 1, marginRight: 12 }}>
+            {[event.venues?.zona, event.venues?.city || 'Milano'].filter(Boolean).join(', ')}
           </Text>
-          <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' }}>
-            {getPriceLabel(event.price)}
-          </Text>
+          <View style={{ backgroundColor: COLORS.bgElev3, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '800' }}>{getPriceLabel(event.price)}</Text>
+          </View>
         </View>
       </View>
     </Pressable>

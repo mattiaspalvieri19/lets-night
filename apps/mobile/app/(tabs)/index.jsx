@@ -65,7 +65,8 @@ export default function HomeScreen() {
   }, []);
 
   const zones = useMemo(() => {
-    const set = new Set(events.map(e => e.venues?.zona).filter(Boolean));
+    // Solo zone delle città lanciate (Milano-only) → niente zone di Roma residue dai seed.
+    const set = new Set(events.filter(e => CITIES.includes(e.venues?.city)).map(e => e.venues?.zona).filter(Boolean));
     return ['all', ...Array.from(set).sort()];
   }, [events]);
 
@@ -150,13 +151,13 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header editoriale */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 4 }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+        {/* Header */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 6 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 }}>
             Milano · {formatDate(todayLocal())}
           </Text>
-          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 34, lineHeight: 38, letterSpacing: -1 }}>
-            Cosa fai{'\n'}stasera?
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.8 }}>
+            Let&apos;s Night
           </Text>
         </View>
 
@@ -305,13 +306,10 @@ export default function HomeScreen() {
                 </Text>
               </View>
             )}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 12 }}>
+            <View style={{ paddingHorizontal: 20 }}>
               {grid.map(item => (
-                <View key={item.id} style={{ width: '48%' }}>
-                  <EventCard event={item} onPress={() => router.push(`/event/${item.id}`)} />
-                </View>
+                <EventCard key={item.id} event={item} onPress={() => router.push(`/event/${item.id}`)} />
               ))}
-              {grid.length % 2 !== 0 && <View style={{ width: '48%' }} />}
             </View>
           </>
         )}

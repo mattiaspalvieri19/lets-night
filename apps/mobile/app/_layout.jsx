@@ -136,6 +136,7 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding/index" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="event/[id]" options={{ title: 'Evento' }} />
+        <Stack.Screen name="ticket/[id]" options={{ title: 'Il tuo biglietto' }} />
         <Stack.Screen name="venue/[id]" options={{ title: 'Locale' }} />
         <Stack.Screen name="user/[id]" options={{ title: 'Profilo' }} />
         <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà' }} />

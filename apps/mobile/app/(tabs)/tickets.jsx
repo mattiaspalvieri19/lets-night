@@ -1,17 +1,21 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal, Image } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import * as ScreenCapture from 'expo-screen-capture';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { COLORS, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
+import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 
 function TicketCard({ booking, onPress, onShowQR }) {
   const event = booking.events;
   const past = event ? isPastDate(event.event_date) : false;
+  const isTable = booking.booking_type === 'table_share';
+  const accent = (COLORS_BY_CAT[event?.category] || [])[2] || COLORS.brand;
+  const photo = event?.cover_image || event?.venues?.cover_image || null;
+  const showQR = !past && booking.qr_code && onShowQR;
 
   const statusColor = {
     confirmed: COLORS.success,
@@ -27,89 +31,71 @@ function TicketCard({ booking, onPress, onShowQR }) {
     denied: 'Rimborsato',
   }[booking.status] || booking.status;
 
-  const showQR = !past && booking.qr_code && onShowQR;
-
   return (
     <View
       style={{
         backgroundColor: COLORS.bgElev2,
-        borderRadius: 16,
-        marginBottom: 14,
+        borderRadius: 18,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: COLORS.borderSubtle,
         overflow: 'hidden',
-        opacity: past ? 0.65 : 1,
+        opacity: past ? 0.6 : 1,
       }}
     >
       {/* Corpo cliccabile → dettaglio evento */}
-      <Pressable onPress={onPress} style={({ pressed }) => ({ padding: 16, opacity: pressed ? 0.85 : 1 })}>
-        {/* Header row */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
-              {event?.venues?.name || 'Locale'}
-            </Text>
-            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16, lineHeight: 20, letterSpacing: -0.2 }} numberOfLines={2}>
-              {event?.title || 'Evento'}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {booking.booking_type === 'table_share' && (
-              <View style={{ backgroundColor: COLORS.bgElev3, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 }}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '700' }}>Tavolo</Text>
-              </View>
-            )}
-            <View style={{ backgroundColor: past ? COLORS.bgElev3 : `${statusColor}14`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-              <Text style={{ color: past ? COLORS.textMuted : statusColor, fontSize: 11, fontWeight: '700' }}>
-                {past ? 'Passato' : statusLabel}
+      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}>
+        {/* Cover media (più piccola della home) */}
+        <View style={{ height: 118, backgroundColor: COLORS.bgElev1, overflow: 'hidden' }}>
+          {photo ? (
+            <Image source={{ uri: photo }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+          ) : (
+            <>
+              <View style={{ position: 'absolute', top: -40, right: -30, width: 170, height: 170, borderRadius: 85, backgroundColor: accent, opacity: 0.1 }} />
+              <Text numberOfLines={1} style={{ position: 'absolute', bottom: -8, left: -2, fontFamily: FONT_FAMILY.displayHeavy, fontSize: 60, letterSpacing: -2, color: accent, opacity: 0.18 }}>
+                {(event?.category || 'NIGHT').toUpperCase()}
               </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Date + time */}
-        <View style={{ flexDirection: 'row', gap: 18 }}>
-          <View>
-            <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Data</Text>
-            <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '600', fontSize: 13 }}>
-              {event ? formatDateFull(event.event_date) : '—'}
-            </Text>
-          </View>
-          {event?.event_time && (
-            <View>
-              <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Orario</Text>
-              <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '600', fontSize: 13 }}>
-                {formatTime(event.event_time)}
-              </Text>
-            </View>
+            </>
           )}
+          <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: past ? 'rgba(0,0,0,0.55)' : `${statusColor}26`, borderWidth: 1, borderColor: past ? 'rgba(255,255,255,0.12)' : `${statusColor}55`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+            <Text style={{ color: past ? COLORS.textSecondary : statusColor, fontSize: 11, fontWeight: '800' }}>
+              {past ? 'Passato' : statusLabel}
+            </Text>
+          </View>
         </View>
 
-        {/* Footer: luogo + prezzo */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
-          <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
-            {[event?.venues?.zona, event?.venues?.city].filter(Boolean).join(', ')}
+        {/* Info evento */}
+        <View style={{ padding: 14 }}>
+          <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+            {event?.venues?.name || 'Locale'}
           </Text>
-          <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
-            {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
+          <Text numberOfLines={2} style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, lineHeight: 22, letterSpacing: -0.3, marginBottom: 8 }}>
+            {event?.title || 'Evento'}
           </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: 13, flex: 1, marginRight: 12 }}>
+              {event ? formatDateFull(event.event_date) : '—'}{event?.event_time ? ` · ${formatTime(event.event_time)}` : ''}
+            </Text>
+            <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
+              {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
+            </Text>
+          </View>
         </View>
-
       </Pressable>
 
-      {/* CTA biglietto: FRATELLO del corpo (non annidato) → niente conflitto di tap su Android */}
+      {/* CTA QR etichettato Ingresso/Tavolo — fratello del corpo (non annidato) */}
       {showQR && (
         <Pressable
           onPress={onShowQR}
           style={({ pressed }) => ({
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
             backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 13,
-            marginHorizontal: 16, marginBottom: 16,
+            marginHorizontal: 14, marginBottom: 14,
             opacity: pressed ? 0.85 : 1,
           })}
         >
           <Ionicons name="qr-code" size={17} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Mostra il QR d&apos;ingresso</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{isTable ? 'Tavolo' : 'Ingresso'}</Text>
         </Pressable>
       )}
     </View>
@@ -139,7 +125,7 @@ export default function TicketsScreen() {
     const [{ data, error }, { data: prof }] = await Promise.all([
       supabase
         .from('bookings')
-        .select('*, events(id, title, event_date, event_time, price, venues(name, zona, city))')
+        .select('*, events(id, title, event_date, event_time, price, category, cover_image, venues(name, zona, city, cover_image))')
         .eq('user_id', userId)
         .order('created_at', { ascending: false }),
       supabase
@@ -316,7 +302,7 @@ export default function TicketsScreen() {
                 <TicketCard
                   key={b.id}
                   booking={b}
-                  onPress={() => b.events?.id && router.push(`/event/${b.events.id}`)}
+                  onPress={() => router.push(`/ticket/${b.id}`)}
                   onShowQR={b.qr_code ? () => setQrModal({ qr_code: b.qr_code, eventTitle: b.events?.title, eventDate: b.events ? formatDateFull(b.events.event_date) : '' }) : null}
                 />
               ))}
@@ -332,7 +318,7 @@ export default function TicketsScreen() {
                 <TicketCard
                   key={b.id}
                   booking={b}
-                  onPress={() => b.events?.id && router.push(`/event/${b.events.id}`)}
+                  onPress={() => router.push(`/ticket/${b.id}`)}
                 />
               ))}
             </View>
