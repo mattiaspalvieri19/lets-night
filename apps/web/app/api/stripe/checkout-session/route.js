@@ -33,6 +33,20 @@ function safeReturnBase(v) {
   }
 }
 
+// Una sola prenotazione ATTIVA per evento, qualunque tipo: blocca ingresso se hai già un
+// tavolo (e viceversa). La verità atomica è l'indice UNIQUE (user_id, event_id) sul DB;
+// questo è il blocco UX PRIMA del pagamento.
+async function hasActiveBooking(supabase, userId, eventId) {
+  const { data } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('event_id', eventId)
+    .not('status', 'in', '("cancelled","denied")')
+    .limit(1);
+  return !!(data && data.length);
+}
+
 export async function POST(request) {
   let body;
   try {
@@ -93,6 +107,11 @@ export async function POST(request) {
     const shareNum = Number(share);
     if (!Number.isFinite(shareNum) || shareNum < TABLE_MIN_SHARE) {
       return NextResponse.json({ error: `Quota minima ${TABLE_MIN_SHARE} €` }, { status: 400 });
+    }
+
+    // Una prenotazione per evento: se hai già un ingresso (o un altro tavolo) per questo evento, blocca.
+    if (await hasActiveBooking(supabase, user.id, eventId)) {
+      return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', duplicate: true }, { status: 409 });
     }
 
     let typeName;
@@ -208,20 +227,11 @@ export async function POST(request) {
   }
 
   // ============================ RAMO BIGLIETTI ============================
-  // Blocco preventivo doppio booking: se l'utente ha già una prenotazione attiva per questo evento,
-  // rifiutiamo PRIMA di addebitarlo. Senza questo check Stripe incasserebbe e poi fulfillBooking
-  // catcherebbe il 23505 nel DB, lasciando l'utente con un pagamento orfano.
-  const { data: existingBooking } = await supabase
-    .from('bookings')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('event_id', eventId)
-    .is('table_id', null)
-    .neq('status', 'cancelled')
-    .maybeSingle();
-
-  if (existingBooking) {
-    return NextResponse.json({ error: 'Hai già prenotato questo evento.', duplicate: true }, { status: 409 });
+  // Una prenotazione per evento: blocca PRIMA di addebitare se l'utente ha già un ingresso
+  // O un tavolo per questo evento. Senza, Stripe incasserebbe e fulfillBooking catcherebbe il
+  // 23505 nel DB lasciando un pagamento orfano (poi rimborsato).
+  if (await hasActiveBooking(supabase, user.id, eventId)) {
+    return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', duplicate: true }, { status: 409 });
   }
 
   const pricing = computeBookingPrice(event, bookingType, quantity);
