@@ -93,12 +93,16 @@ export default function RootLayout() {
     const UUID_RE = /^[0-9a-f-]{36}$/i;
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data || {};
-      if (data.type === 'follow' && UUID_RE.test(data.follower_id)) {
-        router.push(`/user/${data.follower_id}`);
-      } else if (data.type === 'booking' && UUID_RE.test(data.event_id)) {
-        router.push(`/event/${data.event_id}`);
-      } else if (data.type === 'reminder' && UUID_RE.test(data.eventId)) {
-        router.push(`/event/${data.eventId}`);
+      const t = data.type;
+      const actor = data.follower_id || data.actor_id;
+      const ev = data.event_id || data.eventId;
+      // Tipi del centro notifiche (send-push) + vecchi tipi (notify-follower/booking).
+      if (t === 'follow' && UUID_RE.test(actor)) {
+        router.push(`/user/${actor}`);
+      } else if (t === 'booking_confirmed' && UUID_RE.test(data.booking_id)) {
+        router.push(`/ticket/${data.booking_id}`);
+      } else if ((t === 'booking' || t === 'friend_booking' || t === 'reminder') && UUID_RE.test(ev)) {
+        router.push(`/event/${ev}`);
       }
     });
 
