@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import QRCode from 'react-qr-code';
 import { supabase } from '../../../lib/supabase';
-import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice, isPastDate } from '@lets-night/shared';
+import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice, isPastDate, TABLE_MIN_SHARE, BOOKING_FEE } from '@lets-night/shared';
 import Navbar from '../../../components/Navbar';
 
 function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoading, setBookingError, setBookingSuccess, setLastBookingQR, router, id }) {
@@ -78,6 +78,105 @@ function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoadin
   );
 }
 
+// Apri/Unisciti a un tavolo dal web: stessa logica della TableBookingModal mobile,
+// chiama /api/stripe/checkout-session (ramo open/join) e reindirizza a Stripe.
+function TableModal({ event, mode, onClose, router }) {
+  const isOpen = mode.action === 'open';
+  const type = mode.type;
+  const table = mode.table;
+  const total = isOpen ? Number(type?.total_price || 0) : Number(table?.total_price || 0);
+  const maxPeople = isOpen ? (type?.max_people || 8) : (table?.max_people || 8);
+  const remaining = isOpen ? total : Math.max(0, total - Number(table?.collected || 0));
+  const seatsLeft = isOpen ? maxPeople : Math.max(1, maxPeople - (table?.people_count || 0));
+  const fairShare = Math.max(TABLE_MIN_SHARE, Math.round((remaining / seatsLeft) * 100) / 100);
+
+  const [share, setShare] = useState(String(isOpen ? fairShare : Math.min(fairShare, remaining)));
+  const [visibility, setVisibility] = useState('public');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const shareNum = parseFloat(String(share).replace(',', '.'));
+  const validShare = Number.isFinite(shareNum) && shareNum >= TABLE_MIN_SHARE && shareNum <= remaining;
+  const typeName = isOpen ? type?.name : (table?.event_table_types?.name || 'Tavolo');
+
+  async function handlePay() {
+    if (loading) return;
+    if (!validShare) { setError(`Quota tra ${TABLE_MIN_SHARE} e ${remaining.toFixed(2)} €`); return; }
+    setLoading(true); setError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { router.push('/login?next=' + encodeURIComponent('/event/' + event.id)); return; }
+    const body = isOpen
+      ? { eventId: event.id, accessToken: session.access_token, tableAction: 'open', typeId: type.id, visibility, share: shareNum }
+      : { eventId: event.id, accessToken: session.access_token, tableAction: 'join', tableId: table.id, share: shareNum };
+    let json;
+    try {
+      const res = await fetch('/api/stripe/checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      json = await res.json();
+      if (!res.ok || !json.url) { setError(json.error || 'Errore creazione pagamento'); setLoading(false); return; }
+    } catch { setError('Errore di connessione. Riprova.'); setLoading(false); return; }
+    window.location.href = json.url;
+  }
+
+  return (
+    <div className="book-modal-overlay" onClick={onClose}>
+      <div className="book-modal" onClick={e => e.stopPropagation()}>
+        <div className="book-modal-head">
+          <div>
+            <div className="book-modal-eyebrow">{isOpen ? 'Apri tavolo' : 'Unisciti al tavolo'}</div>
+            <h2 className="book-modal-title">{typeName}</h2>
+            <p className="book-modal-venue">{event.title} · totale {total.toFixed(0)} €</p>
+          </div>
+          <button onClick={onClose} className="book-modal-close" aria-label="Chiudi">×</button>
+        </div>
+
+        {isOpen ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Chi può unirsi</div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              {[{ id: 'public', label: 'Pubblico', sub: 'Chiunque con la sua quota' }, { id: 'private', label: 'Privato', sub: 'Solo il tuo gruppo' }].map(opt => (
+                <button key={opt.id} type="button"
+                  onClick={() => { setError(''); setVisibility(opt.id); setShare(String(opt.id === 'private' ? total : fairShare)); }}
+                  style={{ flex: 1, padding: 14, borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                    background: visibility === opt.id ? 'rgba(124,58,237,0.15)' : 'var(--dark3)',
+                    border: '1.5px solid ' + (visibility === opt.id ? 'var(--purple-light)' : 'var(--border)'), color: 'inherit' }}>
+                  <div style={{ color: visibility === opt.id ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{opt.label}</div>
+                  <div style={{ color: visibility === opt.id ? 'var(--purple-light)' : 'var(--text2)', fontSize: 11 }}>{opt.sub}</div>
+                </button>
+              ))}
+            </div>
+            {visibility === 'private' && <p style={{ color: '#64748B', fontSize: 11, marginTop: 8 }}>Gli inviti agli amici arrivano a breve: su un tavolo privato conviene coprire l&apos;intero importo.</p>}
+          </div>
+        ) : (
+          <div className="book-modal-info">
+            <div><span>Persone</span><strong>{table.people_count}/{table.max_people}</strong></div>
+            <div><span>Mancano</span><strong>{remaining.toFixed(0)} €</strong></div>
+          </div>
+        )}
+
+        <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>La tua quota</div>
+        <input value={share} onChange={e => { setShare(e.target.value); setError(''); }} inputMode="decimal"
+          style={{ width: '100%', background: 'var(--dark3)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', color: '#fff', fontSize: 20, fontWeight: 700, marginBottom: 10, boxSizing: 'border-box' }} />
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <button type="button" onClick={() => { setError(''); setShare(String(fairShare)); }} className="ln-btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }}>Quota equa · {fairShare.toFixed(2)} €</button>
+          <button type="button" onClick={() => { setError(''); setShare(String(isOpen ? total : remaining)); }} className="ln-btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }}>
+            {isOpen ? `Pago tutto · ${total.toFixed(0)} €` : `Copro il resto · ${remaining.toFixed(0)} €`}
+          </button>
+        </div>
+
+        <div className="book-modal-total">
+          <span>Quota + commissione</span>
+          <strong>{validShare ? `EUR ${(shareNum + BOOKING_FEE).toFixed(2)}` : '—'}</strong>
+        </div>
+        <p style={{ color: '#64748B', fontSize: 11, textAlign: 'center', margin: '0 0 12px', lineHeight: 1.4 }}>Rimborso solo se il locale ti nega l&apos;ingresso. Nessun rimborso per mancata presentazione.</p>
+        {error && <div className="auth-error">{error}</div>}
+        <button onClick={handlePay} disabled={loading || !validShare} className="ev-book-btn book-modal-confirm">
+          {loading ? 'Apertura pagamento...' : (validShare ? `Paga EUR ${(shareNum + BOOKING_FEE).toFixed(2)}` : 'Inserisci la quota')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function EventDetailPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
@@ -95,6 +194,9 @@ export default function EventDetailPage({ params }) {
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [lastBookingQR, setLastBookingQR] = useState(null);
+  const [tableTypes, setTableTypes] = useState([]);
+  const [tables, setTables] = useState([]);
+  const [tableModal, setTableModal] = useState(null);
 
   useEffect(() => {
     async function loadEvent() {
@@ -114,6 +216,15 @@ export default function EventDetailPage({ params }) {
 
       setEvent(data);
 
+      // Tavoli condivisi: tipologie + tavoli pubblici aperti (al ritorno dal pagamento
+      // la pagina si ricarica, quindi basta caricarli al mount).
+      const [{ data: tt }, { data: ts }] = await Promise.all([
+        supabase.from('event_table_types').select('*').eq('event_id', id).order('total_price', { ascending: true }),
+        supabase.from('event_tables').select('*, event_table_types(name)').eq('event_id', id).neq('status', 'cancelled').order('created_at', { ascending: true }),
+      ]);
+      setTableTypes(tt || []);
+      setTables(ts || []);
+
       // Carica altri eventi dello stesso locale
       if (data.venue_id) {
         const { data: others } = await supabase
@@ -131,6 +242,12 @@ export default function EventDetailPage({ params }) {
     }
     if (id) loadEvent();
   }, [id]);
+
+  async function handleTable(mode) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { router.push('/login?next=' + encodeURIComponent('/event/' + id)); return; }
+    setTableModal(mode);
+  }
 
   useEffect(() => {
     const dot = cursorRef.current;
@@ -369,6 +486,47 @@ export default function EventDetailPage({ params }) {
             </p>
           </section>
 
+          {tableTypes.length > 0 && !past && (
+            <section className="ev-section">
+              <h2 className="ev-section-title">Tavoli</h2>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {tableTypes.map(t => {
+                  const openCount = tables.filter(x => x.type_id === t.id && x.status !== 'cancelled').length;
+                  const left = Math.max(0, (t.tables_count || 1) - openCount);
+                  return (
+                    <div key={t.id} style={{ background: 'var(--dark3)', borderRadius: 14, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#fff', fontWeight: 700 }}>{t.name} · {Number(t.total_price).toFixed(0)} €</div>
+                        <div style={{ color: '#9ca3af', fontSize: 13, marginTop: 3 }}>Fino a {t.max_people} persone{t.includes ? ' · ' + t.includes : ''}</div>
+                        <div style={{ color: '#64748B', fontSize: 12, marginTop: 3 }}>{left} disponibili</div>
+                      </div>
+                      <button disabled={left === 0} onClick={() => handleTable({ action: 'open', type: t })} className="ev-book-btn" style={{ opacity: left === 0 ? 0.5 : 1, whiteSpace: 'nowrap' }}>
+                        {left === 0 ? 'Esauriti' : 'Apri tavolo'}
+                      </button>
+                    </div>
+                  );
+                })}
+                {tables.filter(t => t.visibility === 'public' && t.status === 'open').length > 0 && (
+                  <>
+                    <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8 }}>Tavoli aperti — unisciti</div>
+                    {tables.filter(t => t.visibility === 'public' && t.status === 'open').map(t => {
+                      const remaining = Math.max(0, Number(t.total_price) - Number(t.collected || 0));
+                      return (
+                        <div key={t.id} style={{ background: 'var(--dark3)', borderRadius: 14, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ color: '#fff', fontWeight: 700 }}>{t.event_table_types?.name || 'Tavolo'}</div>
+                            <div style={{ color: '#9ca3af', fontSize: 13, marginTop: 3 }}>{t.people_count}/{t.max_people} persone · mancano {remaining.toFixed(0)} €</div>
+                          </div>
+                          <button onClick={() => handleTable({ action: 'join', table: t })} className="ev-book-btn" style={{ whiteSpace: 'nowrap' }}>Unisciti</button>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
           <section className="ev-section">
             <h2 className="ev-section-title">Dove si trova</h2>
             <div className="ev-location">
@@ -491,7 +649,7 @@ export default function EventDetailPage({ params }) {
                   <div><span>Orario</span><strong>{formatTime(event.event_time) || '—'}</strong></div>
                 </div>
 
-                {event.has_tables && (
+                {event.has_tables && tableTypes.length === 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
                       Tipo prenotazione
@@ -570,6 +728,8 @@ export default function EventDetailPage({ params }) {
           </div>
         </div>
       )}
+
+      {tableModal && <TableModal event={event} mode={tableModal} onClose={() => setTableModal(null)} router={router} />}
 
       <footer className="ln-footer">
         <div className="footer-inner">
