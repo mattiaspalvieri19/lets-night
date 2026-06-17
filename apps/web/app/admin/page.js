@@ -9,6 +9,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [venues, setVenues] = useState([]);
+  const [refundReqs, setRefundReqs] = useState([]);
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
@@ -35,7 +36,31 @@ export default function AdminPage() {
 
     const { data } = await supabase.from('venues').select('*').order('created_at', { ascending: false });
     setVenues(data || []);
+
+    // Richieste di rimborso no-show in attesa (l'admin può leggere tutte le bookings via RLS).
+    const { data: rr } = await supabase
+      .from('bookings')
+      .select('id, total_price, fee, snapshot_full_name, refund_requested_at, refund_request_reason, events(title, event_date)')
+      .not('refund_requested_at', 'is', null)
+      .not('status', 'in', '("cancelled","denied")')
+      .order('refund_requested_at', { ascending: true });
+    setRefundReqs(rr || []);
+
     setLoading(false);
+  }
+
+  async function resolveRefund(bookingId, action, refund) {
+    if (action === 'approve' && !confirm(`Approvare il rimborso di € ${(refund || 0).toFixed(2)}? L'importo verra rimborsato su Stripe.`)) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/refund/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookingId, accessToken: session.access_token, action }),
+    });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error || 'Operazione non riuscita.'); return; }
+    loadData();
   }
 
   async function approveVenue(venueId) {
@@ -83,6 +108,37 @@ export default function AdminPage() {
       </div>
 
       <div style={{maxWidth:'1100px', margin:'0 auto', padding:'2rem'}}>
+        <div className="dash-section" style={{marginBottom:'2rem'}}>
+          <h2 className="dash-section-title">Richieste di rimborso ({refundReqs.length})</h2>
+          {refundReqs.length === 0 ? (
+            <div className="dash-empty"><p>Nessuna richiesta di rimborso in attesa.</p></div>
+          ) : (
+            <div className="biz-events-list">
+              {refundReqs.map(r => {
+                const price = Number(r.total_price) || 0;
+                const fee = Number(r.fee) || 0;
+                const refund = Math.max(0, price - fee);
+                return (
+                  <div key={r.id} className="biz-event-item">
+                    <div className="biz-event-info">
+                      <h3>{r.snapshot_full_name || 'Utente'}</h3>
+                      <div className="biz-event-meta">
+                        <span>{r.events?.title || 'Evento'}</span>
+                        <span>{r.events?.event_date || '-'}</span>
+                        <span>Rimborso € {refund.toFixed(2)} (prezzo € {price.toFixed(2)} − fee € {fee.toFixed(2)})</span>
+                      </div>
+                    </div>
+                    <div style={{display:'flex', gap:'.5rem'}}>
+                      <button onClick={() => resolveRefund(r.id, 'approve', refund)} className="biz-toggle active">Approva rimborso</button>
+                      <button onClick={() => resolveRefund(r.id, 'reject')} style={{padding:'8px 16px', background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#f87171', borderRadius:'6px', fontSize:'12px', fontWeight:600}}>Rifiuta</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="dash-section" style={{marginBottom:'2rem'}}>
           <h2 className="dash-section-title">In attesa di approvazione ({pending.length})</h2>
           {pending.length === 0 ? (

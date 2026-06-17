@@ -112,3 +112,130 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
 
   return { ok: true, refunded };
 }
+
+// ── Rimborso "no-show" su richiesta utente + approvazione ADMIN ──────────────
+
+// "Adesso" in Europe/Rome come "YYYY-MM-DD HH:MM:SS" (confronto lessicale = cronologico).
+function romeNowStr() {
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Rome' });
+}
+function addOneDay(ymd) {
+  const d = new Date(ymd + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+// Fine effettiva della serata (Rome local). end_time assente → si assume fine alle 06:00
+// del giorno dopo; end_time <= inizio → la serata scavalca la mezzanotte (fine il giorno dopo).
+function effectiveEndStr(ev) {
+  const date = ev?.event_date;
+  if (!date) return null;
+  const start = (ev.event_time || '00:00').slice(0, 5);
+  const endClock = ev.end_time ? ev.end_time.slice(0, 5) : '06:00';
+  let endDate = date;
+  if (!ev.end_time || endClock <= start) endDate = addOneDay(date);
+  return `${endDate} ${endClock}:00`;
+}
+function pastEventEnd(ev) {
+  const end = effectiveEndStr(ev);
+  return end ? romeNowStr() > end : false;
+}
+
+// L'utente richiede il rimborso. NON muove denaro: marca solo la richiesta.
+// Eleggibilità validata SERVER-side: propria prenotazione, a pagamento, non
+// entrato, attiva, e SOLO dopo la fine della serata.
+export async function requestNoShowRefund({ bookingId, callerUserId }) {
+  if (!bookingId || typeof bookingId !== 'string') return { error: 'bookingId mancante', status: 400 };
+  if (!callerUserId) return { error: 'Non autenticato', status: 401 };
+
+  const supabase = adminClient();
+  const { data: b, error } = await supabase
+    .from('bookings')
+    .select('id, status, checked_in, user_id, stripe_session_id, refund_requested_at, events(event_date, event_time, end_time)')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (error || !b) return { error: 'Prenotazione non trovata', status: 404 };
+  if (b.user_id !== callerUserId) return { error: 'Non autorizzato', status: 403 };
+  if (b.status === 'cancelled' || b.status === 'denied') return { error: 'Prenotazione già annullata o rimborsata', status: 409 };
+  if (b.checked_in) return { error: 'Risulti già entrato: il rimborso non è disponibile', status: 409 };
+  if (!b.stripe_session_id) return { error: 'Prenotazione gratuita: nessun rimborso da richiedere', status: 400 };
+  if (!pastEventEnd(b.events)) return { error: 'Puoi richiedere il rimborso solo dopo la fine della serata', status: 409 };
+  if (b.refund_requested_at) return { ok: true, alreadyRequested: true };
+
+  const { error: upd } = await supabase
+    .from('bookings')
+    .update({ refund_requested_at: new Date().toISOString(), refund_request_reason: 'No-show: richiesta dopo la fine serata' })
+    .eq('id', bookingId);
+  if (upd) { console.error('[REFUND_REQUEST_FAILED]', upd); return { error: 'Richiesta non salvata, riprova', status: 500 }; }
+  return { ok: true };
+}
+
+// L'ADMIN approva o rifiuta la richiesta. Approvazione = rimborso PARZIALE
+// (prezzo − fee). Solo admin (no venue). Idempotente.
+export async function resolveRefundRequest({ bookingId, callerUserId, action }) {
+  if (!bookingId || typeof bookingId !== 'string') return { error: 'bookingId mancante', status: 400 };
+  if (!callerUserId) return { error: 'Non autenticato', status: 401 };
+  if (action !== 'approve' && action !== 'reject') return { error: 'Azione non valida', status: 400 };
+
+  const supabase = adminClient();
+  const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', callerUserId).maybeSingle();
+  if (!adminRow) return { error: 'Riservato agli amministratori', status: 403 };
+
+  const { data: b, error } = await supabase
+    .from('bookings')
+    .select('id, status, checked_in, stripe_session_id, total_price, fee, refund_requested_at')
+    .eq('id', bookingId)
+    .maybeSingle();
+  if (error || !b) return { error: 'Prenotazione non trovata', status: 404 };
+  if (!b.refund_requested_at) return { error: 'Nessuna richiesta di rimborso per questa prenotazione', status: 409 };
+
+  if (action === 'reject') {
+    const { error: upd } = await supabase
+      .from('bookings')
+      .update({ refund_requested_at: null, refund_request_reason: null })
+      .eq('id', bookingId);
+    if (upd) return { error: 'Aggiornamento non riuscito', status: 500 };
+    return { ok: true, rejected: true };
+  }
+
+  // approve
+  if (b.status === 'cancelled' || b.status === 'denied') return { ok: true, alreadyProcessed: true };
+  if (b.checked_in) return { error: 'L\'ospite risulta entrato: non rimborsare', status: 409 };
+
+  const fee = Number(b.fee) || 0;
+  const total = Number(b.total_price) || 0;
+  const amount = Math.max(0, total - fee); // l'utente "mangia" la fee di servizio
+
+  let refunded = false;
+  if (b.stripe_session_id && amount > 0) {
+    try {
+      const session = await stripe().checkout.sessions.retrieve(b.stripe_session_id);
+      const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+      if (pi) {
+        await stripe().refunds.create({
+          payment_intent: pi,
+          amount: Math.round(amount * 100),
+          reason: 'requested_by_customer',
+          metadata: { letsnight_reason: 'no_show_refund', booking_id: bookingId },
+        });
+        refunded = true;
+      }
+    } catch (e) {
+      console.error('[NOSHOW_REFUND_STRIPE_FAILED]', e.message);
+      return { error: 'Rimborso Stripe non riuscito. Riprova o gestiscilo da Stripe.', status: 502 };
+    }
+  }
+
+  const { error: upd } = await supabase
+    .from('bookings')
+    .update({
+      status: 'cancelled',
+      qr_code: null,
+      refund_requested_at: null,
+      refund_reason: 'Rimborso no-show approvato (meno fee)',
+      refunded_at: refunded ? new Date().toISOString() : null,
+    })
+    .eq('id', bookingId);
+  if (upd) { console.error('[NOSHOW_REFUND_UPDATE_FAILED]', upd); return { error: 'Rimborso avviato ma stato non aggiornato. Contatta il supporto.', status: 500 }; }
+  return { ok: true, refunded, amount };
+}

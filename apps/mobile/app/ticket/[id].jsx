@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Modal, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Modal, ActivityIndicator, Linking, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import * as ScreenCapture from 'expo-screen-capture';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { API_URL } from '../../lib/apiUrl';
 import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
 
 const STATUS = {
@@ -21,6 +22,8 @@ export default function TicketDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [refundRequested, setRefundRequested] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -28,11 +31,12 @@ export default function TicketDetailScreen() {
       // La RLS restituisce solo la PROPRIA prenotazione → non si possono vedere biglietti altrui.
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, events(id, title, description, event_date, event_time, category, cover_image, price, venues(id, name, zona, city, address, cover_image)), event_tables(people_count, max_people, collected, total_price, event_table_types(name))')
+        .select('*, events(id, title, description, event_date, event_time, end_time, category, cover_image, price, venues(id, name, zona, city, address, cover_image)), event_tables(people_count, max_people, collected, total_price, event_table_types(name))')
         .eq('id', id)
         .maybeSingle();
       if (error || !data) { setNotFound(true); setLoading(false); return; }
       setBooking(data);
+      setRefundRequested(!!data.refund_requested_at);
       setLoading(false);
     }
     load();
@@ -74,9 +78,41 @@ export default function TicketDetailScreen() {
   const st = STATUS[booking.status] || { label: booking.status, color: COLORS.textSecondary };
   const showQR = !!booking.qr_code && booking.status === 'confirmed';
 
+  // Rimborso no-show: a pagamento, non entrato, prenotazione attiva e serata già passata
+  // (gate preciso sull'orario di fine fatto dal server). Mostrato dal giorno dell'evento in poi.
+  const todayRome = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
+  const refundPending = refundRequested || !!booking.refund_requested_at;
+  const canRequestRefund =
+    booking.status === 'confirmed' &&
+    !booking.checked_in &&
+    Number(booking.total_price) > 0 &&
+    !!event?.event_date && event.event_date <= todayRome &&
+    !refundPending;
+
   function openMaps() {
     const q = encodeURIComponent(venue?.address || `${venue?.name || ''} ${venue?.city || ''}`.trim());
     if (q) Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`).catch(() => {});
+  }
+
+  async function handleRequestRefund() {
+    setRequesting(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setRequesting(false); Alert.alert('Sessione scaduta', 'Rieffettua il login.'); return; }
+    try {
+      const res = await fetch(`${API_URL}/api/refund/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, accessToken: session.access_token }),
+      });
+      const json = await res.json();
+      setRequesting(false);
+      if (!res.ok) { Alert.alert('Richiesta non inviata', json.error || 'Riprova.'); return; }
+      setRefundRequested(true);
+      Alert.alert('Richiesta inviata', 'La tua richiesta di rimborso è in attesa di approvazione. Ti avviseremo dell\'esito.');
+    } catch {
+      setRequesting(false);
+      Alert.alert('Errore di connessione', 'Riprova tra poco.');
+    }
   }
 
   return (
@@ -120,6 +156,30 @@ export default function TicketDetailScreen() {
             )}
           </View>
         </View>
+
+        {/* Rimborso no-show: utente non entrato, dopo la fine serata, previa approvazione */}
+        {(canRequestRefund || refundPending) && (
+          <View style={{ paddingHorizontal: 20, marginTop: 18 }}>
+            {refundPending ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.bgElev1, borderRadius: 14, borderWidth: 1, borderColor: COLORS.borderSubtle, padding: 14 }}>
+                <Ionicons name="time-outline" size={18} color={COLORS.warning} />
+                <Text style={{ color: COLORS.textSecondary, fontSize: 13, flex: 1, lineHeight: 18 }}>Richiesta di rimborso inviata — in attesa di approvazione.</Text>
+              </View>
+            ) : (
+              <>
+                <Pressable onPress={handleRequestRefund} disabled={requesting}
+                  style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center', opacity: requesting || pressed ? 0.6 : 1 })}>
+                  {requesting
+                    ? <ActivityIndicator color={COLORS.textSecondary} />
+                    : <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>Non sei entrato? Richiedi il rimborso</Text>}
+                </Pressable>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8, textAlign: 'center', lineHeight: 16 }}>
+                  Solo se non hai effettuato l&apos;ingresso. Verrà rimborsato il prezzo del biglietto meno la commissione di servizio, previa approvazione.
+                </Text>
+              </>
+            )}
+          </View>
+        )}
 
         {/* Dettagli evento */}
         <View style={{ paddingHorizontal: 20, marginTop: 22 }}>
