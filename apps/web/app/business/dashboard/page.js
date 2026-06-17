@@ -121,6 +121,10 @@ export default function BusinessDashboard() {
       alert('Non puoi creare un evento per una data passata.');
       return;
     }
+    if (!newEvent.event_time || !newEvent.end_time) {
+      alert('Inserisci sia l\'orario di inizio sia quello di fine serata.');
+      return;
+    }
     setCreatingEvent(true);
 
     const priceNum = parseFloat(String(newEvent.price).replace(',', '.'));
@@ -133,7 +137,7 @@ export default function BusinessDashboard() {
       category: newEvent.category,
       event_date: newEvent.event_date,
       event_time: newEvent.event_time,
-      end_time: newEvent.end_time || null,
+      end_time: newEvent.end_time,
       area: newEvent.area || null,
       music_type: newEvent.music_type || null,
       dress_code: newEvent.dress_code || null,
@@ -289,7 +293,7 @@ export default function BusinessDashboard() {
                 </div>
                 <div className="auth-row">
                   <div className="auth-field">
-                    <label>Orario</label>
+                    <label>Orario inizio</label>
                     <input type="time" value={newEvent.event_time} onChange={e => setNewEvent({...newEvent, event_time: e.target.value})} required />
                   </div>
                   <div className="auth-field">
@@ -304,8 +308,8 @@ export default function BusinessDashboard() {
 
                 <div className="auth-row">
                   <div className="auth-field">
-                    <label>Orario fine (opzionale)</label>
-                    <input type="time" value={newEvent.end_time} onChange={e => setNewEvent({...newEvent, end_time: e.target.value})} />
+                    <label>Orario fine</label>
+                    <input type="time" value={newEvent.end_time} onChange={e => setNewEvent({...newEvent, end_time: e.target.value})} required />
                   </div>
                   <div className="auth-field">
                     <label>Zona / Quartiere</label>

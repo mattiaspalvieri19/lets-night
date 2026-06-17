@@ -29,8 +29,7 @@ export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [active, setActive] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState(null); // { status: 'ok'|'wrong_night', booking }
-  const [checkingIn, setCheckingIn] = useState(false);
+  const [result, setResult] = useState(null); // { status, booking, justEnteredNow }
   const [denying, setDenying] = useState(false);
   const [hasVenue, setHasVenue] = useState(null); // null=loading, false=nessuno, true=ok
   const scanningRef = useRef(false);
@@ -81,8 +80,24 @@ export default function ScannerScreen() {
         Alert.alert('Verifica non riuscita', json.error || 'Riprova.');
         return;
       }
-      if (json.status === 'ok' || json.status === 'wrong_night') {
-        setResult({ status: json.status, booking: json.booking });
+      if (json.status === 'wrong_night') {
+        setResult({ status: 'wrong_night', booking: json.booking, justEnteredNow: false });
+        return;
+      }
+      if (json.status === 'ok') {
+        const b = json.booking;
+        if (b.checkedIn) {
+          // già scannerizzato prima → è un rientro, nessun nuovo check-in
+          setResult({ status: 'ok', booking: b, justEnteredNow: false });
+        } else {
+          // primo scan valido → check-in automatico immediato (scan = entrato)
+          const ci = await performCheckIn(b.bookingId);
+          setResult({
+            status: 'ok',
+            booking: { ...b, checkedIn: true, checkedInAt: ci.checkedInAt },
+            justEnteredNow: ci.justNow,
+          });
+        }
         return;
       }
       const [title, msg] = ALERTS[json.status] || ['QR non valido', 'Esito non riconosciuto.'];
@@ -95,36 +110,34 @@ export default function ScannerScreen() {
     }
   }
 
-  async function handleCheckIn() {
-    if (!result || result.booking.checkedIn || result.status !== 'ok') return;
-    setCheckingIn(true);
-    // Conditional update: vince solo il primo scanner; se un altro ha già marcato, no-op.
+  // Check-in automatico: conditional update, vince solo il primo scanner. Ritorna
+  // { checkedInAt, justNow } — justNow=false se qualcun altro l'aveva già marcato.
+  async function performCheckIn(bookingId) {
     const { data: updated, error } = await supabase
       .from('bookings')
       .update({ checked_in: true, checked_in_at: new Date().toISOString() })
-      .eq('id', result.booking.bookingId)
+      .eq('id', bookingId)
       .eq('checked_in', false)
-      .select('id, checked_in_at')
+      .select('checked_in_at')
       .maybeSingle();
-    setCheckingIn(false);
-    if (error) { Alert.alert('Errore', 'Check-in non riuscito. Riprova.'); console.error(error); return; }
-    if (!updated) {
-      const { data: fresh } = await supabase
-        .from('bookings').select('checked_in_at').eq('id', result.booking.bookingId).maybeSingle();
-      setResult(prev => ({ ...prev, booking: { ...prev.booking, checkedIn: true, checkedInAt: fresh?.checked_in_at || prev.booking.checkedInAt } }));
-      return;
+    if (error) {
+      console.error(error);
+      const { data: fresh } = await supabase.from('bookings').select('checked_in_at').eq('id', bookingId).maybeSingle();
+      return { checkedInAt: fresh?.checked_in_at || null, justNow: false };
     }
-    setResult(prev => ({ ...prev, booking: { ...prev.booking, checkedIn: true, checkedInAt: updated.checked_in_at } }));
+    if (updated) return { checkedInAt: updated.checked_in_at, justNow: true };
+    const { data: fresh } = await supabase.from('bookings').select('checked_in_at').eq('id', bookingId).maybeSingle();
+    return { checkedInAt: fresh?.checked_in_at || null, justNow: false };
   }
 
   function handleDenyEntry() {
-    if (!result || result.booking.checkedIn || denying || result.status !== 'ok') return;
+    if (!result || denying || result.status !== 'ok') return;
     Alert.alert(
-      'Negare l\'ingresso?',
-      'La prenotazione verrà annullata e, se a pagamento, rimborsata automaticamente. Usa SOLO se non fai entrare la persona — non per chi semplicemente non si presenta.',
+      'Rifiutare l\'ingresso?',
+      'Con lo scan la persona risulta già entrata. Se la rifiuti, la prenotazione viene annullata e rimborsata e la fee resta a carico del locale. Usa SOLO se NON la fai entrare davvero — non per chi semplicemente non si presenta.',
       [
         { text: 'Annulla', style: 'cancel' },
-        { text: 'Nega e rimborsa', style: 'destructive', onPress: doDenyEntry },
+        { text: 'Rifiuta e rimborsa', style: 'destructive', onPress: doDenyEntry },
       ]
     );
   }
@@ -197,14 +210,15 @@ export default function ScannerScreen() {
   if (result) {
     const b = result.booking;
     const wrongNight = result.status === 'wrong_night';
-    const alreadyIn = b.checkedIn;
+    const justNow = !!result.justEnteredNow;     // check-in appena registrato ora
+    const reEntry = b.checkedIn && !justNow;       // già scannerizzato prima → rientro
     const age = b.age;
     const checkedInTime = b.checkedInAt
       ? new Date(b.checkedInAt).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
       : null;
 
-    // Colore cornice: rosso/ambra per altra-serata, ambra per già-entrato, verde per valido.
-    const borderColor = wrongNight ? 'rgba(239,68,68,0.45)' : alreadyIn ? 'rgba(245,158,11,0.4)' : 'rgba(74,222,128,0.35)';
+    // Colore cornice: rosso per altra-serata, ambra per rientro, verde per ingresso ok.
+    const borderColor = wrongNight ? 'rgba(239,68,68,0.45)' : reEntry ? 'rgba(245,158,11,0.4)' : 'rgba(74,222,128,0.35)';
 
     return (
       <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', paddingHorizontal: 24 }}>
@@ -218,7 +232,7 @@ export default function ScannerScreen() {
                 Questo QR è per un&apos;altra serata — non valido stasera
               </Text>
             </View>
-          ) : alreadyIn ? (
+          ) : reEntry ? (
             <View style={{ backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 20, alignItems: 'center' }}>
               <Text style={{ color: '#FBBF24', fontWeight: '900', fontSize: 16 }}>⚠️ GIÀ SCANNERIZZATO</Text>
               <Text style={{ color: '#F59E0B', fontSize: 12, marginTop: 4, fontWeight: '600' }}>Rientro — verifica nome e foto</Text>
@@ -227,9 +241,9 @@ export default function ScannerScreen() {
               )}
             </View>
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20, backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(74,222,128,0.25)' }}>
-              <Text style={{ fontSize: 16 }}>✅</Text>
-              <Text style={{ color: '#4ADE80', fontWeight: '800', fontSize: 14 }}>Valido per stasera</Text>
+            <View style={{ marginBottom: 20, backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 10, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(74,222,128,0.25)', alignItems: 'center' }}>
+              <Text style={{ color: '#4ADE80', fontWeight: '900', fontSize: 16 }}>✅ INGRESSO REGISTRATO</Text>
+              {checkedInTime && <Text style={{ color: '#4ADE80', fontSize: 12, marginTop: 3, fontWeight: '600' }}>Entrato alle {checkedInTime}</Text>}
             </View>
           )}
 
@@ -278,30 +292,18 @@ export default function ScannerScreen() {
             )}
           </View>
 
-          {/* Azioni: solo se valido stasera. Altra serata / già entrato → niente check-in. */}
+          {/* Check-in già automatico allo scan: resta solo il rifiuto come override. */}
           {wrongNight ? (
             <View style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14, textAlign: 'center' }}>Biglietto di un&apos;altra serata</Text>
               <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>Non far entrare con questo QR stasera</Text>
             </View>
-          ) : alreadyIn ? (
-            <View style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12 }}>
-              <Text style={{ color: '#FBBF24', fontWeight: '800', fontSize: 15 }}>Già scannerizzato — solo rientro</Text>
-              <Text style={{ color: '#92400E', fontSize: 12, marginTop: 4 }}>Verifica che sia la stessa persona</Text>
-            </View>
           ) : (
-            <>
-              <Pressable onPress={handleCheckIn} disabled={checkingIn || denying}
-                style={({ pressed }) => ({ backgroundColor: '#4ADE80', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12, opacity: checkingIn || denying || pressed ? 0.7 : 1 })}
-              >
-                {checkingIn ? <ActivityIndicator color="#000" /> : <Text style={{ color: '#000', fontWeight: '900', fontSize: 16 }}>✓ Conferma ingresso</Text>}
-              </Pressable>
-              <Pressable onPress={handleDenyEntry} disabled={denying || checkingIn}
-                style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.08)', opacity: denying || checkingIn || pressed ? 0.7 : 1 })}
-              >
-                {denying ? <ActivityIndicator color="#F87171" /> : <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14 }}>✕ Nega ingresso e rimborsa</Text>}
-              </Pressable>
-            </>
+            <Pressable onPress={handleDenyEntry} disabled={denying}
+              style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.08)', opacity: denying || pressed ? 0.7 : 1 })}
+            >
+              {denying ? <ActivityIndicator color="#F87171" /> : <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14 }}>✕ Rifiuta ingresso e rimborsa</Text>}
+            </Pressable>
           )}
 
           <Pressable onPress={() => setResult(null)} style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)', opacity: pressed ? 0.7 : 1 })}>

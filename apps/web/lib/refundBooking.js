@@ -87,9 +87,11 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
   // (evita lo stato pericoloso "rimborsato ma QR ancora valido").
   // (Il webhook charge.refunded che seguirà NON sovrascrive 'denied' —
   // vedi fulfillBooking.cancelBookingByPaymentIntent.)
+  // checked_in azzerato: con lo scan il check-in è automatico, ma se il locale
+  // rifiuta la persona NON è entrata — non deve restare "presente" nelle stat.
   const { error: updErr } = await supabase
     .from('bookings')
-    .update({ status: 'denied', qr_code: null })
+    .update({ status: 'denied', qr_code: null, checked_in: false })
     .eq('id', bookingId);
 
   if (updErr) {

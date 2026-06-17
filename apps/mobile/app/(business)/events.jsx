@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { formatDate, formatTime, getPriceLabel, CATS_NO_TUTTI } from '@lets-night/shared';
 
-const EMPTY_EVENT = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', price: '', capacity: '', has_tables: false, table_price: '' };
+const EMPTY_EVENT = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', end_time: '', price: '', capacity: '', has_tables: false, table_price: '' };
 const CATS = CATS_NO_TUTTI;
 
 function todayLocal() {
@@ -51,16 +51,16 @@ export default function BusinessEvents() {
   }
 
   async function handleCreate() {
-    if (!form.title || !form.event_date || !form.event_time) {
-      Alert.alert('Campi mancanti', 'Titolo, data e orario sono obbligatori.');
+    if (!form.title || !form.event_date || !form.event_time || !form.end_time) {
+      Alert.alert('Campi mancanti', 'Titolo, data, orario di inizio e di fine sono obbligatori.');
       return;
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.event_date)) {
       Alert.alert('Data non valida', 'Usa il formato YYYY-MM-DD.');
       return;
     }
-    if (!/^\d{2}:\d{2}$/.test(form.event_time)) {
-      Alert.alert('Orario non valido', 'Usa il formato HH:MM.');
+    if (!/^\d{2}:\d{2}$/.test(form.event_time) || !/^\d{2}:\d{2}$/.test(form.end_time)) {
+      Alert.alert('Orario non valido', 'Usa il formato HH:MM per inizio e fine.');
       return;
     }
     if (form.event_date < todayLocal()) {
@@ -77,6 +77,7 @@ export default function BusinessEvents() {
       category: form.category,
       event_date: form.event_date,
       event_time: form.event_time,
+      end_time: form.end_time,
       price,
       capacity: capacity || null,
       has_tables: !!form.has_tables,
@@ -302,8 +303,14 @@ export default function BusinessEvents() {
                   </View>
                 </ScrollView>
               </View>
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Data</Text>
+                <TextInput value={form.event_date} onChangeText={v => setForm(f => ({ ...f, event_date: v }))} placeholder="YYYY-MM-DD" placeholderTextColor="#4B5563"
+                  style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 }}
+                />
+              </View>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                {[['Data', 'event_date', 'YYYY-MM-DD'], ['Orario', 'event_time', 'HH:MM']].map(([label, key, ph]) => (
+                {[['Inizio', 'event_time', 'HH:MM'], ['Fine', 'end_time', 'HH:MM']].map(([label, key, ph]) => (
                   <View key={key} style={{ flex: 1 }}>
                     <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
                     <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor="#4B5563"
