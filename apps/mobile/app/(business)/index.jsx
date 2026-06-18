@@ -40,12 +40,16 @@ export default function BusinessDashboard() {
       if (!venueData) { setLoading(false); return; }
       setVenue(venueData);
 
-      const [{ data: bookings }, { data: events }] = await Promise.all([
+      const [{ data: bookings }, { data: events }, { data: allBk }] = await Promise.all([
         supabase.from('bookings')
           .select('id, status, checked_in, total_price, booking_type, created_at, user_id, events!inner(id, venue_id), profiles(birth_date, gender)')
           .eq('events.venue_id', venueData.id)
           .not('status', 'in', '("cancelled","denied")'),
         supabase.from('events').select('id, title, event_date, event_time, is_active').eq('venue_id', venueData.id),
+        // Ingressi: TUTTE le prenotazioni (inclusi denied/cancelled) per categorizzare entrati/rifiutati/no-show
+        supabase.from('bookings')
+          .select('status, checked_in, refund_reason, events!inner(venue_id, event_date)')
+          .eq('events.venue_id', venueData.id),
       ]);
 
       const bs = bookings || [];
@@ -94,11 +98,24 @@ export default function BusinessDashboard() {
       const ritornano = users.filter(u => countByUser[u] > 1).length;
       const pctRitornano = users.length ? Math.round((ritornano / users.length) * 100) : 0;
 
+      // Ingressi: venduti = entrati + rifiutati + no-show (la somma copre i biglietti degli eventi conclusi).
+      // denied = rifiutato (ha checked_in=false), checked_in=true = entrato, altrimenti venduto-non-entrato a
+      // serata passata = no-show (inclusi i no-show già rimborsati, riconosciuti dal refund_reason).
+      let entrati = 0, rifiutati = 0, noShow = 0;
+      for (const b of (allBk || [])) {
+        const past = (b.events?.event_date || '') < todayStr;
+        if (b.status === 'denied') rifiutati++;
+        else if (b.checked_in) entrati++;
+        else if (past && (b.status === 'confirmed' || (b.status === 'cancelled' && /^Rimborso no-show/.test(b.refund_reason || '')))) noShow++;
+      }
+      const ingressi = { venduti: entrati + rifiutati + noShow, entrati, rifiutati, noShow };
+
       setD({
         todayEvents,
         venditeTotali, venditeMese, venditeBiglietti, venditeTavoli,
         prenotazioni: bs.length, tassoIngresso, clientiUnici: users.length, eventiInProgramma,
         etaMedia, fasce, gen, pctRitornano, agesCount: ages.length,
+        ingressi,
       });
     } catch (e) {
       console.error('Errore dashboard:', e);
@@ -181,6 +198,34 @@ export default function BusinessDashboard() {
           </View>
           <Text style={{ color: C.muted, fontSize: 11, lineHeight: 16 }}>
             È il lordo generato tramite l&apos;app (informativo). L&apos;accredito diretto sul tuo conto arriverà con il collegamento dei pagamenti.
+          </Text>
+        </View>
+      </Section>
+
+      {/* INGRESSI */}
+      <Section title="Ingressi">
+        <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+            <View>
+              <Text style={{ color: C.white, fontSize: 30, fontWeight: '900', letterSpacing: -0.6 }}>{d?.ingressi?.venduti ?? 0}</Text>
+              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>biglietti venduti (eventi conclusi)</Text>
+            </View>
+            <Text style={{ color: C.muted, fontSize: 11 }}>entrati + rifiutati + no-show</Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {[
+              { lab: 'Entrati', n: d?.ingressi?.entrati || 0, col: C.green },
+              { lab: 'Rifiutati', n: d?.ingressi?.rifiutati || 0, col: '#F87171' },
+              { lab: 'No-show', n: d?.ingressi?.noShow || 0, col: '#FBBF24' },
+            ].map(s => (
+              <View key={s.lab} style={{ flex: 1, backgroundColor: C.card2, borderRadius: 10, padding: 12, alignItems: 'center' }}>
+                <Text style={{ color: s.col, fontSize: 20, fontWeight: '800' }}>{s.n}</Text>
+                <Text style={{ color: C.muted, fontSize: 10, marginTop: 3 }}>{s.lab}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={{ color: C.muted, fontSize: 11, lineHeight: 16, marginTop: 12 }}>
+            Entrati = QR scansionati e accettati · Rifiutati = ingressi negati · No-show = venduti ma mai scansionati a serata conclusa.
           </Text>
         </View>
       </Section>
