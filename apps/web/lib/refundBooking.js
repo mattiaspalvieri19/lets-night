@@ -203,21 +203,27 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
   if (b.status === 'cancelled' || b.status === 'denied') return { ok: true, alreadyProcessed: true };
   if (b.checked_in) return { error: 'L\'ospite risulta entrato: non rimborsare', status: 409 };
 
-  // Interim (pre-Connect): no-show → rimborso del PREZZO DEL BIGLIETTO (total_price). L'utente
-  // perde solo la booking fee, gia pagata a parte (total_price NON include la fee). Col modello
-  // Connect "utente paga solo il biglietto" questo cambierà.
-  const amount = Math.max(0, Number(b.total_price) || 0);
-
+  // No-show (regola 2026-06-18): il LOCALE prende 0; l'utente riprende il prezzo del biglietto
+  // AL NETTO delle due commissioni (Stripe + Let's Night). La nostra (booking fee) e gia pagata
+  // a parte e la trattiene la piattaforma; la fee Stripe la leggiamo dalla balance transaction e
+  // la sottraiamo dal rimborso. (Col modello Connect cambierà la topologia, non l'esito.)
+  const totalCents = Math.round((Number(b.total_price) || 0) * 100);
+  let amountCents = totalCents;
   let refunded = false;
-  if (b.stripe_session_id && amount > 0) {
+  if (b.stripe_session_id && totalCents > 0) {
     try {
-      const session = await stripe().checkout.sessions.retrieve(b.stripe_session_id);
-      const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-      if (pi) {
+      const session = await stripe().checkout.sessions.retrieve(b.stripe_session_id, {
+        expand: ['payment_intent.latest_charge.balance_transaction'],
+      });
+      const pi = session.payment_intent;
+      const piId = typeof pi === 'string' ? pi : pi?.id;
+      const stripeFeeCents = (typeof pi === 'object' && pi?.latest_charge?.balance_transaction?.fee) || 0;
+      amountCents = Math.max(0, totalCents - stripeFeeCents); // l'utente "mangia" anche la fee Stripe
+      if (piId && amountCents > 0) {
         // Idempotency key: un secondo "Approva" (es. dopo un update DB fallito) NON rifà il refund.
         await stripe().refunds.create({
-          payment_intent: pi,
-          amount: Math.round(amount * 100),
+          payment_intent: piId,
+          amount: amountCents,
           reason: 'requested_by_customer',
           metadata: { letsnight_reason: 'no_show_refund', booking_id: bookingId },
         }, { idempotencyKey: `noshow_refund_${bookingId}` });
@@ -228,6 +234,7 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       return { error: 'Rimborso Stripe non riuscito. Riprova o gestiscilo da Stripe.', status: 502 };
     }
   }
+  const amount = amountCents / 100;
 
   const { error: upd } = await supabase
     .from('bookings')
@@ -235,7 +242,7 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       status: 'cancelled',
       qr_code: null,
       refund_requested_at: null,
-      refund_reason: 'Rimborso no-show approvato',
+      refund_reason: 'Rimborso no-show approvato (netto commissioni)',
       refunded_at: refunded ? new Date().toISOString() : null,
     })
     .eq('id', bookingId);

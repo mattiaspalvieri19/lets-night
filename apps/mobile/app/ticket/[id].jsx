@@ -174,7 +174,7 @@ export default function TicketDetailScreen() {
                     : <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>Non sei entrato? Richiedi il rimborso</Text>}
                 </Pressable>
                 <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8, textAlign: 'center', lineHeight: 16 }}>
-                  Solo se non hai effettuato l&apos;ingresso. Ti verrà rimborsato il prezzo del biglietto; la commissione di servizio non è rimborsabile. Soggetto ad approvazione.
+                  Solo se non hai effettuato l&apos;ingresso. Ti verrà rimborsato il prezzo del biglietto al netto delle commissioni (di servizio e di pagamento), non rimborsabili. Soggetto ad approvazione.
                 </Text>
               </>
             )}

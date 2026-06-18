@@ -2,7 +2,7 @@
 
 > Documento di riferimento. Cattura il modello deciso, cosa è già implementato,
 > cosa è in sospeso e cosa è **bloccato** finché non si attiva Stripe Connect.
-> Ultimo aggiornamento: 2026-06-17.
+> Ultimo aggiornamento: 2026-06-18.
 
 ---
 
@@ -24,7 +24,7 @@
 | **Scan QR valido** | **Check-in automatico** immediato. Nessun tap "Conferma". Scan = entrato = **nessun rimborso** per l'utente. |
 | **Ri-scan** dello stesso QR | Mostra **"⚠️ Già scannerizzato"** + nome/foto per verifica. Il QR **resta visibile e scannerizzabile** (rientri ammessi). |
 | **Locale rifiuta** (tasto "Rifiuta e rimborsa") | Prenotazione annullata + **rimborso pieno** + `checked_in` azzerato. La **fee Stripe resta a carico del locale** (vedi §4). Prerogativa del locale, sempre disponibile. |
-| **Utente no-show** (nessuno scan, nessun check-in) | L'utente può **richiedere** il rimborso **solo dopo l'orario di fine serata** (`end_time`). Rimborso **meno la fee** (la fee Stripe resta a carico dell'utente). |
+| **Utente no-show** (nessuno scan, nessun check-in) | L'utente **richiede** il rimborso **dopo `end_time`**, con **approvazione ADMIN**. Rimborso = prezzo del biglietto **al netto delle due fee** (Stripe + Let's Night); il **locale incassa 0**. Vedi §4-bis. |
 | **Bug scanner** | Il locale può fare check-in **manuale** dalla lista Prenotazioni (già esistente). |
 
 ### Stato implementazione
@@ -44,9 +44,9 @@
 
 ---
 
-## 3. ⚠️ DECISIONE APERTA — da confermare
+## 3. ✅ DECISO — approvazione ADMIN (implementato `4b6c1a9` / `fb67ebc`)
 
-**Il rimborso "no-show dopo fine serata" è automatico o richiede approvazione?**
+**Scelto: l'utente RICHIEDE il rimborso, lo approva un ADMIN (mai il locale).** Le opzioni valutate erano:
 
 - **Opzione A — Richiesta con approvazione (RACCOMANDATA).** L'utente *richiede*; il locale (o admin) approva dal dashboard. Coerente con il modello anti-frode attuale ("non mi hanno fatto entrare" non è auto-attivabile). Evita l'abuso: *entro mostrando il QR a un locale che non scanna, poi a fine serata dichiaro che non sono andato e ottengo il rimborso*. La parola usata era "**può richiedere** rimborso" → è una richiesta, non un click che muove denaro.
 - **Opzione B — Auto-rimborso.** Se `checked_in = false` e `now > end_time`, rimborso immediato (meno fee). Più comodo per l'utente, ma espone i locali che non scannano in modo affidabile.
@@ -75,6 +75,28 @@
 6. **Commissione 10% & la `fee` da 1,50** → oggi l'utente paga *prezzo + 1,50*. Nuovo modello = "solo prezzo" + tuo ricavo = 10%. **Decidere**: eliminare la 1,50 (ricavo solo dal 10%) oppure tenerla come "fee di servizio" esplicita. Default coerente con la richiesta: **solo prezzo biglietto + 10%**.
 7. **UX onboarding** → sezione **"Pagamenti"** nel dashboard business con stato (Non collegato / In verifica / Attivo) + pulsante **"Collega pagamenti"** → Stripe **Account Link** → ritorno. Eventi a pagamento bloccati finché non Attivo, con messaggio chiaro.
 8. **Legale/fiscale** → Express: Stripe gestisce KYC; tu emetti **fattura per la commissione 10%** al locale. Accettazione **Stripe Connected Account Agreement** in onboarding. Verificare IVA sulla commissione con commercialista. Non blocca il tecnico, ma da sistemare **prima del lancio a pagamento reale**.
+
+---
+
+## 4-bis. Ripartizione fee sui rimborsi — chi paga cosa (reject vs no-show)
+
+Due fee, entrambe **NON recuperabili** (decisione Mattia): la **fee Stripe** (processing) e la **fee Let's Night** (commissione). Su un rimborso Stripe **non restituisce mai** la sua fee di processing → qualcuno deve assorbirla.
+
+**No-show → il LOCALE prende 0, l'utente riprende il prezzo AL NETTO delle due fee.**
+- L'utente riceve `prezzo_biglietto − (fee Stripe + fee Let's Night)`. Il locale **non incassa nulla** (la sua quota rientra nel rimborso/clawback).
+- Con Connect: `refund` dell'importo netto + `refund_application_fee: false` (teniamo la nostra) + `reverse_transfer: true` che storna **l'intera** quota del locale → locale 0. Stripe tiene la sua. **Automatico.**
+- Pre-Connect (oggi, implementato in `refundBooking.js`): rimborso = `total_price − fee_Stripe` (la nostra, già pagata a parte come booking fee, la trattiene la piattaforma); la fee Stripe si legge dalla **balance transaction**.
+
+**Reject del locale → rimborso TOTALE, fee a carico LOCALE — il nodo.**
+- L'utente riceve il **100%** → da questa transazione non resta nulla per le fee. Le due fee vanno **addebitate al LOCALE**.
+- **Con Connect = AUTOMATICO (Opzione A).** Il costo (rimborso pieno + fee Stripe non restituita + nostra fee) è **addebitato al saldo Connect del locale**, alimentato dalle sue **altre prenotazioni**. Saldo insufficiente → **saldo negativo** del connected account, recuperato dalle **vendite future** (o, se abilitato il debito, dal suo conto bancario). Stripe fa il **calcolo esatto**. **Niente fatture manuali.**
+  - Topologia: con i *destination charge* il `reverse_transfer` storna fino alla quota trasferita; per coprire ANCHE la nostra fee + la fee Stripe può servire un addebito extra al connected account. Per il pieno controllo "il locale assorbe tutto" spesso è più pulito il pattern **Separate Charges & Transfers** (incassi sulla piattaforma, trasferisci al locale il netto; sul reject storni esattamente quanto serve e il saldo del locale assorbe). **Da fissare sui doc Stripe aggiornati all'attivazione** — entrambe valide.
+  - ⚠️ **Rischio-credito**: se il locale **non ha altre vendite**, il negativo lo **anticipa la piattaforma** e lo recupera dopo. Mitigare con payout ritardato + monitoraggio saldi negativi + (eventuale) cap sui reject.
+- **Senza Connect = MANUALE (Opzione B).** Oggi i soldi sono tutti sulla piattaforma, il locale non è pagato via Stripe → "fee a carico locale sul reject" è solo **contabilità**: si traccia il credito verso il locale e si compensa quando lo si paga / gli si fattura.
+
+**Conclusione:** l'**Opzione A** (attingere dal saldo del locale, calcolo automatico di Stripe) **è** il funzionamento di Connect ed è la strada giusta — niente fatture manuali. L'**Opzione B** (Stripe fattura a noi → noi fattura al locale) serve **solo nell'interim pre-Connect** o come fallback. Un motivo in più per cui Connect è il prerequisito del modello fee completo.
+
+**Interim concreto (oggi):** sul reject si fa già il **rimborso pieno** (`fb67ebc`); per essere pronti alla compensazione manuale / a Connect si può **tracciare** sulla prenotazione `denied` il "credito fee verso il locale" (fee Stripe stimata + nostra fee), così il conteggio è già fatto.
 
 ---
 

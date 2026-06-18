@@ -49,8 +49,8 @@ export default function AdminPage() {
     setLoading(false);
   }
 
-  async function resolveRefund(bookingId, action, refund) {
-    if (action === 'approve' && !confirm(`Approvare il rimborso di € ${(refund || 0).toFixed(2)}? L'importo verra rimborsato su Stripe.`)) return;
+  async function resolveRefund(bookingId, action) {
+    if (action === 'approve' && !confirm('Approvare il rimborso no-show? Verra rimborsato il prezzo del biglietto al netto delle commissioni (Stripe + servizio); il locale incassa € 0.')) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     const res = await fetch('/api/refund/resolve', {
@@ -116,8 +116,6 @@ export default function AdminPage() {
             <div className="biz-events-list">
               {refundReqs.map(r => {
                 const price = Number(r.total_price) || 0;
-                const fee = Number(r.fee) || 0;
-                const refund = Math.max(0, price); // no-show interim: rimborso del biglietto; la fee non si rimborsa
                 return (
                   <div key={r.id} className="biz-event-item">
                     <div className="biz-event-info">
@@ -125,11 +123,11 @@ export default function AdminPage() {
                       <div className="biz-event-meta">
                         <span>{r.events?.title || 'Evento'}</span>
                         <span>{r.events?.event_date || '-'}</span>
-                        <span>Rimborso € {refund.toFixed(2)} (biglietto; fee € {fee.toFixed(2)} non rimborsata)</span>
+                        <span>Rimborso ≈ € {price.toFixed(2)} (biglietto al netto delle commissioni) · locale € 0</span>
                       </div>
                     </div>
                     <div style={{display:'flex', gap:'.5rem'}}>
-                      <button onClick={() => resolveRefund(r.id, 'approve', refund)} className="biz-toggle active">Approva rimborso</button>
+                      <button onClick={() => resolveRefund(r.id, 'approve')} className="biz-toggle active">Approva rimborso</button>
                       <button onClick={() => resolveRefund(r.id, 'reject')} style={{padding:'8px 16px', background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#f87171', borderRadius:'6px', fontSize:'12px', fontWeight:600}}>Rifiuta</button>
                     </div>
                   </div>
