@@ -293,7 +293,7 @@ async function refundAndAlert(stripeSession, reason, details = {}) {
           letsnight_reason: reason,
           session_id: stripeSession.id,
         },
-      });
+      }, { idempotencyKey: `auto_refund_${stripeSession.id}` });
     }
   } catch (e) {
     console.error('[REFUND_FAILED]', { sessionId: stripeSession.id, reason, error: e.message });

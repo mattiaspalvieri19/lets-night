@@ -73,7 +73,7 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
           payment_intent: pi,
           reason: 'requested_by_customer',
           metadata: { letsnight_reason: reason || 'denied_entry', booking_id: bookingId },
-        });
+        }, { idempotencyKey: `deny_refund_${bookingId}` });
         refunded = true;
       }
     } catch (e) {
@@ -183,7 +183,7 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
 
   const { data: b, error } = await supabase
     .from('bookings')
-    .select('id, status, checked_in, stripe_session_id, total_price, fee, refund_requested_at')
+    .select('id, status, checked_in, stripe_session_id, total_price, fee, refund_requested_at, user_id, event_id, events(title)')
     .eq('id', bookingId)
     .maybeSingle();
   if (error || !b) return { error: 'Prenotazione non trovata', status: 404 };
@@ -195,6 +195,7 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       .update({ refund_requested_at: null, refund_request_reason: null })
       .eq('id', bookingId);
     if (upd) return { error: 'Aggiornamento non riuscito', status: 500 };
+    await notifyRefundOutcome(supabase, b, false);
     return { ok: true, rejected: true };
   }
 
@@ -202,9 +203,10 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
   if (b.status === 'cancelled' || b.status === 'denied') return { ok: true, alreadyProcessed: true };
   if (b.checked_in) return { error: 'L\'ospite risulta entrato: non rimborsare', status: 409 };
 
-  const fee = Number(b.fee) || 0;
-  const total = Number(b.total_price) || 0;
-  const amount = Math.max(0, total - fee); // l'utente "mangia" la fee di servizio
+  // Interim (pre-Connect): no-show → rimborso del PREZZO DEL BIGLIETTO (total_price). L'utente
+  // perde solo la booking fee, gia pagata a parte (total_price NON include la fee). Col modello
+  // Connect "utente paga solo il biglietto" questo cambierà.
+  const amount = Math.max(0, Number(b.total_price) || 0);
 
   let refunded = false;
   if (b.stripe_session_id && amount > 0) {
@@ -212,12 +214,13 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       const session = await stripe().checkout.sessions.retrieve(b.stripe_session_id);
       const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
       if (pi) {
+        // Idempotency key: un secondo "Approva" (es. dopo un update DB fallito) NON rifà il refund.
         await stripe().refunds.create({
           payment_intent: pi,
           amount: Math.round(amount * 100),
           reason: 'requested_by_customer',
           metadata: { letsnight_reason: 'no_show_refund', booking_id: bookingId },
-        });
+        }, { idempotencyKey: `noshow_refund_${bookingId}` });
         refunded = true;
       }
     } catch (e) {
@@ -232,10 +235,26 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       status: 'cancelled',
       qr_code: null,
       refund_requested_at: null,
-      refund_reason: 'Rimborso no-show approvato (meno fee)',
+      refund_reason: 'Rimborso no-show approvato',
       refunded_at: refunded ? new Date().toISOString() : null,
     })
     .eq('id', bookingId);
   if (upd) { console.error('[NOSHOW_REFUND_UPDATE_FAILED]', upd); return { error: 'Rimborso avviato ma stato non aggiornato. Contatta il supporto.', status: 500 }; }
+  await notifyRefundOutcome(supabase, b, true, amount);
   return { ok: true, refunded, amount };
+}
+
+// Notifica all'utente l'esito della richiesta di rimborso. Best-effort: non blocca il flusso.
+async function notifyRefundOutcome(supabase, booking, approved, amount) {
+  const title = booking?.events?.title || 'il tuo evento';
+  await supabase.from('notifications').insert({
+    user_id: booking.user_id,
+    type: 'generic',
+    title: approved ? 'Rimborso approvato' : 'Richiesta di rimborso non accolta',
+    body: approved
+      ? `La tua richiesta di rimborso per "${title}" è stata approvata: ${Number(amount || 0).toFixed(2).replace('.', ',')} € in elaborazione.`
+      : `La tua richiesta di rimborso per "${title}" non è stata accolta. Per dubbi scrivi al supporto.`,
+    event_id: booking.event_id || null,
+    booking_id: booking.id,
+  }).then(({ error }) => { if (error) console.warn('[REFUND_NOTIFY_SKIP]', error.message); });
 }
