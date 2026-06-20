@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../lib/useSession';
-import { getLoyaltyLevel, LOYALTY_LEVELS, formatDate } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, getLoyaltyLevel, LOYALTY_LEVELS, formatDate } from '@lets-night/shared';
 import MilestoneCard from '../components/MilestoneCard';
 import EmptyState from '../components/EmptyState';
 
@@ -19,7 +19,7 @@ function Section({ title, children, action }) {
   return (
     <View style={{ marginBottom: 26 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12, paddingHorizontal: 20 }}>
-        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>{title}</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16, letterSpacing: -0.2 }}>{title}</Text>
         {action}
       </View>
       <View style={{ paddingHorizontal: 20 }}>{children}</View>
@@ -72,7 +72,7 @@ export default function LoyaltyScreen() {
 
   if (!myId) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <EmptyState
           title="Accedi per la tua carta fedeltà"
           subtitle="Accumula punti con ogni serata, sblocca livelli e vantaggi riservati."
@@ -85,8 +85,8 @@ export default function LoyaltyScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} size="large" />
       </View>
     );
   }
@@ -97,22 +97,22 @@ export default function LoyaltyScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#09090f' }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
     >
       {/* Wallet-style card */}
       <View style={{ padding: 20, paddingTop: 16 }}>
         <View style={{
           borderRadius: 18,
           overflow: 'hidden',
-          backgroundColor: '#0f0f17',
+          backgroundColor: COLORS.bgElev1,
           borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.06)',
+          borderColor: COLORS.borderSubtle,
         }}>
           <View style={{ padding: 22, paddingBottom: 20 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <Text style={{
-                color: '#64748B', fontSize: 10, letterSpacing: 2,
+                color: COLORS.textMuted, fontSize: 10, letterSpacing: 2,
                 textTransform: 'uppercase', fontWeight: '600',
               }}>
                 Let&apos;s Night · Membership
@@ -123,16 +123,16 @@ export default function LoyaltyScreen() {
             </View>
 
             <View style={{ marginTop: 28 }}>
-              <Text style={{ color: '#fff', fontSize: 38, fontWeight: '700', letterSpacing: -1, lineHeight: 42 }}>
+              <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 38, letterSpacing: -1, lineHeight: 42 }}>
                 {points.toLocaleString()}
               </Text>
-              <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>punti totali</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>punti totali</Text>
             </View>
 
             <View style={{ marginTop: 22 }}>
               <View style={{
                 height: 3, borderRadius: 2,
-                backgroundColor: 'rgba(255,255,255,0.06)',
+                backgroundColor: COLORS.borderSubtle,
                 overflow: 'hidden',
               }}>
                 <View style={{
@@ -142,11 +142,11 @@ export default function LoyaltyScreen() {
                 }} />
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ color: '#64748B', fontSize: 11 }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>
                   {ll.next ? `Prossimo: ${ll.next.name}` : 'Livello massimo'}
                 </Text>
                 {ll.next && (
-                  <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '600' }}>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '600' }}>
                     {ll.pointsToNext} punti
                   </Text>
                 )}
@@ -158,7 +158,7 @@ export default function LoyaltyScreen() {
           <View style={{
             flexDirection: 'row',
             borderTopWidth: 1,
-            borderTopColor: 'rgba(255,255,255,0.06)',
+            borderTopColor: COLORS.borderSubtle,
           }}>
             {LOYALTY_LEVELS.map((l, idx) => {
               const reached = points >= l.threshold;
@@ -167,18 +167,18 @@ export default function LoyaltyScreen() {
                 <View key={l.name} style={{
                   flex: 1, paddingVertical: 14,
                   borderLeftWidth: idx > 0 ? 1 : 0,
-                  borderLeftColor: 'rgba(255,255,255,0.06)',
+                  borderLeftColor: COLORS.borderSubtle,
                   alignItems: 'center',
-                  backgroundColor: isCurrent ? 'rgba(168,85,247,0.06)' : 'transparent',
+                  backgroundColor: isCurrent ? COLORS.brandSubtle : 'transparent',
                 }}>
                   <Text style={{
-                    color: reached ? l.color : '#475569',
+                    color: reached ? l.color : COLORS.textDisabled,
                     fontSize: 11, fontWeight: isCurrent ? '700' : '500',
                     letterSpacing: 0.3,
                   }}>
                     {l.name}
                   </Text>
-                  <Text style={{ color: '#475569', fontSize: 10, marginTop: 3 }}>{l.threshold}</Text>
+                  <Text style={{ color: COLORS.textDisabled, fontSize: 10, marginTop: 3 }}>{l.threshold}</Text>
                 </View>
               );
             })}
@@ -216,23 +216,23 @@ export default function LoyaltyScreen() {
             <View key={r.id} style={{
               flexDirection: 'row', alignItems: 'center',
               paddingVertical: 14, paddingHorizontal: 16,
-              backgroundColor: '#111118',
+              backgroundColor: COLORS.bgElev2,
               borderRadius: 10, marginBottom: 8,
-              borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+              borderWidth: 1, borderColor: COLORS.borderSubtle,
             }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: canRedeem ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: '600' }}>
+                <Text style={{ color: canRedeem ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>
                   {r.title}
                 </Text>
-                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 3 }}>{r.cost} punti</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }}>{r.cost} punti</Text>
               </View>
               <View style={{
                 paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
                 borderWidth: 1,
-                borderColor: canRedeem ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)',
+                borderColor: canRedeem ? COLORS.brandBorder : COLORS.borderStrong,
               }}>
                 <Text style={{
-                  color: canRedeem ? '#A855F7' : '#475569',
+                  color: canRedeem ? COLORS.brand : COLORS.textDisabled,
                   fontSize: 11, fontWeight: '600',
                 }}>
                   {canRedeem ? 'Riscatta' : 'Bloccato'}
@@ -245,25 +245,25 @@ export default function LoyaltyScreen() {
 
       <Section title="Movimenti recenti">
         {history.length === 0 ? (
-          <Text style={{ color: '#64748B', fontSize: 12, textAlign: 'center', paddingVertical: 16 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', paddingVertical: 16 }}>
             Prenota il tuo primo evento per iniziare ad accumulare punti.
           </Text>
         ) : history.map(b => (
           <View key={b.id} style={{
             flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
             paddingVertical: 12, paddingHorizontal: 16,
-            backgroundColor: '#111118', borderRadius: 10, marginBottom: 6,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: COLORS.bgElev2, borderRadius: 10, marginBottom: 6,
+            borderWidth: 1, borderColor: COLORS.borderSubtle,
           }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
+              <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
                 {b.events?.title || 'Prenotazione'}
               </Text>
-              <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
                 {formatDate(b.created_at?.split('T')[0])}
               </Text>
             </View>
-            <Text style={{ color: '#A855F7', fontWeight: '600', fontSize: 13 }}>+50</Text>
+            <Text style={{ color: COLORS.brand, fontWeight: '600', fontSize: 13 }}>+50</Text>
           </View>
         ))}
       </Section>
@@ -276,12 +276,12 @@ export default function LoyaltyScreen() {
 function StatMini({ label, value }) {
   return (
     <View style={{
-      flex: 1, backgroundColor: '#111118',
+      flex: 1, backgroundColor: COLORS.bgElev2,
       borderRadius: 10, padding: 14,
-      borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+      borderWidth: 1, borderColor: COLORS.borderSubtle,
     }}>
-      <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: -0.3 }}>{value}</Text>
-      <Text style={{ color: '#64748B', fontSize: 11, marginTop: 3 }}>{label}</Text>
+      <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, letterSpacing: -0.3 }}>{value}</Text>
+      <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }}>{label}</Text>
     </View>
   );
 }

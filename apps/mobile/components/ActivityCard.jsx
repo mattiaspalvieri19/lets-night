@@ -1,15 +1,16 @@
 import { View, Text, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { formatDate } from '@lets-night/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, FONT_FAMILY, formatDate } from '@lets-night/shared';
 
 const ACTIVITY_META = {
-  booking_made:    { icon: '🎟️', label: 'ha prenotato' },
-  going_to:        { icon: '🎉', label: 'andrà a' },
-  was_at:          { icon: '✨', label: 'è stato a' },
-  photo_uploaded:  { icon: '📸', label: 'ha caricato una foto da' },
-  badge_unlocked:  { icon: '🏆', label: 'ha sbloccato' },
-  venue_favorited: { icon: '❤️', label: 'ha aggiunto ai preferiti' },
-  table_organized: { icon: '🍾', label: 'ha organizzato un tavolo a' },
+  booking_made:    { icon: 'ticket-outline', label: 'ha prenotato' },
+  going_to:        { icon: 'calendar-outline', label: 'andrà a' },
+  was_at:          { icon: 'checkmark-circle-outline', label: 'è stato a' },
+  photo_uploaded:  { icon: 'camera-outline', label: 'ha caricato una foto da' },
+  badge_unlocked:  { icon: 'trophy-outline', label: 'ha sbloccato' },
+  venue_favorited: { icon: 'heart-outline', label: 'ha aggiunto ai preferiti' },
+  table_organized: { icon: 'wine-outline', label: 'ha organizzato un tavolo a' },
 };
 
 function ago(iso) {
@@ -24,7 +25,7 @@ function ago(iso) {
 
 export default function ActivityCard({ activity, hideAuthor }) {
   const router = useRouter();
-  const meta = ACTIVITY_META[activity.type] || { icon: '•', label: activity.type };
+  const meta = ACTIVITY_META[activity.type] || { icon: 'ellipse-outline', label: activity.type };
   const target = activity.events?.title
     || activity.venues?.name
     || activity.milestone_title
@@ -42,10 +43,10 @@ export default function ActivityCard({ activity, hideAuthor }) {
     <Pressable
       onPress={navigateTarget}
       style={({ pressed }) => ({
-        backgroundColor: '#111118',
+        backgroundColor: COLORS.bgElev2,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.12)',
+        borderColor: COLORS.borderSubtle,
         padding: 14,
         marginBottom: 10,
         opacity: pressed ? 0.85 : 1,
@@ -54,37 +55,37 @@ export default function ActivityCard({ activity, hideAuthor }) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
         <View style={{
           width: 36, height: 36, borderRadius: 18,
-          backgroundColor: 'rgba(168,85,247,0.15)',
+          backgroundColor: COLORS.bgElev3,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Text style={{ fontSize: 18 }}>{meta.icon}</Text>
+          <Ionicons name={meta.icon} size={17} color={COLORS.textSecondary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 13, lineHeight: 19 }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19 }}>
             {!hideAuthor && (
               <Text
-                style={{ fontWeight: '800' }}
+                style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary }}
                 onPress={() => activity.user_id && router.push(`/user/${activity.user_id}`)}
               >
                 {author}{' '}
               </Text>
             )}
-            <Text style={{ color: '#9CA3AF' }}>{meta.label} </Text>
-            <Text style={{ color: '#A855F7', fontWeight: '700' }}>{target}</Text>
+            <Text style={{ color: COLORS.textSecondary }}>{meta.label} </Text>
+            <Text style={{ color: COLORS.brand, fontWeight: '700' }}>{target}</Text>
           </Text>
           {activity.caption && (
-            <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 6, lineHeight: 17 }}>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 6, lineHeight: 17 }}>
               {activity.caption}
             </Text>
           )}
           {activity.image_url && (
             <Image
               source={{ uri: activity.image_url }}
-              style={{ width: '100%', height: 180, borderRadius: 10, marginTop: 8, backgroundColor: '#18181f' }}
+              style={{ width: '100%', height: 180, borderRadius: 10, marginTop: 8, backgroundColor: COLORS.bgElev3 }}
               resizeMode="cover"
             />
           )}
-          <Text style={{ color: '#475569', fontSize: 11, marginTop: 8 }}>{ago(activity.created_at)}</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>{ago(activity.created_at)}</Text>
         </View>
       </View>
     </Pressable>

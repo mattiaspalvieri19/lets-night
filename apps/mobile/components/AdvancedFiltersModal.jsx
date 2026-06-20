@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import {
+  COLORS, FONT_FAMILY,
   CITIES, CATS_NO_TUTTI, MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, TIME_SLOTS,
 } from '@lets-night/shared';
 
@@ -43,21 +44,22 @@ const EMPTY = {
   sortBy: 'date_asc',
 };
 
+// Chip attiva = bianco pieno + testo scuro (direzione editoriale); inattiva = solo bordo.
 function Chip({ label, active, onPress }) {
   return (
     <Pressable
       onPress={onPress}
       style={{
-        paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
-        backgroundColor: active ? 'rgba(168,85,247,0.12)' : 'transparent',
+        paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+        backgroundColor: active ? COLORS.textPrimary : 'transparent',
         borderWidth: 1,
-        borderColor: active ? '#A855F7' : 'rgba(255,255,255,0.08)',
+        borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle,
       }}
     >
       <Text style={{
-        color: active ? '#fff' : '#94A3B8',
+        color: active ? COLORS.bg : COLORS.textSecondary,
         fontSize: 11,
-        fontWeight: active ? '600' : '500',
+        fontWeight: active ? '700' : '500',
       }}>
         {label}
       </Text>
@@ -69,7 +71,7 @@ function Section({ title, children }) {
   return (
     <View style={{ marginBottom: 18 }}>
       <Text style={{
-        color: '#64748B',
+        color: COLORS.textMuted,
         fontSize: 10, letterSpacing: 1.5,
         textTransform: 'uppercase',
         fontWeight: '600',
@@ -119,25 +121,25 @@ export default function AdvancedFiltersModal({
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         <View style={{
-          backgroundColor: '#0f0f17',
+          backgroundColor: COLORS.bgElev1,
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
           maxHeight: '88%',
           borderTopWidth: 1,
-          borderColor: 'rgba(255,255,255,0.06)',
+          borderColor: COLORS.borderSubtle,
         }}>
           {/* Handle + header */}
           <View style={{ alignItems: 'center', paddingTop: 10 }}>
-            <View style={{ width: 32, height: 3, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 2 }} />
+            <View style={{ width: 32, height: 3, backgroundColor: COLORS.borderStrong, borderRadius: 2 }} />
           </View>
           <View style={{
             flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
             paddingHorizontal: 20, paddingVertical: 14,
-            borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+            borderBottomWidth: 1, borderColor: COLORS.borderSubtle,
           }}>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: -0.2 }}>Filtri</Text>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, letterSpacing: -0.2 }}>Filtri</Text>
             <Pressable onPress={resetAll} hitSlop={8}>
-              <Text style={{ color: '#A855F7', fontWeight: '600', fontSize: 12 }}>Reset</Text>
+              <Text style={{ color: COLORS.brand, fontWeight: '600', fontSize: 12 }}>Reset</Text>
             </Pressable>
           </View>
 
@@ -198,27 +200,27 @@ export default function AdvancedFiltersModal({
 
             {/* Prezzo */}
             <View style={{ marginBottom: 18 }}>
-              <Text style={{ color: '#64748B', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600', marginBottom: 8 }}>Prezzo (EUR)</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600', marginBottom: 8 }}>Prezzo (EUR)</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TextInput
                   placeholder="Min" value={state.priceMin ? String(state.priceMin) : ''}
                   onChangeText={v => set('priceMin', parseInt(v.replace(/\D/g, '') || '0', 10))}
-                  keyboardType="numeric" placeholderTextColor="#475569"
+                  keyboardType="numeric" placeholderTextColor={COLORS.textDisabled}
                   style={{
                     flex: 1, backgroundColor: 'transparent',
-                    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1, borderColor: COLORS.borderSubtle,
                     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9,
-                    color: '#fff', fontSize: 13,
+                    color: COLORS.textPrimary, fontSize: 13,
                   }} />
                 <TextInput
                   placeholder="Max" value={state.priceMax ? String(state.priceMax) : ''}
                   onChangeText={v => set('priceMax', parseInt(v.replace(/\D/g, '') || '0', 10))}
-                  keyboardType="numeric" placeholderTextColor="#475569"
+                  keyboardType="numeric" placeholderTextColor={COLORS.textDisabled}
                   style={{
                     flex: 1, backgroundColor: 'transparent',
-                    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+                    borderWidth: 1, borderColor: COLORS.borderSubtle,
                     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9,
-                    color: '#fff', fontSize: 13,
+                    color: COLORS.textPrimary, fontSize: 13,
                   }} />
               </View>
             </View>
@@ -262,26 +264,26 @@ export default function AdvancedFiltersModal({
           <View style={{
             flexDirection: 'row', gap: 10,
             paddingHorizontal: 20, paddingVertical: 14,
-            borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+            borderTopWidth: 1, borderColor: COLORS.borderSubtle,
           }}>
             <Pressable
               onPress={onClose}
               style={{
                 flex: 1, paddingVertical: 12, borderRadius: 8,
                 alignItems: 'center',
-                borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+                borderWidth: 1, borderColor: COLORS.borderStrong,
               }}
             >
-              <Text style={{ color: '#94A3B8', fontWeight: '600', fontSize: 13 }}>Annulla</Text>
+              <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 13 }}>Annulla</Text>
             </Pressable>
             <Pressable
               onPress={apply}
               style={{
                 flex: 2, paddingVertical: 12, borderRadius: 8,
-                alignItems: 'center', backgroundColor: '#A855F7',
+                alignItems: 'center', backgroundColor: COLORS.brandStrong,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Applica filtri</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Applica filtri</Text>
             </Pressable>
           </View>
         </View>

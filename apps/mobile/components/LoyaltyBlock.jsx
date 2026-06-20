@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getLoyaltyLevel } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, getLoyaltyLevel } from '@lets-night/shared';
 
 export default function LoyaltyBlock({ points = 0, compact }) {
   const router = useRouter();
@@ -14,9 +14,9 @@ export default function LoyaltyBlock({ points = 0, compact }) {
         marginBottom: compact ? 14 : 20,
         borderRadius: 14,
         overflow: 'hidden',
-        backgroundColor: '#111118',
+        backgroundColor: COLORS.bgElev2,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: COLORS.borderSubtle,
         opacity: pressed ? 0.88 : 1,
       })}
     >
@@ -24,7 +24,7 @@ export default function LoyaltyBlock({ points = 0, compact }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <Text style={{
-              color: '#64748B',
+              color: COLORS.textMuted,
               fontSize: 10,
               letterSpacing: 1.5,
               textTransform: 'uppercase',
@@ -33,8 +33,8 @@ export default function LoyaltyBlock({ points = 0, compact }) {
               Carta fedeltà
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, gap: 6 }}>
-              <Text style={{ color: '#fff', fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>{points}</Text>
-              <Text style={{ color: '#64748B', fontSize: 12 }}>punti</Text>
+              <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.5 }}>{points}</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>punti</Text>
             </View>
             <Text style={{ color: level.color, fontWeight: '600', fontSize: 13, marginTop: 4, letterSpacing: 0.2 }}>
               {level.name}
@@ -45,26 +45,26 @@ export default function LoyaltyBlock({ points = 0, compact }) {
             paddingVertical: 6,
             borderRadius: 6,
             borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.12)',
+            borderColor: COLORS.borderStrong,
           }}>
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 11 }}>Apri</Text>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 11 }}>Apri</Text>
           </View>
         </View>
 
         <View style={{ marginTop: 16 }}>
           <View style={{
             height: 3,
-            backgroundColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: COLORS.borderSubtle,
             borderRadius: 2,
             overflow: 'hidden',
           }}>
             <View style={{
               width: `${Math.round(progress * 100)}%`,
               height: '100%',
-              backgroundColor: '#A855F7',
+              backgroundColor: COLORS.brand,
             }} />
           </View>
-          <Text style={{ color: '#64748B', fontSize: 11, marginTop: 8 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>
             {next
               ? `${pointsToNext} punti al livello ${next.name}`
               : 'Livello massimo raggiunto'}
