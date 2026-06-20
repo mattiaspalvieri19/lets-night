@@ -4,15 +4,12 @@ import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { COLORS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
-import ActivityCard from '../../components/ActivityCard';
 import EmptyState from '../../components/EmptyState';
 
 const USER_TABS = [
-  { id: 'activities', label: 'Attività' },
   { id: 'going',      label: 'Andrà a' },
   { id: 'past',       label: 'È stato a' },
   { id: 'favorites',  label: 'Locali' },
-  { id: 'badges',     label: 'Badge' },
 ];
 const BUSINESS_TABS = [
   { id: 'future',   label: 'Prossimi' },
@@ -37,13 +34,10 @@ export default function PublicProfileScreen() {
   const [stats, setStats] = useState({ followers: 0, following: 0, badges: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
-  const [tab, setTab] = useState('activities');
-  const [activities, setActivities] = useState([]);
+  const [tab, setTab] = useState('going');
   const [futureBookings, setFutureBookings] = useState([]);
   const [pastBookings, setPastBookings] = useState([]);
   const [favoriteVenues, setFavoriteVenues] = useState([]);
-  // Business-specific
-  const [publicBadges, setPublicBadges] = useState([]);
   // Business-specific
   const [bizVenue, setBizVenue] = useState(null);
   const [bizFutureEvents, setBizFutureEvents] = useState([]);
@@ -60,7 +54,7 @@ export default function PublicProfileScreen() {
     setProfile(p);
     if (!p) return;
     // Tab di default coerente con il ruolo
-    setTab(p.role === 'business' ? 'future' : 'activities');
+    setTab(p.role === 'business' ? 'future' : 'going');
 
     // Followers/Following counts
     const [
@@ -97,17 +91,6 @@ export default function PublicProfileScreen() {
       ps0.profile_visibility === 'private' || ps0.profile_visibility === 'followers'
     );
 
-    // Attività (RLS filtra in base a visibility/follow)
-    if (!profileBlocked) {
-      const { data: acts } = await supabase
-        .from('activities')
-        .select('*, events(id, title, event_date), venues(id, name, zona, city)')
-        .eq('user_id', id)
-        .order('created_at', { ascending: false })
-        .limit(30);
-      setActivities(acts || []);
-    }
-
     // Eventi (filtra client-side: PostgREST non supporta filter su joined column)
     const ps = p.privacy_settings || {};
     const today = new Date().toISOString().split('T')[0];
@@ -127,18 +110,6 @@ export default function PublicProfileScreen() {
     } else {
       setFutureBookings([]);
       setPastBookings([]);
-    }
-
-    // Badge pubblici
-    if (!profileBlocked && (ps.show_badges !== false || isOwn)) {
-      const { data: ums } = await supabase
-        .from('user_milestones')
-        .select('loyalty_milestones(*)')
-        .eq('user_id', id)
-        .not('unlocked_at', 'is', null);
-      setPublicBadges((ums || []).map(r => r.loyalty_milestones).filter(Boolean));
-    } else {
-      setPublicBadges([]);
     }
 
     // Locali preferiti (utenti normali)
@@ -181,12 +152,10 @@ export default function PublicProfileScreen() {
 
   useFocusEffect(useCallback(() => {
     setProfile(null);
-    setTab('activities');
-    setActivities([]);
+    setTab('going');
     setFutureBookings([]);
     setPastBookings([]);
     setFavoriteVenues([]);
-    setPublicBadges([]);
     setBizVenue(null);
     setBizFutureEvents([]);
     setBizPastEvents([]);
@@ -329,12 +298,6 @@ export default function PublicProfileScreen() {
                   <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>seguiti</Text>
                 </View>
               )}
-              {(ps.show_badges !== false || isOwn) && (
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>badge</Text>
-                </View>
-              )}
             </>
           )}
         </View>
@@ -412,11 +375,6 @@ export default function PublicProfileScreen() {
 
           <View style={{ padding: 20 }}>
             {/* USER TABS */}
-            {!isBusiness && tab === 'activities' && (
-              activities.length === 0
-                ? <EmptyState compact icon="✨" title="Nessuna attività ancora" subtitle="Le attività condivise appariranno qui." />
-                : activities.map(a => <ActivityCard key={a.id} activity={a} hideAuthor />)
-            )}
             {!isBusiness && tab === 'going' && (
               futureBookings.length === 0
                 ? <EmptyState compact icon="📅" title="Niente in calendario" subtitle="Niente eventi futuri condivisi." />
@@ -431,26 +389,6 @@ export default function PublicProfileScreen() {
               favoriteVenues.length === 0
                 ? <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
                 : favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
-            )}
-            {!isBusiness && tab === 'badges' && (
-              publicBadges.length === 0
-                ? <EmptyState compact icon="🏆" title="Nessun badge ancora" subtitle="L'utente non ha ancora sbloccato nessun traguardo." />
-                : (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                    {publicBadges.map(m => (
-                      <View key={m.id} style={{
-                        width: '31%', alignItems: 'center',
-                        backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
-                        borderWidth: 1, borderColor: COLORS.borderSubtle,
-                      }}>
-                        <Text style={{ fontSize: 30, marginBottom: 6 }}>{m.icon || '🏆'}</Text>
-                        <Text style={{ color: COLORS.textPrimary, fontSize: 11, fontWeight: '700', textAlign: 'center' }} numberOfLines={2}>
-                          {m.title}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )
             )}
 
             {/* BUSINESS TABS */}

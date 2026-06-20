@@ -12,7 +12,6 @@ import ActivityCard from '../../components/ActivityCard';
 // Le prenotazioni/QR vivono nella tab Biglietti (niente doppione).
 const TABS = [
   { id: 'activity',  label: 'Attività' },
-  { id: 'badges',    label: 'Badge' },
   { id: 'favorites', label: 'Locali' },
 ];
 
@@ -27,7 +26,6 @@ export default function MyProfileScreen() {
   const [tab, setTab] = useState('activity');
   const [activities, setActivities] = useState([]);
   const [favorites, setFavorites] = useState([]);
-  const [unlockedBadges, setUnlockedBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,14 +41,12 @@ export default function MyProfileScreen() {
       { count: followersCount },
       { count: followingCount },
       { data: favs, error: favsErr },
-      { data: ums },
       { data: acts, error: actsErr },
     ] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', myId).maybeSingle(),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', myId),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', myId),
       supabase.from('favorite_venues').select('venue_id, venues(id, name, zona, city, category)').eq('user_id', myId),
-      supabase.from('user_milestones').select('milestone_id, unlocked_at, loyalty_milestones(*)').eq('user_id', myId).not('unlocked_at', 'is', null),
       supabase.from('activities').select('*, events(id, title, event_date), venues(id, name, zona, city)').eq('user_id', myId).order('created_at', { ascending: false }).limit(15),
     ]);
     if (profErr) console.error('Errore profilo:', profErr);
@@ -61,7 +57,6 @@ export default function MyProfileScreen() {
     setProfile(prof);
     setStats({ followers: followersCount || 0, following: followingCount || 0 });
     setFavorites((favs || []).filter(f => f.venues));
-    setUnlockedBadges((ums || []).map(r => r.loyalty_milestones).filter(Boolean));
     setActivities(acts || []);
   }
 
@@ -289,33 +284,6 @@ export default function MyProfileScreen() {
               />
             ) : (
               activities.map(a => <ActivityCard key={a.id} activity={a} hideAuthor />)
-            )
-          )}
-
-          {tab === 'badges' && (
-            unlockedBadges.length === 0 ? (
-              <EmptyState
-                compact icon="🏆"
-                title="Ancora nessun badge"
-                subtitle="Prenota eventi e completa traguardi per sbloccare i primi badge."
-                actionLabel="Vedi traguardi"
-                onAction={() => router.push('/loyalty')}
-              />
-            ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {unlockedBadges.map(m => (
-                  <View key={m.id} style={{
-                    width: '31%', alignItems: 'center',
-                    backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
-                    borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)',
-                  }}>
-                    <Text style={{ fontSize: 30, marginBottom: 6 }}>{m.icon || '🏆'}</Text>
-                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' }} numberOfLines={2}>
-                      {m.title}
-                    </Text>
-                  </View>
-                ))}
-              </View>
             )
           )}
 
