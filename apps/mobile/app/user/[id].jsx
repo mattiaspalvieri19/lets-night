@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import ActivityCard from '../../components/ActivityCard';
 import EmptyState from '../../components/EmptyState';
 
@@ -228,7 +228,7 @@ export default function PublicProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#A855F7" size="large" />
       </View>
     );
@@ -236,7 +236,7 @@ export default function PublicProfileScreen() {
 
   if (!profile) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <EmptyState
           icon="🔍"
           title="Utente non trovato"
@@ -257,29 +257,29 @@ export default function PublicProfileScreen() {
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#09090f' }}
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
     >
       {/* Header */}
       <View style={{ padding: 20, paddingTop: 24, alignItems: 'center' }}>
         <View style={{
           width: 88, height: 88, borderRadius: 44,
-          backgroundColor: 'rgba(168,85,247,0.18)',
+          backgroundColor: COLORS.brandSubtle,
           alignItems: 'center', justifyContent: 'center',
-          borderWidth: 2, borderColor: 'rgba(168,85,247,0.35)',
+          borderWidth: 2, borderColor: COLORS.brandBorder,
           marginBottom: 14,
         }}>
-          <Text style={{ color: '#A855F7', fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
+          <Text style={{ color: COLORS.brand, fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
         </View>
-        <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{display}</Text>
-        {handle && <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>{handle}</Text>}
+        <Text style={{ color: COLORS.textPrimary, fontSize: 22, fontWeight: '900' }}>{display}</Text>
+        {handle && <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 2 }}>{handle}</Text>}
         {profile.bio && (
-          <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10, paddingHorizontal: 20 }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10, paddingHorizontal: 20 }}>
             {profile.bio}
           </Text>
         )}
         {profile.city && (
-          <Text style={{ color: '#A855F7', fontSize: 12, marginTop: 8, fontWeight: '600' }}>📍 {profile.city}</Text>
+          <Text style={{ color: COLORS.brand, fontSize: 12, marginTop: 8, fontWeight: '600' }}>📍 {profile.city}</Text>
         )}
 
         {/* Interests pills */}
@@ -287,10 +287,10 @@ export default function PublicProfileScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14, justifyContent: 'center' }}>
             {profile.interests.map(t => (
               <View key={t} style={{
-                backgroundColor: 'rgba(168,85,247,0.12)',
+                backgroundColor: COLORS.borderSubtle,
                 borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
               }}>
-                <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '600' }}>{t}</Text>
+                <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '600' }}>{t}</Text>
               </View>
             ))}
           </View>
@@ -301,17 +301,17 @@ export default function PublicProfileScreen() {
           {isBusiness ? (
             <>
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{bizEventsCount}</Text>
-                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>eventi</Text>
+                <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{bizEventsCount}</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>eventi</Text>
               </View>
               <View style={{ alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
-                <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
+                <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>follower</Text>
               </View>
               {bizVenue?.is_verified && (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#4ADE80', fontSize: 17, fontWeight: '900' }}>✓</Text>
-                  <Text style={{ color: '#4ADE80', fontSize: 11, marginTop: 2 }}>verificato</Text>
+                  <Text style={{ color: COLORS.success, fontSize: 17, fontWeight: '900' }}>✓</Text>
+                  <Text style={{ color: COLORS.success, fontSize: 11, marginTop: 2 }}>verificato</Text>
                 </View>
               )}
             </>
@@ -319,20 +319,20 @@ export default function PublicProfileScreen() {
             <>
               {(ps.show_followers !== false || isOwn) && (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
-                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>follower</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>follower</Text>
                 </View>
               )}
               {(ps.show_following !== false || isOwn) && (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
-                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>seguiti</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>seguiti</Text>
                 </View>
               )}
               {(ps.show_badges !== false || isOwn) && (
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
-                  <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>badge</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.badges}</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>badge</Text>
                 </View>
               )}
             </>
@@ -348,19 +348,19 @@ export default function PublicProfileScreen() {
               marginTop: 18,
               paddingHorizontal: 36, paddingVertical: 12,
               borderRadius: 22,
-              backgroundColor: isFollowing ? 'transparent' : '#7C3AED',
+              backgroundColor: isFollowing ? 'transparent' : COLORS.brandStrong,
               borderWidth: 1.5,
-              borderColor: isFollowing ? 'rgba(168,85,247,0.4)' : '#7C3AED',
+              borderColor: isFollowing ? COLORS.brandBorder : COLORS.brandStrong,
               opacity: followBusy || pressed ? 0.75 : 1,
               minWidth: 140,
               alignItems: 'center',
             })}
           >
             {followBusy ? (
-              <ActivityIndicator color={isFollowing ? '#A855F7' : '#fff'} />
+              <ActivityIndicator color={isFollowing ? COLORS.brand : COLORS.textPrimary} />
             ) : (
               <Text style={{
-                color: isFollowing ? '#A855F7' : '#fff',
+                color: isFollowing ? COLORS.brand : COLORS.textPrimary,
                 fontWeight: '700', fontSize: 14,
               }}>
                 {isFollowing ? 'Segui già' : 'Segui'}
@@ -385,7 +385,7 @@ export default function PublicProfileScreen() {
       {/* Tabs + contenuto */}
       {(!isPrivate || isOwn || isFollowing) && (
         <>
-          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
+          <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.borderSubtle }}>
             {TABS.map(t => {
               const active = tab === t.id;
               return (
@@ -395,11 +395,11 @@ export default function PublicProfileScreen() {
                   style={{
                     flex: 1, paddingVertical: 12, alignItems: 'center',
                     borderBottomWidth: 1,
-                    borderBottomColor: active ? '#A855F7' : 'transparent',
+                    borderBottomColor: active ? COLORS.brand : 'transparent',
                   }}
                 >
                   <Text style={{
-                    color: active ? '#fff' : '#64748B',
+                    color: active ? COLORS.textPrimary : COLORS.textMuted,
                     fontSize: 11, fontWeight: active ? '600' : '500',
                     letterSpacing: 0.2,
                   }}>
@@ -440,11 +440,11 @@ export default function PublicProfileScreen() {
                     {publicBadges.map(m => (
                       <View key={m.id} style={{
                         width: '31%', alignItems: 'center',
-                        backgroundColor: '#111118', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
-                        borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)',
+                        backgroundColor: COLORS.bgElev2, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 8,
+                        borderWidth: 1, borderColor: COLORS.borderSubtle,
                       }}>
                         <Text style={{ fontSize: 30, marginBottom: 6 }}>{m.icon || '🏆'}</Text>
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' }} numberOfLines={2}>
+                        <Text style={{ color: COLORS.textPrimary, fontSize: 11, fontWeight: '700', textAlign: 'center' }} numberOfLines={2}>
                           {m.title}
                         </Text>
                       </View>
@@ -490,20 +490,20 @@ function BookingRow({ booking }) {
     <Pressable
       onPress={() => router.push(`/event/${ev.id}`)}
       style={({ pressed }) => ({
-        backgroundColor: '#111118',
+        backgroundColor: COLORS.bgElev2,
         borderRadius: 12,
         padding: 14,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'rgba(168,85,247,0.12)',
+        borderColor: COLORS.borderSubtle,
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+      <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
         {ev.venues?.name || 'Locale'}
       </Text>
-      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{ev.title}</Text>
-      <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+      <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{ev.title}</Text>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
         {formatDate(ev.event_date)} · {formatTime(ev.event_time) || '—'} · {getPriceLabel(ev.price)}
       </Text>
     </Pressable>
@@ -517,18 +517,18 @@ function VenueRow({ venue }) {
       onPress={() => router.push(`/venue/${venue.id}`)}
       style={({ pressed }) => ({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        backgroundColor: '#111118', borderRadius: 12, padding: 14, marginBottom: 10,
-        borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+        backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 10,
+        borderWidth: 1, borderColor: COLORS.borderSubtle,
         opacity: pressed ? 0.85 : 1,
       })}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>{venue.name}</Text>
-        <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>
+        <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '700' }} numberOfLines={1}>{venue.name}</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
           {venue.category} · {venue.zona}, {venue.city}
         </Text>
       </View>
-      <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>
+      <Text style={{ color: COLORS.brand, fontSize: 18 }}>›</Text>
     </Pressable>
   );
 }
@@ -539,17 +539,17 @@ function EventRow({ event, past }) {
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
       style={({ pressed }) => ({
-        backgroundColor: '#111118',
+        backgroundColor: COLORS.bgElev2,
         borderRadius: 12, padding: 14, marginBottom: 10,
-        borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+        borderWidth: 1, borderColor: COLORS.borderSubtle,
         opacity: past ? 0.65 : (pressed ? 0.85 : 1),
       })}
     >
-      <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+      <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
         {event.category}
       </Text>
-      <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800' }} numberOfLines={2}>{event.title}</Text>
-      <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
+      <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={2}>{event.title}</Text>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
         {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'} · {getPriceLabel(event.price)}
       </Text>
     </Pressable>
@@ -561,35 +561,35 @@ function VenuePreview({ venue }) {
     <Pressable
       onPress={() => router.push(`/venue/${venue.id}`)}
       style={({ pressed }) => ({
-        backgroundColor: '#111118', borderRadius: 14, padding: 18,
-        borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)',
+        backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 18,
+        borderWidth: 1, borderColor: COLORS.borderSubtle,
         opacity: pressed ? 0.9 : 1,
       })}
     >
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
         {venue.is_partner && (
-          <View style={{ backgroundColor: 'rgba(124,58,237,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
-            <Text style={{ color: '#A855F7', fontSize: 10, fontWeight: '800' }}>★ PARTNER</Text>
+          <View style={{ backgroundColor: COLORS.brandSubtle, borderWidth: 1, borderColor: COLORS.brandBorder, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
+            <Text style={{ color: COLORS.brand, fontSize: 10, fontWeight: '800' }}>★ PARTNER</Text>
           </View>
         )}
         {venue.is_verified && (
           <View style={{ backgroundColor: 'rgba(34,197,94,0.12)', borderWidth: 1, borderColor: 'rgba(74,222,128,0.4)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 }}>
-            <Text style={{ color: '#4ADE80', fontSize: 10, fontWeight: '800' }}>✓ VERIFICATO</Text>
+            <Text style={{ color: COLORS.success, fontSize: 10, fontWeight: '800' }}>✓ VERIFICATO</Text>
           </View>
         )}
       </View>
-      <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900' }}>{venue.name}</Text>
-      <Text style={{ color: '#A855F7', fontSize: 13, marginTop: 4 }}>{venue.category}</Text>
-      <Text style={{ color: '#9CA3AF', fontSize: 13, marginTop: 8 }}>📍 {venue.zona}, {venue.city}</Text>
-      {venue.address && <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>{venue.address}</Text>}
+      <Text style={{ color: COLORS.textPrimary, fontSize: 22, fontWeight: '900' }}>{venue.name}</Text>
+      <Text style={{ color: COLORS.brand, fontSize: 13, marginTop: 4 }}>{venue.category}</Text>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 8 }}>📍 {venue.zona}, {venue.city}</Text>
+      {venue.address && <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>{venue.address}</Text>}
       {venue.description && (
-        <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, marginTop: 12 }}>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 12 }}>
           {venue.description}
         </Text>
       )}
-      <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: 'rgba(168,85,247,0.12)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 13 }}>Apri pagina locale</Text>
-        <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>
+      <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 13 }}>Apri pagina locale</Text>
+        <Text style={{ color: COLORS.brand, fontSize: 18 }}>›</Text>
       </View>
     </Pressable>
   );
@@ -611,14 +611,14 @@ function ContactInfo({ venue }) {
     <View>
       {items.map((it, i) => (
         <View key={i} style={{
-          backgroundColor: '#111118', borderRadius: 12, padding: 14, marginBottom: 10,
-          borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+          backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 10,
+          borderWidth: 1, borderColor: COLORS.borderSubtle,
           flexDirection: 'row', alignItems: 'flex-start', gap: 12,
         }}>
           <Text style={{ fontSize: 22 }}>{it.icon}</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{it.label}</Text>
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }} selectable>{it.value}</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>{it.label}</Text>
+            <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600' }} selectable>{it.value}</Text>
           </View>
         </View>
       ))}

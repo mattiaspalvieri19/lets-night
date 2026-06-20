@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Switch } from 'react-native';
 import { router } from 'expo-router';
+import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 
@@ -68,8 +69,8 @@ export default function PrivacyScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} size="large" />
       </View>
     );
   }
@@ -77,17 +78,17 @@ export default function PrivacyScreen() {
   if (!myId) return null;
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#09090f' }} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={{ padding: 20, paddingTop: 24 }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Impostazioni</Text>
-        <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 6 }}>Privacy</Text>
-        <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, marginBottom: 22 }}>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Impostazioni</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, marginBottom: 6 }}>Privacy</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 22 }}>
           Scegli cosa rendere visibile agli altri utenti.
         </Text>
 
         {/* Profile visibility */}
         <View style={{ marginBottom: 28 }}>
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
             Visibilità profilo
           </Text>
           {[
@@ -104,20 +105,20 @@ export default function PrivacyScreen() {
                   flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
                   paddingHorizontal: 14, paddingVertical: 14, borderRadius: 12,
                   marginBottom: 8,
-                  backgroundColor: active ? 'rgba(124,58,237,0.12)' : '#111118',
-                  borderWidth: 1, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.12)',
+                  backgroundColor: active ? COLORS.brandSubtle : COLORS.bgElev2,
+                  borderWidth: 1, borderColor: active ? COLORS.brandStrong : COLORS.borderSubtle,
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{opt.label}</Text>
-                  <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>{opt.label}</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>{opt.desc}</Text>
                 </View>
                 <View style={{
                   width: 20, height: 20, borderRadius: 10,
-                  borderWidth: 2, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.3)',
+                  borderWidth: 2, borderColor: active ? COLORS.brandStrong : COLORS.borderStrong,
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  {active && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#7C3AED' }} />}
+                  {active && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.brandStrong }} />}
                 </View>
               </Pressable>
             );
@@ -125,7 +126,7 @@ export default function PrivacyScreen() {
         </View>
 
         {/* Toggle list */}
-        <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
           Cosa rendere visibile
         </Text>
         {TOGGLES.map(t => (
@@ -134,32 +135,32 @@ export default function PrivacyScreen() {
             style={{
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
               paddingHorizontal: 14, paddingVertical: 14, borderRadius: 12,
-              backgroundColor: '#111118',
-              borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
+              backgroundColor: COLORS.bgElev2,
+              borderWidth: 1, borderColor: COLORS.borderSubtle,
               marginBottom: 8,
             }}
           >
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t.label}</Text>
-              {t.sub && <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 2, lineHeight: 16 }}>{t.sub}</Text>}
+              <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }}>{t.label}</Text>
+              {t.sub && <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 16 }}>{t.sub}</Text>}
             </View>
             <Switch
               value={!!settings[t.key]}
               onValueChange={() => toggle(t.key)}
-              trackColor={{ false: '#27272a', true: '#7C3AED' }}
-              thumbColor={settings[t.key] ? '#fff' : '#9CA3AF'}
+              trackColor={{ false: COLORS.bgElev3, true: COLORS.brandStrong }}
+              thumbColor={settings[t.key] ? '#fff' : COLORS.textSecondary}
             />
           </View>
         ))}
 
-        <Text style={{ color: '#64748B', fontSize: 11, textAlign: 'center', marginTop: 20, lineHeight: 17 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, textAlign: 'center', marginTop: 20, lineHeight: 17 }}>
           Email e telefono restano sempre privati.{'\n'}I dati di prenotazione non sono mai pubblici.
         </Text>
 
         {saving && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 14 }}>
-            <ActivityIndicator color="#A855F7" size="small" />
-            <Text style={{ color: '#A855F7', fontSize: 12 }}>Salvataggio...</Text>
+            <ActivityIndicator color={COLORS.brand} size="small" />
+            <Text style={{ color: COLORS.brand, fontSize: 12 }}>Salvataggio...</Text>
           </View>
         )}
       </View>

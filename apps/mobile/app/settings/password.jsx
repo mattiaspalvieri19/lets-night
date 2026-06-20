@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
 
 export default function ChangePasswordScreen() {
@@ -35,17 +36,17 @@ export default function ChangePasswordScreen() {
   }
 
   const inputStyle = {
-    backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)',
+    backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderStrong,
     borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-    color: '#fff', fontSize: 14, marginBottom: 14,
+    color: COLORS.textPrimary, fontSize: 14, marginBottom: 14,
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#09090f' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Sicurezza</Text>
-        <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 8 }}>Cambia password</Text>
-        <Text style={{ color: '#9CA3AF', fontSize: 13, lineHeight: 19, marginBottom: 28 }}>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Sicurezza</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, marginBottom: 8 }}>Cambia password</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 28 }}>
           Scegli una password sicura di almeno 6 caratteri.
         </Text>
 
@@ -57,29 +58,29 @@ export default function ChangePasswordScreen() {
 
         {success ? (
           <View style={{ backgroundColor: 'rgba(74,222,128,0.1)', borderWidth: 1, borderColor: 'rgba(74,222,128,0.3)', borderRadius: 10, padding: 12, marginBottom: 16 }}>
-            <Text style={{ color: '#4ade80', fontSize: 13 }}>Password aggiornata.</Text>
+            <Text style={{ color: COLORS.success, fontSize: 13 }}>Password aggiornata.</Text>
           </View>
         ) : null}
 
-        <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
           Nuova password
         </Text>
         <TextInput
           style={inputStyle}
           placeholder="Minimo 6 caratteri"
-          placeholderTextColor="#4B5563"
+          placeholderTextColor={COLORS.textDisabled}
           value={newPassword}
           onChangeText={setNewPassword}
           secureTextEntry
         />
 
-        <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
           Conferma password
         </Text>
         <TextInput
           style={inputStyle}
           placeholder="Ripeti la password"
-          placeholderTextColor="#4B5563"
+          placeholderTextColor={COLORS.textDisabled}
           value={confirm}
           onChangeText={setConfirm}
           secureTextEntry
@@ -89,7 +90,7 @@ export default function ChangePasswordScreen() {
           onPress={handleSave}
           disabled={loading}
           style={({ pressed }) => ({
-            backgroundColor: '#7C3AED', borderRadius: 12, paddingVertical: 14,
+            backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14,
             alignItems: 'center', marginTop: 8, opacity: loading || pressed ? 0.75 : 1,
           })}
         >
@@ -101,7 +102,7 @@ export default function ChangePasswordScreen() {
 
         {success && (
           <Pressable onPress={() => router.back()} style={{ marginTop: 14, alignItems: 'center' }}>
-            <Text style={{ color: '#A855F7', fontWeight: '700' }}>Torna alle impostazioni</Text>
+            <Text style={{ color: COLORS.brand, fontWeight: '700' }}>Torna alle impostazioni</Text>
           </Pressable>
         )}
       </ScrollView>

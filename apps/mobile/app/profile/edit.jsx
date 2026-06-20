@@ -4,23 +4,24 @@ import {
   KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
+import { COLORS, CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
 
 function Field({ label, ...inputProps }) {
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
         {label}
       </Text>
       <TextInput
         placeholderTextColor="#4B5563"
         style={{
-          backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)',
+          backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderStrong,
           borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
-          color: '#fff', fontSize: 14,
+          color: COLORS.textPrimary, fontSize: 14,
         }}
         {...inputProps}
       />
@@ -199,7 +200,7 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator color="#A855F7" size="large" />
       </View>
     );
@@ -209,7 +210,7 @@ export default function EditProfileScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#09090f' }}
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -223,16 +224,16 @@ export default function EditProfileScreen() {
               {avatarUrl ? (
                 <Image
                   source={{ uri: avatarUrl }}
-                  style={{ width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: 'rgba(168,85,247,0.5)' }}
+                  style={{ width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: COLORS.brandBorder }}
                 />
               ) : (
                 <View style={{
                   width: 90, height: 90, borderRadius: 45,
-                  backgroundColor: 'rgba(168,85,247,0.18)',
-                  borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)',
+                  backgroundColor: COLORS.brandSubtle,
+                  borderWidth: 2, borderColor: COLORS.brandBorder,
                   alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Text style={{ color: '#A855F7', fontSize: 38, fontWeight: '900' }}>
+                  <Text style={{ color: COLORS.brand, fontSize: 38, fontWeight: '900' }}>
                     {initialOf(displayName)}
                   </Text>
                 </View>
@@ -240,18 +241,18 @@ export default function EditProfileScreen() {
               <View style={{
                 position: 'absolute', bottom: 0, right: 0,
                 width: 26, height: 26, borderRadius: 13,
-                backgroundColor: '#7C3AED',
+                backgroundColor: COLORS.brandStrong,
                 alignItems: 'center', justifyContent: 'center',
-                borderWidth: 2, borderColor: '#09090f',
+                borderWidth: 2, borderColor: COLORS.bg,
               }}>
                 {uploadingAvatar
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={{ color: '#fff', fontSize: 12 }}>✎</Text>
+                  : <Ionicons name="camera" size={13} color="#fff" />
                 }
               </View>
             </View>
           </Pressable>
-          <Text style={{ color: '#64748B', fontSize: 11, marginTop: 8 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>
             Tocca per cambiare foto
           </Text>
         </View>
@@ -302,7 +303,7 @@ export default function EditProfileScreen() {
 
         {/* Sesso */}
         <View style={{ marginBottom: 16 }}>
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
             Sesso
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -312,12 +313,12 @@ export default function EditProfileScreen() {
                 onPress={() => update('gender', form.gender === g.v ? null : g.v)}
                 style={{
                   flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                  backgroundColor: form.gender === g.v ? '#7C3AED' : '#18181f',
+                  backgroundColor: form.gender === g.v ? COLORS.brandStrong : COLORS.bgElev3,
                   borderWidth: 1,
-                  borderColor: form.gender === g.v ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+                  borderColor: form.gender === g.v ? COLORS.brandStrong : COLORS.borderStrong,
                 }}
               >
-                <Text style={{ color: form.gender === g.v ? '#fff' : '#9CA3AF', fontWeight: '600' }}>
+                <Text style={{ color: form.gender === g.v ? COLORS.textPrimary : COLORS.textSecondary, fontWeight: '600' }}>
                   {g.l}
                 </Text>
               </Pressable>
@@ -328,18 +329,18 @@ export default function EditProfileScreen() {
         {/* Data di nascita — read only */}
         {birthDate ? (
           <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
               Data di nascita
             </Text>
             <View style={{
-              backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.1)',
+              backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderSubtle,
               borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <Text style={{ color: '#9CA3AF', fontSize: 14 }}>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>
                 {new Date(birthDate + 'T00:00:00').toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
               </Text>
-              <Text style={{ color: '#4B5563', fontSize: 11 }}>non modificabile</Text>
+              <Text style={{ color: COLORS.textDisabled, fontSize: 11 }}>non modificabile</Text>
             </View>
           </View>
         ) : null}
@@ -347,7 +348,7 @@ export default function EditProfileScreen() {
         {/* Città — nascosta in modalità single-city */}
         {CITIES.length > 1 && (
           <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
               Città
             </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -357,12 +358,12 @@ export default function EditProfileScreen() {
                   onPress={() => update('city', c)}
                   style={{
                     flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-                    backgroundColor: form.city === c ? '#7C3AED' : '#18181f',
+                    backgroundColor: form.city === c ? COLORS.brandStrong : COLORS.bgElev3,
                     borderWidth: 1,
-                    borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+                    borderColor: form.city === c ? COLORS.brandStrong : COLORS.borderStrong,
                   }}
                 >
-                  <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>
+                  <Text style={{ color: form.city === c ? COLORS.textPrimary : COLORS.textSecondary, fontWeight: form.city === c ? '700' : '500' }}>
                     {c}
                   </Text>
                 </Pressable>
@@ -373,7 +374,7 @@ export default function EditProfileScreen() {
 
         {/* Interessi */}
         <View style={{ marginBottom: 28 }}>
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
             Interessi nightlife
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -385,11 +386,11 @@ export default function EditProfileScreen() {
                   onPress={() => toggleInterest(t)}
                   style={{
                     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14,
-                    backgroundColor: active ? '#7C3AED' : '#18181f',
-                    borderWidth: 1, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+                    backgroundColor: active ? COLORS.brandStrong : COLORS.bgElev3,
+                    borderWidth: 1, borderColor: active ? COLORS.brandStrong : COLORS.borderStrong,
                   }}
                 >
-                  <Text style={{ color: active ? '#fff' : '#9CA3AF', fontSize: 12, fontWeight: active ? '700' : '500' }}>
+                  <Text style={{ color: active ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>
                     {t}
                   </Text>
                 </Pressable>
@@ -402,17 +403,17 @@ export default function EditProfileScreen() {
           onPress={save}
           disabled={saving}
           style={({ pressed }) => ({
-            backgroundColor: '#7C3AED', borderRadius: 12, paddingVertical: 14,
+            backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14,
             alignItems: 'center', opacity: saving || pressed ? 0.75 : 1,
           })}
         >
           {saving
             ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Salva modifiche</Text>
+            : <Text style={{ color: COLORS.textPrimary, fontWeight: '800', fontSize: 15 }}>Salva modifiche</Text>
           }
         </Pressable>
 
-        <Text style={{ color: '#4B5563', fontSize: 11, textAlign: 'center', marginTop: 12 }}>
+        <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginTop: 12 }}>
           Email non modificabile. Per cambiarla contatta il supporto.
         </Text>
       </ScrollView>
