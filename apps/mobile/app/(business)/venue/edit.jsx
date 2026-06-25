@@ -4,7 +4,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
-import { CATS_NO_TUTTI, CITIES } from '@lets-night/shared';
+import { uploadPickedImage, imageExt } from '../../../lib/uploadImage';
+import { CATS_NO_TUTTI, CITIES, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 const MAX_COVER_MB = 5;
 
@@ -74,6 +75,7 @@ export default function EditVenue() {
       allowsEditing: true,
       aspect: [16, 10],
       quality: 0.75,
+      base64: true,
     });
     if (result.canceled || !result.assets?.[0]) return;
 
@@ -85,24 +87,18 @@ export default function EditVenue() {
 
     setUploading(true);
     try {
-      const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${venue.id}/cover.${ext}`;
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const { error: uploadErr } = await supabase.storage
-        .from('venue-covers')
-        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
-      if (uploadErr) {
-        Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
-        return;
-      }
-      const { data: { publicUrl } } = supabase.storage.from('venue-covers').getPublicUrl(path);
-      const { error: upErr } = await supabase.from('venues').update({ cover_image: publicUrl }).eq('id', venue.id);
+      const path = `${venue.id}/cover.${imageExt(asset)}`;
+      const publicUrl = await uploadPickedImage('venue-covers', path, asset);
+      const versioned = `${publicUrl}?v=${Date.now()}`;
+      const { error: upErr } = await supabase.from('venues').update({ cover_image: versioned }).eq('id', venue.id);
       if (upErr) {
         Alert.alert('Errore', 'Foto caricata ma non salvata.');
         return;
       }
-      setCoverUrl(`${publicUrl}?t=${Date.now()}`);
+      setCoverUrl(versioned);
+    } catch (e) {
+      console.error('Errore upload cover:', e);
+      Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
     } finally {
       setUploading(false);
     }
@@ -156,29 +152,31 @@ export default function EditVenue() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={COLORS.brand} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#09090f' }}
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(168,85,247,0.12)', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <Pressable onPress={handleBack} hitSlop={10}>
-          <Ionicons name="chevron-back" size={26} color="#A855F7" />
+          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' }}>Modifica</Text>
-          <Text style={{ color: '#fff', fontSize: 18, fontWeight: '900' }}>Il tuo locale</Text>
+          <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' }}>Modifica</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 18 }}>Il tuo locale</Text>
         </View>
         <Pressable onPress={save} disabled={saving} hitSlop={6}
-          style={({ pressed }) => ({ backgroundColor: '#7C3AED', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, opacity: saving || pressed ? 0.7 : 1 })}
+          style={({ pressed }) => ({ opacity: saving || pressed ? 0.5 : 1 })}
         >
-          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>Salva</Text>}
+          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Salva</Text>}
         </Pressable>
       </View>
 
@@ -186,28 +184,28 @@ export default function EditVenue() {
         {/* Cover */}
         <Text style={Styles.sectionLabel}>Foto di copertina</Text>
         <Pressable onPress={pickCover} disabled={uploading} style={{
-          aspectRatio: 16/10, backgroundColor: '#18181f', borderRadius: 14, overflow: 'hidden',
-          borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', marginBottom: 22,
+          aspectRatio: 16/10, backgroundColor: COLORS.bgElev3, borderRadius: 14, overflow: 'hidden',
+          borderWidth: 1, borderColor: COLORS.borderSubtle, marginBottom: 22,
           alignItems: 'center', justifyContent: 'center',
         }}>
           {coverUrl ? (
             <Image source={{ uri: coverUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
             <View style={{ alignItems: 'center' }}>
-              <Ionicons name="image-outline" size={36} color="#64748B" />
-              <Text style={{ color: '#64748B', marginTop: 8, fontSize: 13 }}>Tocca per scegliere una foto</Text>
+              <Ionicons name="image-outline" size={36} color={COLORS.textMuted} />
+              <Text style={{ color: COLORS.textMuted, marginTop: 8, fontSize: 13 }}>Tocca per scegliere una foto</Text>
             </View>
           )}
           {uploading && (
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator color="#A855F7" />
+              <ActivityIndicator color={COLORS.brand} />
             </View>
           )}
         </Pressable>
 
         {/* Nome */}
         <FieldLabel label="Nome" required />
-        <TextInput style={Styles.input} value={form.name} onChangeText={t => setField('name', t)} maxLength={80} placeholder="Nome del locale" placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.name} onChangeText={t => setField('name', t)} maxLength={80} placeholder="Nome del locale" placeholderTextColor={COLORS.textDisabled} />
 
         {/* Descrizione */}
         <FieldLabel label="Descrizione" />
@@ -218,9 +216,9 @@ export default function EditVenue() {
           maxLength={1000}
           multiline
           placeholder="Racconta il tuo locale: atmosfera, musica, cosa lo rende unico..."
-          placeholderTextColor="#475569"
+          placeholderTextColor={COLORS.textDisabled}
         />
-        <Text style={{ color: '#64748B', fontSize: 11, textAlign: 'right', marginBottom: 14 }}>{form.description.length}/1000</Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: 11, textAlign: 'right', marginBottom: 14 }}>{form.description.length}/1000</Text>
 
         {/* Categoria */}
         <FieldLabel label="Categoria" required />
@@ -236,26 +234,26 @@ export default function EditVenue() {
 
         {/* Zona */}
         <FieldLabel label="Zona" />
-        <TextInput style={Styles.input} value={form.zona} onChangeText={t => setField('zona', t)} maxLength={50} placeholder="Navigli, Brera..." placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.zona} onChangeText={t => setField('zona', t)} maxLength={50} placeholder="Navigli, Brera..." placeholderTextColor={COLORS.textDisabled} />
 
         {/* Indirizzo */}
         <FieldLabel label="Indirizzo" />
-        <TextInput style={Styles.input} value={form.address} onChangeText={t => setField('address', t)} maxLength={120} placeholder="Via Tortona 1" placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.address} onChangeText={t => setField('address', t)} maxLength={120} placeholder="Via Tortona 1" placeholderTextColor={COLORS.textDisabled} />
 
         <Text style={[Styles.sectionLabel, { marginTop: 18 }]}>Contatti</Text>
 
         <FieldLabel label="Telefono" />
-        <TextInput style={Styles.input} value={form.phone} onChangeText={t => setField('phone', t)} keyboardType="phone-pad" maxLength={30} placeholder="+39 ..." placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.phone} onChangeText={t => setField('phone', t)} keyboardType="phone-pad" maxLength={30} placeholder="+39 ..." placeholderTextColor={COLORS.textDisabled} />
 
         <FieldLabel label="Email" />
-        <TextInput style={Styles.input} value={form.email} onChangeText={t => setField('email', t)} keyboardType="email-address" autoCapitalize="none" maxLength={120} placeholder="info@locale.it" placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.email} onChangeText={t => setField('email', t)} keyboardType="email-address" autoCapitalize="none" maxLength={120} placeholder="info@locale.it" placeholderTextColor={COLORS.textDisabled} />
 
         <FieldLabel label="Sito web" />
-        <TextInput style={Styles.input} value={form.website} onChangeText={t => setField('website', t)} keyboardType="url" autoCapitalize="none" maxLength={200} placeholder="https://..." placeholderTextColor="#475569" />
+        <TextInput style={Styles.input} value={form.website} onChangeText={t => setField('website', t)} keyboardType="url" autoCapitalize="none" maxLength={200} placeholder="https://..." placeholderTextColor={COLORS.textDisabled} />
 
         <FieldLabel label="Instagram" />
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#18181f', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', marginBottom: 14 }}>
-          <Text style={{ color: '#64748B', paddingLeft: 14 }}>@</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgElev3, borderRadius: 10, borderWidth: 1, borderColor: COLORS.borderSubtle, marginBottom: 14 }}>
+          <Text style={{ color: COLORS.textMuted, paddingLeft: 14 }}>@</Text>
           <TextInput
             style={[Styles.input, { flex: 1, marginBottom: 0, backgroundColor: 'transparent', borderWidth: 0 }]}
             value={form.instagram}
@@ -263,17 +261,10 @@ export default function EditVenue() {
             autoCapitalize="none"
             maxLength={50}
             placeholder="nome_locale"
-            placeholderTextColor="#475569"
+            placeholderTextColor={COLORS.textDisabled}
           />
         </View>
 
-        <Pressable
-          onPress={save}
-          disabled={saving}
-          style={({ pressed }) => ({ backgroundColor: '#7C3AED', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 18, opacity: saving || pressed ? 0.7 : 1 })}
-        >
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Salva modifiche</Text>}
-        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -281,8 +272,8 @@ export default function EditVenue() {
 
 function FieldLabel({ label, required }) {
   return (
-    <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '700', marginBottom: 6, marginTop: 2 }}>
-      {label}{required ? <Text style={{ color: '#f87171' }}> *</Text> : null}
+    <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '700', marginBottom: 6, marginTop: 2 }}>
+      {label}{required ? <Text style={{ color: COLORS.danger }}> *</Text> : null}
     </Text>
   );
 }
@@ -295,10 +286,10 @@ function ChipRow({ value, options, onChange }) {
         return (
           <Pressable key={opt} onPress={() => onChange(opt)} style={{
             paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,
-            backgroundColor: active ? 'rgba(124,58,237,0.18)' : '#18181f',
-            borderWidth: 1, borderColor: active ? '#7C3AED' : 'rgba(168,85,247,0.2)',
+            backgroundColor: active ? COLORS.brandStrong : COLORS.bgElev3,
+            borderWidth: 1, borderColor: active ? COLORS.brandStrong : COLORS.borderSubtle,
           }}>
-            <Text style={{ color: active ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: active ? '700' : '500' }}>{opt}</Text>
+            <Text style={{ color: active ? '#fff' : COLORS.textSecondary, fontSize: 13, fontWeight: active ? '700' : '500' }}>{opt}</Text>
           </Pressable>
         );
       })}
@@ -307,12 +298,12 @@ function ChipRow({ value, options, onChange }) {
 }
 
 const Styles = {
-  sectionLabel: { color: '#A855F7', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
+  sectionLabel: { color: COLORS.brand, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
   input: {
-    backgroundColor: '#18181f',
+    backgroundColor: COLORS.bgElev3,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(168,85,247,0.2)',
+    borderColor: COLORS.borderSubtle,
     color: '#fff',
     paddingHorizontal: 14,
     paddingVertical: 12,

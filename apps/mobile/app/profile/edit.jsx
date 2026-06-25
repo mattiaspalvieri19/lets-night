@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, ActivityIndicator,
   KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { COLORS, CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
+import { uploadPickedImage, imageExt } from '../../lib/uploadImage';
+import { COLORS, FONT_FAMILY, CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
 
 function Field({ label, ...inputProps }) {
   return (
@@ -110,35 +111,26 @@ export default function EditProfileScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
+      base64: true,
     });
     if (result.canceled || !result.assets?.[0]) return;
 
     setUploadingAvatar(true);
     try {
       const asset = result.assets[0];
-      const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
-      const path = `${myId}/avatar.${ext}`;
-
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, { contentType: `image/${ext}`, upsert: true });
-
-      if (uploadErr) {
-        Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
-        return;
-      }
-
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', myId);
-      setAvatarUrl(`${publicUrl}?t=${Date.now()}`);
+      const path = `${myId}/avatar.${imageExt(asset)}`;
+      const publicUrl = await uploadPickedImage('avatars', path, asset);
+      const versioned = `${publicUrl}?v=${Date.now()}`;
+      await supabase.from('profiles').update({ avatar_url: versioned }).eq('id', myId);
+      setAvatarUrl(versioned);
+    } catch (e) {
+      console.error('Errore upload avatar:', e);
+      Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
     } finally {
       setUploadingAvatar(false);
     }
   }
+
 
   async function save() {
     setError('');
@@ -213,6 +205,17 @@ export default function EditProfileScreen() {
       style={{ flex: 1, backgroundColor: COLORS.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))} hitSlop={10}>
+          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+        </Pressable>
+        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 20 }}>Modifica profilo</Text>
+        <Pressable onPress={save} disabled={saving} hitSlop={6} style={({ pressed }) => ({ opacity: saving || pressed ? 0.5 : 1 })}>
+          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Salva</Text>}
+        </Pressable>
+      </View>
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
@@ -398,20 +401,6 @@ export default function EditProfileScreen() {
             })}
           </View>
         </View>
-
-        <Pressable
-          onPress={save}
-          disabled={saving}
-          style={({ pressed }) => ({
-            backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14,
-            alignItems: 'center', opacity: saving || pressed ? 0.75 : 1,
-          })}
-        >
-          {saving
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: COLORS.textPrimary, fontWeight: '800', fontSize: 15 }}>Salva modifiche</Text>
-          }
-        </Pressable>
 
         <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginTop: 12 }}>
           Email non modificabile. Per cambiarla contatta il supporto.

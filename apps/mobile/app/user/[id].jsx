@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image } from 'react-native';
+import { useLocalSearchParams, router, useFocusEffect, useNavigation } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { COLORS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
@@ -43,6 +44,7 @@ export default function PublicProfileScreen() {
   const [bizFutureEvents, setBizFutureEvents] = useState([]);
   const [bizPastEvents, setBizPastEvents] = useState([]);
   const [bizEventsCount, setBizEventsCount] = useState(0);
+
 
   async function loadAll() {
     // Profilo
@@ -227,28 +229,40 @@ export default function PublicProfileScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: COLORS.bg }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
+      stickyHeaderIndices={[0]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
     >
+      <View style={{ backgroundColor: COLORS.bg, paddingHorizontal: 20, paddingTop: 60, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))} hitSlop={10}>
+          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+        </Pressable>
+      </View>
       {/* Header */}
       <View style={{ padding: 20, paddingTop: 24, alignItems: 'center' }}>
-        <View style={{
-          width: 88, height: 88, borderRadius: 44,
-          backgroundColor: COLORS.brandSubtle,
-          alignItems: 'center', justifyContent: 'center',
-          borderWidth: 2, borderColor: COLORS.brandBorder,
-          marginBottom: 14,
-        }}>
-          <Text style={{ color: COLORS.brand, fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
-        </View>
+        {profile?.avatar_url ? (
+          <Image
+            source={{ uri: profile.avatar_url }}
+            style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 2, borderColor: COLORS.brandBorder, marginBottom: 14 }}
+          />
+        ) : (
+          <View style={{
+            width: 88, height: 88, borderRadius: 44,
+            backgroundColor: COLORS.brandSubtle,
+            alignItems: 'center', justifyContent: 'center',
+            borderWidth: 2, borderColor: COLORS.brandBorder,
+            marginBottom: 14,
+          }}>
+            <Text style={{ color: COLORS.brand, fontSize: 38, fontWeight: '900' }}>{initialOf(display)}</Text>
+          </View>
+        )}
         <Text style={{ color: COLORS.textPrimary, fontSize: 22, fontWeight: '900' }}>{display}</Text>
         {handle && <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 2 }}>{handle}</Text>}
         {profile.bio && (
           <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 10, paddingHorizontal: 20 }}>
             {profile.bio}
           </Text>
-        )}
-        {profile.city && (
-          <Text style={{ color: COLORS.brand, fontSize: 12, marginTop: 8, fontWeight: '600' }}>📍 {profile.city}</Text>
         )}
 
         {/* Interests pills */}

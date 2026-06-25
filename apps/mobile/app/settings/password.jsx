@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useLayoutEffect, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useNavigation } from 'expo-router';
 import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
 
@@ -10,6 +11,7 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
 
   async function handleSave() {
     setError(''); setSuccess(false);
@@ -43,6 +45,16 @@ export default function ChangePasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))} hitSlop={10}>
+          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+        </Pressable>
+        <Pressable onPress={handleSave} disabled={loading} hitSlop={6} style={({ pressed }) => ({ opacity: loading || pressed ? 0.5 : 1 })}>
+          {loading ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Salva</Text>}
+        </Pressable>
+      </View>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
         <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Sicurezza</Text>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, marginBottom: 8 }}>Cambia password</Text>
@@ -85,20 +97,6 @@ export default function ChangePasswordScreen() {
           onChangeText={setConfirm}
           secureTextEntry
         />
-
-        <Pressable
-          onPress={handleSave}
-          disabled={loading}
-          style={({ pressed }) => ({
-            backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14,
-            alignItems: 'center', marginTop: 8, opacity: loading || pressed ? 0.75 : 1,
-          })}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Aggiorna password</Text>
-          }
-        </Pressable>
 
         {success && (
           <Pressable onPress={() => router.back()} style={{ marginTop: 14, alignItems: 'center' }}>

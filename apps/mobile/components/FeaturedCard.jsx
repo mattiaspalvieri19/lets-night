@@ -6,7 +6,7 @@ import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLab
 // Senza foto: fondo neutro + categoria in display gigante.
 export default function FeaturedCard({ event, onPress }) {
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
-  const photo = event.cover_image || event.venues?.cover_image || null;
+  const photo = event.cover_image || null;
 
   return (
     <Pressable

@@ -9,7 +9,7 @@ const MONTHS = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', '
 // tint di categoria) → mai un box vuoto. Stile/colori dell'app, niente gradienti arcobaleno.
 export default function EventCard({ event, onPress }) {
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
-  const photo = event.cover_image || event.venues?.cover_image || null;
+  const photo = event.cover_image || null;
 
   const [, m, d] = (event.event_date || '').split('-').map(Number);
   const dayNum = d || '';

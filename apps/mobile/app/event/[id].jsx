@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Linking, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
@@ -45,7 +46,7 @@ export default function EventDetailScreen() {
       setLoading(true);
       const { data, error } = await supabase
         .from('events')
-        .select('*, venues(id, name, zona, city, address, phone, description, category)')
+        .select('*, venues(id, name, zona, city, address, phone, description, category, cover_image)')
         .eq('id', id)
         .eq('is_active', true)
         .maybeSingle();
@@ -58,7 +59,7 @@ export default function EventDetailScreen() {
         const today = new Date().toISOString().split('T')[0];
         const { data: others } = await supabase
           .from('events')
-          .select('*, venues(name, zona, city)')
+          .select('*, venues(name, zona, city, cover_image)')
           .eq('venue_id', data.venues.id)
           .eq('is_active', true)
           .neq('id', id)
@@ -154,6 +155,7 @@ export default function EventDetailScreen() {
   }
 
   const colors = COLORS_BY_CAT[event.category] || ['#1a0533', '#0d0d1a', '#c084fc'];
+  const photo = event.cover_image || null;
   const isPast = isPastDate(event.event_date);
 
   return (
@@ -161,27 +163,16 @@ export default function EventDetailScreen() {
       <ScrollView className="flex-1 bg-dark">
         {/* Hero */}
         <View style={{ backgroundColor: colors[0], height: 200 }} className="relative justify-end p-5">
+          {photo && (
+            <>
+              <Image source={{ uri: photo }} resizeMode="cover" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)' }} />
+            </>
+          )}
           <View className="absolute top-4 right-4">
             <View className="bg-black/40 px-3 py-1 rounded-full">
               <Text className="text-white text-xs font-semibold">{event.category}</Text>
             </View>
-          </View>
-          <View style={{ position: 'absolute', top: 16, left: 16, flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-            {event.is_sponsored && (
-              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(202,138,4,0.25)', borderWidth: 1, borderColor: 'rgba(234,179,8,0.4)' }}>
-                <Text style={{ color: '#FBBF24', fontSize: 11, fontWeight: '700' }}>★ SPONSOR</Text>
-              </View>
-            )}
-            {event.is_hot && !isPast && (
-              <View className="px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(239,68,68,0.2)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)' }}>
-                <Text style={{ color: '#F87171', fontSize: 11, fontWeight: '700' }}>🔥 HOT</Text>
-              </View>
-            )}
-            {isPast && (
-              <View className="bg-gray-800/80 px-3 py-1 rounded-full">
-                <Text className="text-gray-400 text-xs">Evento passato</Text>
-              </View>
-            )}
           </View>
           <Text className="text-white text-2xl font-bold leading-tight">{event.title}</Text>
           <Text className="text-gray-300 mt-1">{event.venues?.name}</Text>
@@ -249,7 +240,7 @@ export default function EventDetailScreen() {
             onPress={handleMaps}
             className="bg-card rounded-2xl p-4 mb-4 flex-row items-center gap-3"
           >
-            <Text style={{ fontSize: 22 }}>📍</Text>
+            <Ionicons name="navigate-outline" size={20} color="#fff" />
             <View className="flex-1">
               <Text className="text-white font-semibold">Apri in Maps</Text>
               <Text className="text-gray-400 text-sm" numberOfLines={1}>
@@ -309,9 +300,12 @@ export default function EventDetailScreen() {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={{ color: reminderId ? '#A855F7' : '#9CA3AF', fontSize: 14, fontWeight: '600' }}>
-                  {reminderId ? '🔔 Promemoria impostato' : '🔔 Ricordami 24h prima'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="notifications-outline" size={16} color={reminderId ? '#A855F7' : '#9CA3AF'} />
+                  <Text style={{ color: reminderId ? '#A855F7' : '#9CA3AF', fontSize: 14, fontWeight: '600' }}>
+                    {reminderId ? 'Promemoria impostato' : 'Ricordami 24h prima'}
+                  </Text>
+                </View>
               </Pressable>
             </View>
           )}

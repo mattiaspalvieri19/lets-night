@@ -1,23 +1,14 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { formatDate, formatTime, getPriceLabel, CATS_NO_TUTTI } from '@lets-night/shared';
-
-const EMPTY_EVENT = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', end_time: '', price: '', capacity: '', has_tables: false, table_price: '' };
-const CATS = CATS_NO_TUTTI;
+import { formatDate, formatTime, getPriceLabel, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import EventFormModal from '../../components/EventFormModal';
 
 function todayLocal() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function parseNumber(str) {
-  if (!str) return null;
-  const cleaned = String(str).replace(',', '.').trim();
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? null : n;
 }
 
 export default function BusinessEvents() {
@@ -28,8 +19,6 @@ export default function BusinessEvents() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(EMPTY_EVENT);
-  const [saving, setSaving] = useState(false);
 
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -48,52 +37,6 @@ export default function BusinessEvents() {
   async function toggleActive(ev) {
     await supabase.from('events').update({ is_active: !ev.is_active }).eq('id', ev.id);
     loadData();
-  }
-
-  async function handleCreate() {
-    if (!form.title || !form.event_date || !form.event_time || !form.end_time) {
-      Alert.alert('Campi mancanti', 'Titolo, data, orario di inizio e di fine sono obbligatori.');
-      return;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.event_date)) {
-      Alert.alert('Data non valida', 'Usa il formato YYYY-MM-DD.');
-      return;
-    }
-    if (!/^\d{2}:\d{2}$/.test(form.event_time) || !/^\d{2}:\d{2}$/.test(form.end_time)) {
-      Alert.alert('Orario non valido', 'Usa il formato HH:MM per inizio e fine.');
-      return;
-    }
-    if (form.event_date < todayLocal()) {
-      Alert.alert('Data nel passato', 'Non puoi creare un evento per una data passata.');
-      return;
-    }
-    const price = parseNumber(form.price) ?? 0;
-    const capacity = form.capacity ? parseInt(String(form.capacity).replace(/\D/g, ''), 10) : null;
-    setSaving(true);
-    const { error } = await supabase.from('events').insert({
-      venue_id: venue.id,
-      title: form.title,
-      description: form.description,
-      category: form.category,
-      event_date: form.event_date,
-      event_time: form.event_time,
-      end_time: form.end_time,
-      price,
-      capacity: capacity || null,
-      has_tables: !!form.has_tables,
-      table_price: form.table_price ? parseNumber(form.table_price) : null,
-      is_active: true,
-    });
-    // se has_tables, auto-aggiungi tag 'Tavoli' (idempotente lato DB).
-    setSaving(false);
-    if (error) { Alert.alert('Errore', error.message); return; }
-    closeModal();
-    loadData();
-  }
-
-  function closeModal() {
-    setShowModal(false);
-    setForm(EMPTY_EVENT);
   }
 
   const today = todayLocal();
@@ -129,17 +72,17 @@ export default function BusinessEvents() {
     }).length,
   };
 
-  if (loading) return <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color="#A855F7" size="large" /></View>;
+  if (loading) return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>I tuoi eventi</Text>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>I tuoi eventi</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>Gestione eventi</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 22, letterSpacing: -0.3 }}>Gestione eventi</Text>
           {venue?.is_verified && (
             <Pressable onPress={() => setShowModal(true)}
-              style={{ backgroundColor: '#A855F7', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}>
+              style={{ backgroundColor: COLORS.brand, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}>
               <Text style={{ color: '#fff', fontWeight: '600', fontSize: 12 }}>+ Nuovo</Text>
             </Pressable>
           )}
@@ -148,20 +91,20 @@ export default function BusinessEvents() {
         {/* Search interna */}
         <View style={{
           flexDirection: 'row', alignItems: 'center', gap: 8,
-          backgroundColor: '#18181f', borderRadius: 8,
-          borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+          backgroundColor: COLORS.bgElev3, borderRadius: 8,
+          borderWidth: 1, borderColor: COLORS.borderSubtle,
           paddingHorizontal: 12, paddingVertical: 8,
           marginTop: 14,
         }}>
           <TextInput
             value={search} onChangeText={setSearch}
             placeholder="Cerca per titolo o categoria..."
-            placeholderTextColor="#475569"
+            placeholderTextColor={COLORS.textDisabled}
             style={{ flex: 1, color: '#fff', fontSize: 13, paddingVertical: 0 }}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} hitSlop={10}>
-              <Text style={{ color: '#64748B', fontSize: 16 }}>×</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 16 }}>×</Text>
             </Pressable>
           )}
         </View>
@@ -181,17 +124,17 @@ export default function BusinessEvents() {
               <Pressable key={id} onPress={() => setFilter(id)}
                 style={{
                   paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12,
-                  backgroundColor: active ? 'rgba(168,85,247,0.15)' : 'transparent',
+                  backgroundColor: active ? COLORS.textPrimary : 'transparent',
                   borderWidth: 1,
-                  borderColor: active ? '#A855F7' : 'rgba(255,255,255,0.08)',
+                  borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle,
                 }}
               >
                 <Text style={{
-                  color: active ? '#fff' : '#94A3B8',
+                  color: active ? COLORS.bg : COLORS.textSecondary,
                   fontSize: 11,
                   fontWeight: active ? '600' : '500',
                 }}>
-                  {label} <Text style={{ color: '#475569' }}>({counts[id]})</Text>
+                  {label} <Text style={{ color: COLORS.textDisabled }}>({counts[id]})</Text>
                 </Text>
               </Pressable>
             );
@@ -199,25 +142,25 @@ export default function BusinessEvents() {
         </ScrollView>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
         {filtered.length === 0 ? (
           <View style={{
             alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24,
-            backgroundColor: '#111118', borderRadius: 10,
-            borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+            backgroundColor: COLORS.bgElev2, borderRadius: 10,
+            borderWidth: 1, borderColor: COLORS.borderSubtle,
           }}>
-            <View style={{ width: 32, height: 1, backgroundColor: 'rgba(168,85,247,0.3)', marginBottom: 16 }} />
-            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 6, textAlign: 'center' }}>
+            <View style={{ width: 32, height: 1, backgroundColor: COLORS.borderStrong, marginBottom: 16 }} />
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 6, textAlign: 'center' }}>
               {events.length === 0 ? 'Non hai ancora creato eventi' : 'Nessun evento per questo filtro'}
             </Text>
-            <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', marginBottom: events.length === 0 ? 18 : 0 }}>
+            <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginBottom: events.length === 0 ? 18 : 0 }}>
               {events.length === 0
                 ? 'Crea il tuo primo evento per iniziare ad accettare prenotazioni.'
                 : 'Cambia filtro o resetta la ricerca.'}
             </Text>
             {events.length === 0 && venue?.is_verified && (
               <Pressable onPress={() => setShowModal(true)}
-                style={{ backgroundColor: '#A855F7', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 }}>
+                style={{ backgroundColor: COLORS.brand, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 }}>
                 <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Crea evento</Text>
               </Pressable>
             )}
@@ -230,33 +173,41 @@ export default function BusinessEvents() {
               key={ev.id}
               onPress={() => router.push(`/business-event/${ev.id}`)}
               style={({ pressed }) => ({
-                backgroundColor: '#111118', borderRadius: 14, padding: 16, marginBottom: 12,
-                borderWidth: 1, borderColor: ev.is_active ? 'rgba(168,85,247,0.2)' : 'rgba(168,85,247,0.06)',
+                backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, marginBottom: 12,
+                borderWidth: 1, borderColor: ev.is_active ? COLORS.borderSubtle : COLORS.borderSubtle,
                 opacity: isPast ? 0.7 : (pressed ? 0.85 : 1),
               })}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={{ color: '#A855F7', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>{ev.category}</Text>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginBottom: 4 }} numberOfLines={2}>{ev.title}</Text>
-                  <Text style={{ color: '#64748B', fontSize: 12 }}>{formatDate(ev.event_date)} · {formatTime(ev.event_time)}</Text>
+                  <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>{ev.category}</Text>
+                  <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 4 }} numberOfLines={2}>{ev.title}</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{formatDate(ev.event_date)} · {formatTime(ev.event_time)}</Text>
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
-                    <Text style={{ color: '#9CA3AF', fontSize: 12 }}>📋 {bookingsCount} prenotazioni</Text>
-                    <Text style={{ color: '#9CA3AF', fontSize: 12 }}>{getPriceLabel(ev.price)}</Text>
-                    {ev.capacity && <Text style={{ color: '#9CA3AF', fontSize: 12 }}>👥 {ev.booked_count || 0}/{ev.capacity}</Text>}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Ionicons name="clipboard-outline" size={13} color={COLORS.textSecondary} />
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{bookingsCount} prenotazioni</Text>
+                  </View>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{getPriceLabel(ev.price)}</Text>
+                    {ev.capacity && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <Ionicons name="people-outline" size={13} color={COLORS.textSecondary} />
+                        <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{ev.booked_count || 0}/{ev.capacity}</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
                 {!isPast && (
                   <Pressable onPress={(e) => { e.stopPropagation?.(); toggleActive(ev); }} hitSlop={6}
                     style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: ev.is_active ? 'rgba(74,222,128,0.12)' : 'rgba(100,116,139,0.15)', borderWidth: 1, borderColor: ev.is_active ? 'rgba(74,222,128,0.35)' : 'rgba(100,116,139,0.3)' }}
                   >
-                    <Text style={{ color: ev.is_active ? '#4ADE80' : '#64748B', fontSize: 12, fontWeight: '700' }}>
+                    <Text style={{ color: ev.is_active ? COLORS.success : COLORS.textMuted, fontSize: 12, fontWeight: '700' }}>
                       {ev.is_active ? 'Attivo' : 'Nascosto'}
                     </Text>
                   </Pressable>
                 )}
               </View>
-              <Text style={{ color: '#A855F7', fontSize: 11, marginTop: 10, textAlign: 'right' }}>
+              <Text style={{ color: COLORS.brand, fontSize: 11, marginTop: 10, textAlign: 'right' }}>
                 Tocca per statistiche →
               </Text>
             </Pressable>
@@ -264,87 +215,13 @@ export default function BusinessEvents() {
         })}
       </ScrollView>
 
-      {/* Create event modal */}
-      <Modal visible={showModal} transparent animationType="slide" onRequestClose={closeModal}>
-        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={closeModal} />
-          <View style={{ backgroundColor: '#111118', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24, maxHeight: '90%', borderTopWidth: 1, borderColor: 'rgba(168,85,247,0.2)' }}>
-            <View style={{ width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 14 }} />
-            {/* Barra header con "Fatto" per chiudere la tastiera */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Nuovo evento</Text>
-              <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8}>
-                <Text style={{ color: '#A855F7', fontSize: 15, fontWeight: '700' }}>Fatto</Text>
-              </Pressable>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-              {[['Titolo', 'title', 'Es. Saturday Night Fever'], ['Descrizione', 'description', 'Descrivi l\'evento...']].map(([label, key, ph]) => (
-                <View key={key} style={{ marginBottom: 14 }}>
-                  <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
-                  <TextInput
-                    value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))}
-                    placeholder={ph} placeholderTextColor="#4B5563"
-                    style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 }}
-                    multiline={key === 'description'} numberOfLines={key === 'description' ? 3 : 1}
-                  />
-                </View>
-              ))}
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>Categoria</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {CATS.map(c => (
-                      <Pressable key={c} onPress={() => setForm(f => ({ ...f, category: c }))}
-                        style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: form.category === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.category === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}
-                      >
-                        <Text style={{ color: form.category === c ? '#fff' : '#9CA3AF', fontSize: 13 }}>{c}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Data</Text>
-                <TextInput value={form.event_date} onChangeText={v => setForm(f => ({ ...f, event_date: v }))} placeholder="YYYY-MM-DD" placeholderTextColor="#4B5563"
-                  style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 }}
-                />
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                {[['Inizio', 'event_time', 'HH:MM'], ['Fine', 'end_time', 'HH:MM']].map(([label, key, ph]) => (
-                  <View key={key} style={{ flex: 1 }}>
-                    <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
-                    <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor="#4B5563"
-                      style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 }}
-                    />
-                  </View>
-                ))}
-              </View>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-                {[['Prezzo (EUR)', 'price', '0'], ['Capienza', 'capacity', 'Illimitata']].map(([label, key, ph]) => (
-                  <View key={key} style={{ flex: 1 }}>
-                    <Text style={{ color: '#64748B', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
-                    <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor="#4B5563" keyboardType="numeric"
-                      style={{ backgroundColor: '#18181f', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, color: '#fff', fontSize: 14 }}
-                    />
-                  </View>
-                ))}
-              </View>
-              <Pressable onPress={handleCreate} disabled={saving}
-                style={({ pressed }) => ({ backgroundColor: '#7C3AED', paddingVertical: 16, borderRadius: 14, alignItems: 'center', opacity: saving || pressed ? 0.7 : 1, marginBottom: 16 })}
-              >
-                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{saving ? 'Pubblicazione...' : 'Pubblica evento'}</Text>
-              </Pressable>
-              {/* Suggerimento tavoli: si gestiscono dopo, dentro l'evento */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
-                <Ionicons name="information-circle-outline" size={15} color="#64748B" />
-                <Text style={{ color: '#64748B', fontSize: 12, flex: 1, lineHeight: 16 }}>
-                  Dopo aver pubblicato, tocca l'evento per aggiungere i tavoli (tipologie, prezzi, cosa includono).
-                </Text>
-              </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <EventFormModal
+        visible={showModal}
+        mode="create"
+        venueId={venue?.id}
+        onClose={() => setShowModal(false)}
+        onSaved={loadData}
+      />
     </View>
   );
 }

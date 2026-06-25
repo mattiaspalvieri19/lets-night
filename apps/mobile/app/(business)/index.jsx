@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { formatTime } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 function calcAge(birthDate) {
   if (!birthDate) return null;
@@ -15,7 +15,7 @@ function calcAge(birthDate) {
 function euro(v) { return '€ ' + (Number(v) || 0).toFixed(0); }
 const pad = n => String(n).padStart(2, '0');
 
-const C = { bg: '#09090f', card: '#111118', card2: '#16161d', accent: '#A855F7', accent2: '#7C3AED', white: '#fff', sub: '#9CA3AF', muted: '#64748B', line: 'rgba(255,255,255,0.06)', green: '#4ADE80' };
+const C = { bg: COLORS.bg, card: COLORS.bgElev2, card2: COLORS.bgElev3, accent: COLORS.brand, accent2: COLORS.brandStrong, white: COLORS.textPrimary, sub: COLORS.textSecondary, muted: COLORS.textMuted, line: COLORS.borderSubtle, green: COLORS.success, danger: COLORS.danger, amber: COLORS.warning, display: FONT_FAMILY.display, heavy: FONT_FAMILY.displayHeavy };
 
 function Section({ title, children }) {
   return (
@@ -138,11 +138,11 @@ export default function BusinessDashboard() {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 18 }}>
         <Text style={{ color: C.accent, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dashboard</Text>
-        <Text style={{ color: C.white, fontSize: 24, fontWeight: '900' }}>{venue?.name}</Text>
+        <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 24 }}>{venue?.name}</Text>
         <Text style={{ color: C.muted, fontSize: 13, marginTop: 2 }}>{[venue?.zona, venue?.city].filter(Boolean).join(', ')}</Text>
         {venue && !venue.is_verified && (
           <View style={{ marginTop: 12, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 8, padding: 12 }}>
-            <Text style={{ color: '#F59E0B', fontWeight: '600', fontSize: 12 }}>In attesa di approvazione</Text>
+            <Text style={{ color: C.amber, fontWeight: '600', fontSize: 12 }}>In attesa di approvazione</Text>
             <Text style={{ color: C.sub, fontSize: 11, marginTop: 4, lineHeight: 16 }}>Il tuo locale verrà verificato entro 24-48 ore.</Text>
           </View>
         )}
@@ -153,7 +153,7 @@ export default function BusinessDashboard() {
         {d?.todayEvents?.length ? d.todayEvents.map(e => {
           const pct = e.prenotati ? Math.round((e.entrati / e.prenotati) * 100) : 0;
           return (
-            <View key={e.id} style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)' }}>
+            <View key={e.id} style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: C.line }}>
               <Text style={{ color: C.white, fontWeight: '700', fontSize: 16 }}>{e.title}</Text>
               <Text style={{ color: C.sub, fontSize: 12, marginTop: 2, marginBottom: 14 }}>{formatTime(e.time)}</Text>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -178,7 +178,7 @@ export default function BusinessDashboard() {
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
             <View>
-              <Text style={{ color: C.white, fontSize: 30, fontWeight: '900', letterSpacing: -0.6 }}>{euro(d?.venditeTotali)}</Text>
+              <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 30, letterSpacing: -0.6 }}>{euro(d?.venditeTotali)}</Text>
               <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>totale generato</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -207,7 +207,7 @@ export default function BusinessDashboard() {
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
             <View>
-              <Text style={{ color: C.white, fontSize: 30, fontWeight: '900', letterSpacing: -0.6 }}>{d?.ingressi?.venduti ?? 0}</Text>
+              <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 30, letterSpacing: -0.6 }}>{d?.ingressi?.venduti ?? 0}</Text>
               <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>biglietti venduti (eventi conclusi)</Text>
             </View>
             <Text style={{ color: C.muted, fontSize: 11 }}>entrati + rifiutati + no-show</Text>
@@ -215,11 +215,11 @@ export default function BusinessDashboard() {
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {[
               { lab: 'Entrati', n: d?.ingressi?.entrati || 0, col: C.green },
-              { lab: 'Rifiutati', n: d?.ingressi?.rifiutati || 0, col: '#F87171' },
-              { lab: 'No-show', n: d?.ingressi?.noShow || 0, col: '#FBBF24' },
+              { lab: 'Rifiutati', n: d?.ingressi?.rifiutati || 0, col: C.danger },
+              { lab: 'No-show', n: d?.ingressi?.noShow || 0, col: C.amber },
             ].map(s => (
               <View key={s.lab} style={{ flex: 1, backgroundColor: C.card2, borderRadius: 10, padding: 12, alignItems: 'center' }}>
-                <Text style={{ color: s.col, fontSize: 20, fontWeight: '800' }}>{s.n}</Text>
+                <Text style={{ fontFamily: C.display, color: s.col, fontSize: 20 }}>{s.n}</Text>
                 <Text style={{ color: C.muted, fontSize: 10, marginTop: 3 }}>{s.lab}</Text>
               </View>
             ))}
@@ -239,7 +239,7 @@ export default function BusinessDashboard() {
           { label: 'Eventi in programma', value: d?.eventiInProgramma ?? 0 },
         ].map(s => (
           <View key={s.label} style={{ width: '47%', backgroundColor: C.card, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.line }}>
-            <Text style={{ color: C.white, fontSize: 24, fontWeight: '800', letterSpacing: -0.3, marginBottom: 4 }}>{s.value}</Text>
+            <Text style={{ fontFamily: C.display, color: C.white, fontSize: 24, letterSpacing: -0.3, marginBottom: 4 }}>{s.value}</Text>
             <Text style={{ color: C.muted, fontSize: 11 }}>{s.label}</Text>
           </View>
         ))}

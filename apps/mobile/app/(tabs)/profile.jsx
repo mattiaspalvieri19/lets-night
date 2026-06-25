@@ -177,9 +177,6 @@ export default function MyProfileScreen() {
               {profile.bio}
             </Text>
           ) : null}
-          {profile?.city ? (
-            <Text style={{ color: '#A855F7', fontSize: 12, marginTop: 8, fontWeight: '600' }}>📍 {profile.city}</Text>
-          ) : null}
 
           {Array.isArray(profile?.interests) && profile.interests.length > 0 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, justifyContent: 'center' }}>

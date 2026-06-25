@@ -4,7 +4,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/apiUrl';
-import { formatDateFull, formatTime } from '@lets-night/shared';
+import { Ionicons } from '@expo/vector-icons';
+import { formatDateFull, formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 function initials(name) {
   return (name || '')
@@ -170,22 +171,22 @@ export default function ScannerScreen() {
     }
   }
 
-  if (!permission) return <View style={{ flex: 1, backgroundColor: '#09090f' }} />;
+  if (!permission) return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
 
   if (!permission.granted) {
     const canAsk = permission.canAskAgain;
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ fontSize: 48, marginBottom: 16 }}>📷</Text>
-        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>Fotocamera necessaria</Text>
-        <Text style={{ color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <Ionicons name="camera-outline" size={48} color={COLORS.textMuted} style={{ marginBottom: 16 }} />
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 20, textAlign: 'center', marginBottom: 8 }}>Fotocamera necessaria</Text>
+        <Text style={{ color: COLORS.textMuted, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
           {canAsk
             ? 'Per scannerizzare i QR code dei biglietti è necessario l\'accesso alla fotocamera.'
             : 'Permesso negato. Apri le Impostazioni e attiva la fotocamera per Let\'s Night.'}
         </Text>
         <Pressable
           onPress={() => canAsk ? requestPermission() : Linking.openSettings()}
-          style={{ backgroundColor: '#7C3AED', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, width: '100%' }}
+          style={{ backgroundColor: COLORS.brandStrong, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, width: '100%' }}
         >
           <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, textAlign: 'center' }}>
             {canAsk ? 'Concedi accesso' : 'Apri Impostazioni'}
@@ -197,10 +198,10 @@ export default function ScannerScreen() {
 
   if (hasVenue === false) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-        <Text style={{ fontSize: 44, marginBottom: 14 }}>🏢</Text>
-        <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>Nessun locale associato</Text>
-        <Text style={{ color: '#64748B', textAlign: 'center', lineHeight: 21 }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <Ionicons name="business-outline" size={44} color={COLORS.textMuted} style={{ marginBottom: 14 }} />
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 19, textAlign: 'center', marginBottom: 8 }}>Nessun locale associato</Text>
+        <Text style={{ color: COLORS.textMuted, textAlign: 'center', lineHeight: 21 }}>
           Il tuo account business non ha un locale collegato. Contatta il supporto.
         </Text>
       </View>
@@ -221,20 +222,26 @@ export default function ScannerScreen() {
     const borderColor = wrongNight ? 'rgba(239,68,68,0.45)' : reEntry ? 'rgba(245,158,11,0.4)' : 'rgba(74,222,128,0.35)';
 
     return (
-      <View style={{ flex: 1, backgroundColor: '#09090f', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <View style={{ backgroundColor: '#111118', borderRadius: 20, padding: 24, borderWidth: 1, borderColor }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', paddingHorizontal: 24 }}>
+        <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 20, padding: 24, borderWidth: 1, borderColor }}>
 
           {/* Banner esito */}
           {wrongNight ? (
             <View style={{ backgroundColor: 'rgba(239,68,68,0.12)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#F87171', fontWeight: '900', fontSize: 16 }}>⚠️ ALTRA SERATA</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="warning" size={16} color="#F87171" />
+                <Text style={{ color: '#F87171', fontWeight: '900', fontSize: 16 }}>ALTRA SERATA</Text>
+              </View>
               <Text style={{ color: '#FCA5A5', fontSize: 12, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>
                 Questo QR è per un&apos;altra serata — non valido stasera
               </Text>
             </View>
           ) : reEntry ? (
             <View style={{ backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, marginBottom: 20, alignItems: 'center' }}>
-              <Text style={{ color: '#FBBF24', fontWeight: '900', fontSize: 16 }}>⚠️ GIÀ SCANNERIZZATO</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="warning" size={16} color="#FBBF24" />
+                <Text style={{ color: '#FBBF24', fontWeight: '900', fontSize: 16 }}>GIÀ SCANNERIZZATO</Text>
+              </View>
               <Text style={{ color: '#F59E0B', fontSize: 12, marginTop: 4, fontWeight: '600' }}>Rientro — verifica nome e foto</Text>
               {checkedInTime && (
                 <Text style={{ color: '#92400E', fontSize: 11, marginTop: 3 }}>Prima entrata: {checkedInTime}</Text>
@@ -242,7 +249,10 @@ export default function ScannerScreen() {
             </View>
           ) : (
             <View style={{ marginBottom: 20, backgroundColor: 'rgba(74,222,128,0.1)', borderRadius: 10, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(74,222,128,0.25)', alignItems: 'center' }}>
-              <Text style={{ color: '#4ADE80', fontWeight: '900', fontSize: 16 }}>✅ INGRESSO REGISTRATO</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="checkmark-circle" size={16} color="#4ADE80" />
+                <Text style={{ color: '#4ADE80', fontWeight: '900', fontSize: 16 }}>INGRESSO REGISTRATO</Text>
+              </View>
               {checkedInTime && <Text style={{ color: '#4ADE80', fontSize: 12, marginTop: 3, fontWeight: '600' }}>Entrato alle {checkedInTime}</Text>}
             </View>
           )}
@@ -252,42 +262,42 @@ export default function ScannerScreen() {
             {b.avatarUrl ? (
               <Image
                 source={{ uri: b.avatarUrl }}
-                style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' }}
+                style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 2, borderColor: COLORS.borderStrong }}
               />
             ) : (
-              <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: '#23232c', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' }}>
-                <Text style={{ color: '#8B8B96', fontSize: 30, fontWeight: '800' }}>{initials(b.name) || '?'}</Text>
+              <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.bgElev3, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.borderSubtle }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 30, fontWeight: '800' }}>{initials(b.name) || '?'}</Text>
               </View>
             )}
           </View>
 
-          <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', textAlign: 'center', marginBottom: 10, letterSpacing: 0.3 }}>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 26, textAlign: 'center', marginBottom: 10, letterSpacing: 0.3 }}>
             {b.name}
           </Text>
 
           {age != null && (
-            <View style={{ alignSelf: 'center', backgroundColor: 'rgba(168,85,247,0.15)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 20 }}>
-              <Text style={{ color: '#A855F7', fontWeight: '900', fontSize: 20 }}>{age} anni</Text>
+            <View style={{ alignSelf: 'center', backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderSubtle, borderRadius: 20, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 20 }}>
+              <Text style={{ color: COLORS.brand, fontWeight: '900', fontSize: 20 }}>{age} anni</Text>
             </View>
           )}
 
-          <View style={{ backgroundColor: '#18181f', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>{b.event.title}</Text>
-            <Text style={{ color: wrongNight ? '#F87171' : '#A855F7', fontSize: 13 }}>{formatDateFull(b.event.date)} · {formatTime(b.event.time)}</Text>
+          <View style={{ backgroundColor: COLORS.bgElev3, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>{b.event.title}</Text>
+            <Text style={{ color: wrongNight ? '#F87171' : COLORS.brand, fontSize: 13 }}>{formatDateFull(b.event.date)} · {formatTime(b.event.time)}</Text>
             {b.table ? (
-              <View style={{ marginTop: 10, backgroundColor: 'rgba(168,85,247,0.1)', borderRadius: 8, padding: 10 }}>
-                <Text style={{ color: '#A855F7', fontWeight: '800', fontSize: 13 }}>TAVOLO {b.table.typeName}</Text>
-                <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 3 }}>
+              <View style={{ marginTop: 10, backgroundColor: COLORS.bgElev3, borderRadius: 8, padding: 10 }}>
+                <Text style={{ color: COLORS.brand, fontWeight: '800', fontSize: 13 }}>TAVOLO {b.table.typeName}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 3 }}>
                   {b.table.peopleCount}/{b.table.maxPeople} persone · raccolti {Number(b.table.collected).toFixed(0)}/{Number(b.table.tableTotal).toFixed(0)} €
                 </Text>
-                <Text style={{ color: '#64748B', fontSize: 12, marginTop: 2 }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
                   Quota di questo ospite: {Number(b.totalPrice).toFixed(2).replace('.', ',')} €
                 </Text>
               </View>
             ) : (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ color: '#64748B', fontSize: 12 }}>{b.quantity} {b.quantity > 1 ? 'posti' : 'posto'}</Text>
-                <Text style={{ color: '#9CA3AF', fontSize: 12 }}>{Number(b.totalPrice).toFixed(2).replace('.', ',')} €</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{b.quantity} {b.quantity > 1 ? 'posti' : 'posto'}</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{Number(b.totalPrice).toFixed(2).replace('.', ',')} €</Text>
               </View>
             )}
           </View>
@@ -296,18 +306,23 @@ export default function ScannerScreen() {
           {wrongNight ? (
             <View style={{ backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14, textAlign: 'center' }}>Biglietto di un&apos;altra serata</Text>
-              <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>Non far entrare con questo QR stasera</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4, textAlign: 'center' }}>Non far entrare con questo QR stasera</Text>
             </View>
           ) : (
             <Pressable onPress={handleDenyEntry} disabled={denying}
               style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', backgroundColor: 'rgba(239,68,68,0.08)', opacity: denying || pressed ? 0.7 : 1 })}
             >
-              {denying ? <ActivityIndicator color="#F87171" /> : <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14 }}>✕ Rifiuta ingresso e rimborsa</Text>}
+              {denying ? <ActivityIndicator color="#F87171" /> : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="close-circle" size={15} color="#F87171" />
+                  <Text style={{ color: '#F87171', fontWeight: '800', fontSize: 14 }}>Rifiuta ingresso e rimborsa</Text>
+                </View>
+              )}
             </Pressable>
           )}
 
-          <Pressable onPress={() => setResult(null)} style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)', opacity: pressed ? 0.7 : 1 })}>
-            <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>Scansiona altro</Text>
+          <Pressable onPress={() => setResult(null)} style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: COLORS.brandBorder, opacity: pressed ? 0.7 : 1 })}>
+            <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 14 }}>Scansiona altro</Text>
           </Pressable>
         </View>
       </View>
@@ -315,11 +330,11 @@ export default function ScannerScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#09090f' }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 }}>
-        <Text style={{ color: '#A855F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Ingresso</Text>
-        <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900' }}>Scanner QR</Text>
-        <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>Inquadra il QR code del biglietto</Text>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Ingresso</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 24 }}>Scanner QR</Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>Inquadra il QR code del biglietto</Text>
       </View>
 
       <View style={{ flex: 1, margin: 20, borderRadius: 20, overflow: 'hidden', position: 'relative' }}>
@@ -332,18 +347,18 @@ export default function ScannerScreen() {
           />
         )}
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <View style={{ width: 220, height: 220, borderWidth: 2, borderColor: '#A855F7', borderRadius: 16, backgroundColor: 'transparent' }} />
+          <View style={{ width: 220, height: 220, borderWidth: 2, borderColor: COLORS.brand, borderRadius: 16, backgroundColor: 'transparent' }} />
         </View>
         {scanning && (
           <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator color="#A855F7" size="large" />
+            <ActivityIndicator color={COLORS.brand} size="large" />
             <Text style={{ color: '#fff', marginTop: 12, fontSize: 14 }}>Verifica biglietto...</Text>
           </View>
         )}
       </View>
 
       <View style={{ paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' }}>
-        <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+        <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
           Inquadra il QR code mostrato nell&apos;app del cliente.{'\n'}Il check-in viene registrato automaticamente.
         </Text>
       </View>

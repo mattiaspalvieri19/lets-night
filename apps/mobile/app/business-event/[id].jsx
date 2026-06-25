@@ -1,9 +1,10 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useLayoutEffect } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { COLORS, FONT_FAMILY, formatDateFull, formatTime } from '@lets-night/shared';
+import EventFormModal from '../../components/EventFormModal';
 
 const FILTERS = [
   { id: 'all',     label: 'Tutti' },
@@ -45,8 +46,37 @@ export default function BusinessEventDetailScreen() {
   const [filter, setFilter] = useState('all');
   const [checkingIn, setCheckingIn] = useState(null);
   const [typeModal, setTypeModal] = useState(null); // null | {} (nuova) | { id } (modifica)
+  const [editModal, setEditModal] = useState(false);
   const [typeForm, setTypeForm] = useState(EMPTY_TYPE);
   const [savingType, setSavingType] = useState(false);
+
+
+  function deleteEvent() {
+    Alert.alert(
+      'Eliminare l\'evento?',
+      'Operazione definitiva. Possibile solo se l\'evento non ha prenotazioni attive.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        { text: 'Elimina', style: 'destructive', onPress: async () => {
+          const { count } = await supabase
+            .from('bookings')
+            .select('id', { count: 'exact', head: true })
+            .eq('event_id', id)
+            .not('status', 'in', '("cancelled","denied")');
+          if (count && count > 0) {
+            Alert.alert('Non eliminabile', 'Questo evento ha prenotazioni attive. Nascondilo dalla lista eventi (toggle Attivo) invece di eliminarlo.');
+            return;
+          }
+          const { error } = await supabase.from('events').delete().eq('id', id);
+          if (error) {
+            Alert.alert('Non eliminabile', 'Ci sono dati collegati (tavoli/prenotazioni). Nascondi l\'evento invece di eliminarlo.');
+            return;
+          }
+          if (router.canGoBack()) router.back(); else router.replace('/(business)');
+        } },
+      ]
+    );
+  }
 
   async function loadData() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -215,10 +245,25 @@ export default function BusinessEventDetailScreen() {
   if (!event) return null;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: COLORS.bg }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
-    >
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' }}>
+        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(business)'))} hitSlop={10}>
+          <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
+          </View>
+        </Pressable>
+        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 17, marginLeft: 12 }}>Dettaglio evento</Text>
+        <Pressable onPress={() => setEditModal(true)} hitSlop={10}>
+          <Ionicons name="create-outline" size={22} color={COLORS.textPrimary} />
+        </Pressable>
+        <Pressable onPress={deleteEvent} hitSlop={10} style={{ marginLeft: 18 }}>
+          <Ionicons name="trash-outline" size={22} color={COLORS.danger} />
+        </Pressable>
+      </View>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: COLORS.bg }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}
+      >
       {/* Header evento */}
       <View style={{ padding: 20, paddingTop: 16 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
@@ -441,6 +486,16 @@ export default function BusinessEventDetailScreen() {
         })}
       </View>
 
+      {event && (
+        <EventFormModal
+          visible={editModal}
+          mode="edit"
+          event={event}
+          onClose={() => setEditModal(false)}
+          onSaved={loadData}
+        />
+      )}
+
       {/* ====================== MODAL TIPOLOGIA ====================== */}
       <Modal visible={!!typeModal} transparent animationType="slide" onRequestClose={() => setTypeModal(null)}>
         <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -448,11 +503,12 @@ export default function BusinessEventDetailScreen() {
           <View style={{ backgroundColor: COLORS.bgElev2, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 30, maxHeight: '88%' }}>
             <View style={{ width: 36, height: 4, backgroundColor: COLORS.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, letterSpacing: -0.3 }}>
-                {typeModal?.id ? 'Modifica tipologia' : 'Nuova tipologia'}
-              </Text>
-              <Pressable onPress={() => Keyboard.dismiss()} hitSlop={8}>
-                <Text style={{ color: COLORS.brand, fontSize: 15, fontWeight: '700' }}>Fatto</Text>
+              <Pressable onPress={saveType} disabled={savingType} hitSlop={8}
+                style={({ pressed }) => ({ opacity: savingType || pressed ? 0.5 : 1 })}>
+                {savingType ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15 }}>{typeModal?.id ? 'Salva modifiche' : 'Crea tipologia'}</Text>}
+              </Pressable>
+              <Pressable onPress={() => setTypeModal(null)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
@@ -469,23 +525,12 @@ export default function BusinessEventDetailScreen() {
                 </View>
               </View>
               <TypeField label="Cosa include" value={typeForm.includes} onChange={v => setTypeForm(f => ({ ...f, includes: v }))} placeholder="Es. 3 bottiglie champagne, 2 gin, area riservata..." multiline />
-
-              <Pressable
-                onPress={saveType}
-                disabled={savingType}
-                style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 6, opacity: savingType || pressed ? 0.75 : 1 })}
-              >
-                {savingType ? <ActivityIndicator color="#fff" /> : (
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
-                    {typeModal?.id ? 'Salva modifiche' : 'Crea tipologia'}
-                  </Text>
-                )}
-              </Pressable>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 

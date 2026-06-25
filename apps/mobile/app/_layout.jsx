@@ -143,14 +143,14 @@ export default function RootLayout() {
         <Stack.Screen name="ticket/[id]" options={{ title: 'Il tuo biglietto' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notifiche' }} />
         <Stack.Screen name="venue/[id]" options={{ title: 'Locale' }} />
-        <Stack.Screen name="user/[id]" options={{ title: 'Profilo' }} />
+        <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà' }} />
-        <Stack.Screen name="profile/edit" options={{ title: 'Modifica profilo' }} />
+        <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
         <Stack.Screen name="profile/privacy" options={{ title: 'Privacy' }} />
         <Stack.Screen name="settings/index" options={{ title: 'Impostazioni' }} />
-        <Stack.Screen name="settings/password" options={{ title: 'Cambia password' }} />
+        <Stack.Screen name="settings/password" options={{ headerShown: false }} />
         <Stack.Screen name="settings/account" options={{ title: 'Elimina account' }} />
-        <Stack.Screen name="business-event/[id]" options={{ title: 'Dettaglio evento' }} />
+        <Stack.Screen name="business-event/[id]" options={{ headerShown: false }} />
       </Stack>
       {!fontsLoaded && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0A0A0C' }} />
