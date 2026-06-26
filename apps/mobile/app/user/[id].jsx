@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useLayoutEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Image } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect, useNavigation } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
@@ -32,7 +32,7 @@ export default function PublicProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [stats, setStats] = useState({ followers: 0, following: 0, badges: 0 });
+  const [stats, setStats] = useState({ followers: 0, following: 0 });
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [tab, setTab] = useState('going');
@@ -62,17 +62,14 @@ export default function PublicProfileScreen() {
     const [
       { count: followersCount, error: e1 },
       { count: followingCount, error: e2 },
-      { count: badgesCount, error: e3 },
     ] = await Promise.all([
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', id),
       supabase.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', id),
-      supabase.from('user_milestones').select('*', { count: 'exact', head: true }).eq('user_id', id).not('unlocked_at', 'is', null),
     ]);
-    if (e1 || e2 || e3) console.error('Errore stats profilo:', e1 || e2 || e3);
+    if (e1 || e2) console.error('Errore stats profilo:', e1 || e2);
     setStats({
       followers: followersCount || 0,
       following: followingCount || 0,
-      badges: badgesCount || 0,
     });
 
     // Sto seguendo?
@@ -199,8 +196,17 @@ export default function PublicProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 60 }}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))} hitSlop={10}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </View>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color="#A855F7" size="large" />
+        </View>
       </View>
     );
   }

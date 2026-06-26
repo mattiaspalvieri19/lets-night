@@ -1,7 +1,7 @@
-import { useState, useLayoutEffect, useRef } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
 

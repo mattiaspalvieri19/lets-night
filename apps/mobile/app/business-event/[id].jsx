@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo, useLayoutEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
-import { useLocalSearchParams, router, useFocusEffect, useNavigation } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { COLORS, FONT_FAMILY, formatDateFull, formatTime } from '@lets-night/shared';
@@ -58,11 +58,15 @@ export default function BusinessEventDetailScreen() {
       [
         { text: 'Annulla', style: 'cancel' },
         { text: 'Elimina', style: 'destructive', onPress: async () => {
-          const { count } = await supabase
+          const { count, error: countErr } = await supabase
             .from('bookings')
             .select('id', { count: 'exact', head: true })
             .eq('event_id', id)
             .not('status', 'in', '("cancelled","denied")');
+          if (countErr) {
+            Alert.alert('Errore', 'Impossibile verificare le prenotazioni. Riprova.');
+            return;
+          }
           if (count && count > 0) {
             Alert.alert('Non eliminabile', 'Questo evento ha prenotazioni attive. Nascondilo dalla lista eventi (toggle Attivo) invece di eliminarlo.');
             return;
@@ -234,15 +238,24 @@ export default function BusinessEventDetailScreen() {
     return { checkedIn, totalGuests, revenue };
   }, [bookings]);
 
-  if (loading) {
+  if (loading || !event) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color={COLORS.brand} size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 60 }}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(business)'))} hitSlop={10}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </View>
+          </Pressable>
+        </View>
+        {loading && (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator color={COLORS.brand} size="large" />
+          </View>
+        )}
       </View>
     );
   }
-
-  if (!event) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>

@@ -174,7 +174,7 @@ export default function BusinessEvents() {
               onPress={() => router.push(`/business-event/${ev.id}`)}
               style={({ pressed }) => ({
                 backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, marginBottom: 12,
-                borderWidth: 1, borderColor: ev.is_active ? COLORS.borderSubtle : COLORS.borderSubtle,
+                borderWidth: 1, borderColor: ev.is_active ? COLORS.borderStrong : COLORS.borderSubtle,
                 opacity: isPast ? 0.7 : (pressed ? 0.85 : 1),
               })}
             >

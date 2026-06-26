@@ -1,11 +1,11 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, Pressable, ScrollView, ActivityIndicator,
   KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { uploadPickedImage, imageExt } from '../../lib/uploadImage';
@@ -18,7 +18,7 @@ function Field({ label, ...inputProps }) {
         {label}
       </Text>
       <TextInput
-        placeholderTextColor="#4B5563"
+        placeholderTextColor={COLORS.textDisabled}
         style={{
           backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderStrong,
           borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
@@ -192,8 +192,17 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator color="#A855F7" size="large" />
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 60 }}>
+          <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))} hitSlop={10}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </View>
+          </Pressable>
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator color="#A855F7" size="large" />
+        </View>
       </View>
     );
   }

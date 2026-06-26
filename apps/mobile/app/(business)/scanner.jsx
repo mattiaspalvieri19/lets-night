@@ -285,7 +285,7 @@ export default function ScannerScreen() {
             <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>{b.event.title}</Text>
             <Text style={{ color: wrongNight ? '#F87171' : COLORS.brand, fontSize: 13 }}>{formatDateFull(b.event.date)} · {formatTime(b.event.time)}</Text>
             {b.table ? (
-              <View style={{ marginTop: 10, backgroundColor: COLORS.bgElev3, borderRadius: 8, padding: 10 }}>
+              <View style={{ marginTop: 10, backgroundColor: COLORS.brandSubtle, borderRadius: 8, padding: 10 }}>
                 <Text style={{ color: COLORS.brand, fontWeight: '800', fontSize: 13 }}>TAVOLO {b.table.typeName}</Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 3 }}>
                   {b.table.peopleCount}/{b.table.maxPeople} persone · raccolti {Number(b.table.collected).toFixed(0)}/{Number(b.table.tableTotal).toFixed(0)} €
