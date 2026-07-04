@@ -5,11 +5,16 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
+// La Navbar rimonta a ogni pagina: cache a livello modulo per non rifare
+// il self-check admin a ogni navigazione.
+const adminCache = new Map();
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(true); // sempre solid
@@ -25,8 +30,17 @@ export default function Navbar() {
           .eq('id', s.user.id)
           .maybeSingle();
         if (!cancelled) setProfile(p);
+        if (!adminCache.has(s.user.id)) {
+          const { data: adminRow } = await supabase
+            .from('admins')
+            .select('user_id')
+            .eq('user_id', s.user.id)
+            .maybeSingle();
+          adminCache.set(s.user.id, !!adminRow);
+        }
+        if (!cancelled) setIsAdmin(adminCache.get(s.user.id));
       } else {
-        if (!cancelled) setProfile(null);
+        if (!cancelled) { setProfile(null); setIsAdmin(false); }
       }
       if (!cancelled) setLoaded(true);
     }
@@ -103,6 +117,9 @@ export default function Navbar() {
 
             {!loaded ? null : session ? (
               <>
+                {isAdmin && (
+                  <Link href="/admin" onClick={() => setMenuOpen(false)} className="admin-badge">Admin</Link>
+                )}
                 {!isBusiness && (
                   <Link href="/loyalty" onClick={() => setMenuOpen(false)}>Fedeltà</Link>
                 )}
