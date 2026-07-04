@@ -17,11 +17,19 @@ export default function AdminUsers() {
   const [detail, setDetail] = useState({});
 
   async function loadData(term = search, currentLimit = limit) {
+    // Solo clienti: niente business, e nemmeno gli account admin (lista via
+    // RPC perché il self-read su admins non permette di enumerarli dal client).
+    const { data: adminRows } = await supabase.rpc('admin_list_admin_ids');
+    const adminIds = (adminRows || [])
+      .map(r => (typeof r === 'string' ? r : r?.admin_list_admin_ids))
+      .filter(Boolean);
     let q = supabase
       .from('profiles')
-      .select('id, display_name, full_name, username, phone, city, role, loyalty_points')
+      .select('id, display_name, full_name, username, phone, city, loyalty_points')
+      .or('role.eq.user,role.is.null')
       .order('full_name', { ascending: true })
       .limit(currentLimit);
+    if (adminIds.length) q = q.not('id', 'in', `(${adminIds.map(a => `"${a}"`).join(',')})`);
     const s = term.trim();
     if (s) q = q.or(`full_name.ilike.%${s}%,username.ilike.%${s}%,phone.ilike.%${s}%`);
     const { data, error } = await q;
@@ -121,9 +129,6 @@ export default function AdminUsers() {
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                     {p.username ? <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>@{p.username}</Text> : null}
-                    <Text style={{ color: p.role === 'business' ? COLORS.warning : COLORS.textMuted, fontSize: 11, fontWeight: '600' }}>
-                      {p.role === 'business' ? 'Business' : 'Utente'}
-                    </Text>
                     {p.city ? <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>{p.city}</Text> : null}
                     <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>{p.loyalty_points || 0} punti</Text>
                   </View>

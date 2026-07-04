@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Modal } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import EventFormModal from '../../components/EventFormModal';
 import { formatDate, formatTime, getPriceLabel, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 function todayLocal() {
@@ -14,17 +15,28 @@ export default function AdminEvents() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState([]);
+  const [venues, setVenues] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [venueFilter, setVenueFilter] = useState(null);
   const [search, setSearch] = useState('');
+  const [venuePicker, setVenuePicker] = useState(false);
+  const [createVenueId, setCreateVenueId] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   async function loadData() {
-    const { data: evs, error } = await supabase
-      .from('events')
-      .select('*, venues(name, zona, city)')
-      .order('event_date', { ascending: false });
+    const [{ data: evs, error }, { data: vns }] = await Promise.all([
+      supabase.from('events').select('*, venues(name, zona, city)').order('event_date', { ascending: false }),
+      supabase.from('venues').select('id, name').order('name'),
+    ]);
     if (error) console.error('Errore eventi admin:', error);
     setEvents(evs || []);
+    setVenues(vns || []);
     setLoading(false);
+  }
+
+  function startCreate() {
+    if (venueFilter) { setCreateVenueId(venueFilter); setShowCreate(true); }
+    else setVenuePicker(true);
   }
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
@@ -36,7 +48,8 @@ export default function AdminEvents() {
   }
 
   const today = todayLocal();
-  const filtered = events.filter(e => {
+  const base = venueFilter ? events.filter(e => e.venue_id === venueFilter) : events;
+  const filtered = base.filter(e => {
     if (filter === 'upcoming') {
       if (!(e.event_date >= today && e.is_active)) return false;
     } else if (filter === 'inactive') {
@@ -55,11 +68,11 @@ export default function AdminEvents() {
   });
 
   const counts = {
-    all:      events.length,
-    upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
-    inactive: events.filter(e => !e.is_active).length,
-    past:     events.filter(e => e.event_date < today).length,
-    soldout:  events.filter(e => e.capacity && e.booked_count >= e.capacity).length,
+    all:      base.length,
+    upcoming: base.filter(e => e.event_date >= today && e.is_active).length,
+    inactive: base.filter(e => !e.is_active).length,
+    past:     base.filter(e => e.event_date < today).length,
+    soldout:  base.filter(e => e.capacity && e.booked_count >= e.capacity).length,
   };
 
   if (loading) return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
@@ -68,7 +81,14 @@ export default function AdminEvents() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 }}>
         <Text style={{ color: COLORS.danger, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>Admin</Text>
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 22, letterSpacing: -0.3 }}>Tutti gli eventi</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 22, letterSpacing: -0.3 }}>Tutti gli eventi</Text>
+          <Pressable onPress={startCreate}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandStrong, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 8 }}>
+            <Ionicons name="add" size={15} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Nuovo</Text>
+          </Pressable>
+        </View>
 
         <View style={{
           flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -92,6 +112,19 @@ export default function AdminEvents() {
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 6, marginTop: 12 }}>
+          {[[null, 'Tutti i locali'], ...venues.map(v => [v.id, v.name])].map(([vid, label]) => {
+            const active = venueFilter === vid;
+            return (
+              <Pressable key={vid || 'all'} onPress={() => setVenueFilter(vid)}
+                style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: active ? COLORS.textPrimary : 'transparent', borderWidth: 1, borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle }}>
+                <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 11, fontWeight: active ? '600' : '500' }}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, marginTop: 8 }}>
           {[
             ['all',      'Tutti'],
             ['upcoming', 'In programma'],
@@ -180,6 +213,31 @@ export default function AdminEvents() {
           );
         })}
       </ScrollView>
+
+      <Modal visible={venuePicker} transparent animationType="fade" onRequestClose={() => setVenuePicker(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} onPress={() => setVenuePicker(false)}>
+          <Pressable onPress={() => {}} style={{ backgroundColor: COLORS.bgElev1, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, maxHeight: '70%' }}>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 17, marginBottom: 4 }}>Nuovo evento</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 14 }}>Per quale locale?</Text>
+            <ScrollView>
+              {venues.map(v => (
+                <Pressable key={v.id} onPress={() => { setCreateVenueId(v.id); setVenuePicker(false); setShowCreate(true); }}
+                  style={{ paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{v.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <EventFormModal
+        visible={showCreate}
+        mode="create"
+        venueId={createVenueId}
+        onClose={() => setShowCreate(false)}
+        onSaved={loadData}
+      />
     </View>
   );
 }

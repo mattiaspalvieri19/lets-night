@@ -29,38 +29,71 @@ export default function AdminBookings() {
   const [refundReqs, setRefundReqs] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [venues, setVenues] = useState([]);
+  const [venueFilter, setVenueFilter] = useState(null);
+  const [venueEvents, setVenueEvents] = useState([]);
+  const [eventFilter, setEventFilter] = useState(null);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
   const [busy, setBusy] = useState(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  async function loadData(currentLimit = limit) {
-    const [{ data: rr }, { data: bks, error }] = await Promise.all([
+  async function loadData(currentLimit = limit, v = venueFilter, e = eventFilter) {
+    // Filtri locale/evento applicati lato server: la paginazione resta corretta.
+    let bq = supabase
+      .from('bookings')
+      .select('*, events!inner(id, title, event_date, venue_id, venues(name))')
+      .order('created_at', { ascending: false })
+      .limit(currentLimit);
+    if (v) bq = bq.eq('events.venue_id', v);
+    if (e) bq = bq.eq('event_id', e);
+    const [{ data: rr }, { data: bks, error }, { data: vns }] = await Promise.all([
       supabase
         .from('bookings')
         .select('id, total_price, fee, snapshot_full_name, refund_requested_at, refund_request_reason, events(title, event_date)')
         .not('refund_requested_at', 'is', null)
         .not('status', 'in', '("cancelled","denied")')
         .order('refund_requested_at', { ascending: true }),
-      supabase
-        .from('bookings')
-        .select('*, events(id, title, event_date, venues(name))')
-        .order('created_at', { ascending: false })
-        .limit(currentLimit),
+      bq,
+      supabase.from('venues').select('id, name').order('name'),
     ]);
     if (error) console.error('Errore prenotazioni admin:', error);
     setRefundReqs(rr || []);
     setBookings(bks || []);
+    setVenues(vns || []);
     setLoading(false);
   }
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
-  const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, [limit]);
+  const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, [limit, venueFilter, eventFilter]);
 
   async function loadMore() {
     const next = limit + PAGE_SIZE;
     setLimit(next);
     await loadData(next);
+  }
+
+  async function selectVenue(vid) {
+    setVenueFilter(vid);
+    setEventFilter(null);
+    setLimit(PAGE_SIZE);
+    if (vid) {
+      const { data } = await supabase.from('events')
+        .select('id, title, event_date')
+        .eq('venue_id', vid)
+        .order('event_date', { ascending: false })
+        .limit(40);
+      setVenueEvents(data || []);
+    } else {
+      setVenueEvents([]);
+    }
+    loadData(PAGE_SIZE, vid, null);
+  }
+
+  function selectEvent(eid) {
+    setEventFilter(eid);
+    setLimit(PAGE_SIZE);
+    loadData(PAGE_SIZE, venueFilter, eid);
   }
 
   async function resolveRefund(bookingId, action) {
@@ -239,6 +272,32 @@ export default function AdminBookings() {
               </Pressable>
             )}
           </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 8 }}>
+            {[[null, 'Tutti i locali'], ...venues.map(v => [v.id, v.name])].map(([vid, label]) => {
+              const active = venueFilter === vid;
+              return (
+                <Pressable key={vid || 'all'} onPress={() => selectVenue(vid)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: active ? COLORS.textPrimary : 'transparent', borderWidth: 1, borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle }}>
+                  <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 11, fontWeight: active ? '600' : '500' }}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {venueFilter && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 8 }}>
+              {[[null, 'Tutti gli eventi'], ...venueEvents.map(e => [e.id, `${e.title} · ${formatDate(e.event_date)}`])].map(([eid, label]) => {
+                const active = eventFilter === eid;
+                return (
+                  <Pressable key={eid || 'all'} onPress={() => selectEvent(eid)}
+                    style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: active ? COLORS.textPrimary : 'transparent', borderWidth: 1, borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle }}>
+                    <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 11, fontWeight: active ? '600' : '500' }}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
             {FILTERS.map(([fid, label]) => {

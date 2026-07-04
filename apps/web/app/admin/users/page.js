@@ -16,11 +16,19 @@ export default function AdminUsersPage() {
   const [detail, setDetail] = useState({});
 
   const loadProfiles = useCallback(async (pageIndex) => {
+    // Solo clienti: niente business, e nemmeno gli account admin (lista via
+    // RPC perché il self-read su admins non permette di enumerarli dal client).
+    const { data: adminRows } = await supabase.rpc('admin_list_admin_ids');
+    const adminIds = (adminRows || [])
+      .map(r => (typeof r === 'string' ? r : r?.admin_list_admin_ids))
+      .filter(Boolean);
     let q = supabase
       .from('profiles')
-      .select('id, display_name, full_name, username, phone, city, role, loyalty_points, avatar_url')
+      .select('id, display_name, full_name, username, phone, city, loyalty_points, avatar_url')
+      .or('role.eq.user,role.is.null')
       .order('full_name', { ascending: true })
       .range(pageIndex * PAGE_SIZE, pageIndex * PAGE_SIZE + PAGE_SIZE);
+    if (adminIds.length) q = q.not('id', 'in', `(${adminIds.map(a => `"${a}"`).join(',')})`);
     const s = search.trim();
     if (s) q = q.or(`full_name.ilike.%${s}%,username.ilike.%${s}%,phone.ilike.%${s}%`);
     const { data, error } = await q;
@@ -100,7 +108,6 @@ export default function AdminUsersPage() {
                         <h3>{p.display_name || p.full_name || 'Senza nome'}</h3>
                         <div className="biz-event-meta">
                           {p.username && <span>@{p.username}</span>}
-                          <span style={{ color: p.role === 'business' ? '#fbbf24' : 'var(--text2)' }}>{p.role === 'business' ? 'Business' : 'Utente'}</span>
                           {p.city && <span>{p.city}</span>}
                           {p.phone && <span>{p.phone}</span>}
                           <span>{p.loyalty_points || 0} punti</span>
