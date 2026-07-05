@@ -3,9 +3,11 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingVi
 import { Link, router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { CITIES } from '@lets-night/shared';
+import { CITIES, LANGS } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 
 export default function RegisterScreen() {
+  const { t, lang, setLang } = useI18n();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,12 +41,12 @@ export default function RegisterScreen() {
   async function handleRegister() {
     if (!fullName || !email || !password || loading) return;
     if (password.length < 6) {
-      setError('La password deve essere di almeno 6 caratteri.');
+      setError(t('auth.errorPasswordShort'));
       return;
     }
     const birthDateISO = parseBirthDate(birthDate);
     if (!birthDateISO) {
-      setError('Inserisci una data di nascita valida (GG/MM/AAAA).');
+      setError(t('auth.errorBirthDate'));
       return;
     }
     setLoading(true);
@@ -54,12 +56,12 @@ export default function RegisterScreen() {
     if (phone) {
       const { data: available, error: rpcErr } = await supabase.rpc('check_phone_available', { p_phone: phone });
       if (rpcErr || available == null) {
-        setError('Verifica telefono non riuscita. Riprova.');
+        setError(t('auth.errorPhoneCheck'));
         setLoading(false);
         return;
       }
       if (available === false) {
-        setError('Questo numero di telefono è già associato a un account.');
+        setError(t('auth.errorPhoneTaken'));
         setLoading(false);
         return;
       }
@@ -88,7 +90,7 @@ export default function RegisterScreen() {
     }
 
     if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-      setError('Questa email è già registrata. Accedi oppure usa un\'altra email.');
+      setError(t('auth.errorEmailTaken'));
       setLoading(false);
       return;
     }
@@ -115,16 +117,16 @@ export default function RegisterScreen() {
           <View className="w-16 h-16 bg-brand/20 rounded-full items-center justify-center mb-6">
             <Ionicons name="checkmark" size={30} color="#A855F7" />
           </View>
-          <Text className="text-white text-2xl font-bold text-center mb-3">Controlla la tua email</Text>
+          <Text className="text-white text-2xl font-bold text-center mb-3">{t('auth.checkEmailTitle')}</Text>
           <Text className="text-gray-400 text-center text-base leading-6">
-            Abbiamo inviato un link di conferma a{'\n'}
+            {t('auth.checkEmailBody')}{'\n'}
             <Text className="text-white font-semibold">{email}</Text>
           </Text>
           <Text className="text-gray-500 text-sm text-center mt-4">
-            Clicca il link nell&apos;email per attivare il tuo account.
+            {t('auth.checkEmailHint')}
           </Text>
           <Pressable onPress={() => router.replace('/auth/login')} className="mt-8">
-            <Text className="text-brand font-semibold">Vai al login</Text>
+            <Text className="text-brand font-semibold">{t('auth.goToLogin')}</Text>
           </Pressable>
         </View>
       </View>
@@ -139,7 +141,20 @@ export default function RegisterScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
         <View className="flex-1 px-6 pt-8 pb-8">
 
-          <Text className="text-gray-400 text-base mb-8">Crea il tuo account gratuito</Text>
+          <Text className="text-gray-400 text-base mb-2">{t('auth.registerSubtitle')}</Text>
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 24 }}>
+            {LANGS.map(l => {
+              const active = lang === l.code;
+              return (
+                <Pressable key={l.code} onPress={() => setLang(l.code)}
+                  style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: active ? '#FAFAFA' : 'transparent', borderWidth: 1, borderColor: active ? '#FAFAFA' : 'rgba(255,255,255,0.14)' }}>
+                  <Text style={{ color: active ? '#0A0A0C' : '#9CA3AF', fontSize: 11, fontWeight: active ? '700' : '500' }}>
+                    {l.code.toUpperCase()}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {error ? (
             <View className="bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 mb-5">
@@ -149,10 +164,10 @@ export default function RegisterScreen() {
 
           <View className="gap-4">
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Nome completo</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.fullName')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
-                placeholder="Mario Rossi"
+                placeholder={t('auth.fullNamePlaceholder')}
                 placeholderTextColor="#555577"
                 value={fullName}
                 onChangeText={setFullName}
@@ -161,7 +176,7 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Email</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.email')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="mario@email.com"
@@ -175,10 +190,10 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Password</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.password')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
-                placeholder="Minimo 6 caratteri"
+                placeholder={t('auth.passwordMinPlaceholder')}
                 placeholderTextColor="#555577"
                 value={password}
                 onChangeText={setPassword}
@@ -187,7 +202,7 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Telefono (opzionale)</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.phoneOptional')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="+39 333 000 0000"
@@ -199,10 +214,10 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Data di nascita</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.birthDate')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
-                placeholder="GG/MM/AAAA"
+                placeholder={t('auth.birthDatePlaceholder')}
                 placeholderTextColor="#555577"
                 value={birthDate}
                 onChangeText={handleBirthDateChange}
@@ -212,9 +227,9 @@ export default function RegisterScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Sesso</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.gender')}</Text>
               <View className="flex-row gap-3">
-                {[{ v: 'M', l: 'Uomo' }, { v: 'F', l: 'Donna' }, { v: 'X', l: 'Altro' }].map(g => (
+                {[{ v: 'M', l: t('auth.genderM') }, { v: 'F', l: t('auth.genderF') }, { v: 'X', l: t('auth.genderX') }].map(g => (
                   <Pressable
                     key={g.v}
                     onPress={() => setGender(g.v)}
@@ -228,7 +243,7 @@ export default function RegisterScreen() {
 
             {CITIES.length > 1 && (
               <View>
-                <Text className="text-gray-400 text-sm mb-2">Città</Text>
+                <Text className="text-gray-400 text-sm mb-2">{t('auth.city')}</Text>
                 <View className="flex-row gap-3">
                   {CITIES.map(c => (
                     <Pressable
@@ -251,21 +266,21 @@ export default function RegisterScreen() {
           >
             {loading
               ? <ActivityIndicator color="#ffffff" />
-              : <Text className="text-white font-bold text-base">Crea account</Text>
+              : <Text className="text-white font-bold text-base">{t('auth.createAccount')}</Text>
             }
           </Pressable>
 
           <View className="flex-row justify-center items-center mt-6 gap-1">
-            <Text className="text-gray-400">Hai già un account?</Text>
+            <Text className="text-gray-400">{t('auth.haveAccount')}</Text>
             <Link href="/auth/login">
-              <Text className="text-brand font-semibold"> Accedi</Text>
+              <Text className="text-brand font-semibold"> {t('auth.login')}</Text>
             </Link>
           </View>
 
           <View className="mt-8 pt-6 border-t border-gray-800 items-center">
-            <Text className="text-gray-500 text-sm mb-2">Sei un locale?</Text>
+            <Text className="text-gray-500 text-sm mb-2">{t('auth.areYouVenue')}</Text>
             <Link href="/auth/business-register">
-              <Text className="text-brand font-semibold text-sm">Registra il tuo locale →</Text>
+              <Text className="text-brand font-semibold text-sm">{t('auth.registerVenue')}</Text>
             </Link>
           </View>
 
