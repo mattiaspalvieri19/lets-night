@@ -51,20 +51,20 @@ export default function AdminBookingsPage() {
   }, []);
 
   const loadBookings = useCallback(async (pageIndex) => {
+    // events!inner permette il filtro locale server-side: paginazione corretta.
     let q = supabase
       .from('bookings')
-      .select('*, events(id, title, event_date, venue_id, venues(name))')
+      .select('*, events!inner(id, title, event_date, venue_id, venues(name))')
       .order('created_at', { ascending: false })
       .range(pageIndex * PAGE_SIZE, pageIndex * PAGE_SIZE + PAGE_SIZE);
+    if (fVenue) q = q.eq('events.venue_id', fVenue);
     if (fEvent) q = q.eq('event_id', fEvent);
     if (fStatus) q = q.eq('status', fStatus);
     if (fCheckedIn) q = q.eq('checked_in', fCheckedIn === 'yes');
     if (fName.trim()) q = q.ilike('snapshot_full_name', `%${fName.trim()}%`);
     const { data, error } = await q;
     if (error) { console.error('Errore prenotazioni admin:', error); return []; }
-    let rows = data || [];
-    // Il filtro per locale passa dall'evento: non esprimibile in .eq diretto.
-    if (fVenue) rows = rows.filter(b => b.events?.venue_id === fVenue);
+    const rows = data || [];
     setHasMore(rows.length > PAGE_SIZE);
     return rows.slice(0, PAGE_SIZE);
   }, [fVenue, fEvent, fStatus, fCheckedIn, fName]);
@@ -111,8 +111,9 @@ export default function AdminBookingsPage() {
 
   async function toggleCheckIn(b) {
     setBusy(b.id);
+    // L'un-check preserva checked_in_at (regola review 3f3a56c, come mobile).
     const patch = b.checked_in
-      ? { checked_in: false, checked_in_at: null }
+      ? { checked_in: false }
       : { checked_in: true, checked_in_at: new Date().toISOString() };
     const { error } = await supabase.from('bookings').update(patch).eq('id', b.id);
     setBusy(null);
