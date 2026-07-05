@@ -1,192 +1,214 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
-export default function AdminPage() {
-  const router = useRouter();
+function todayLocal() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+function daysAgoIso(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
+
+export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [venues, setVenues] = useState([]);
-  const [refundReqs, setRefundReqs] = useState([]);
-  const [authorized, setAuthorized] = useState(false);
+  const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0 });
+  const [fVenue, setFVenue] = useState('');
+  const [fDays, setFDays] = useState('30');
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login?next=/admin');
-      return;
-    }
-    const { data: adminRow } = await supabase
-      .from('admins')
-      .select('user_id')
-      .eq('user_id', session.user.id)
-      .maybeSingle();
-    if (!adminRow) {
-      setAuthorized(false);
+    (async () => {
+      const since = daysAgoIso(Number(fDays) || 30);
+      const [
+        { data: evs, error: evErr },
+        { data: bks },
+        { data: vs },
+        { count: usersCount },
+        newUsersRes,
+        { count: pendingVenues },
+        { count: pendingRefunds },
+      ] = await Promise.all([
+        supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
+        supabase.from('bookings')
+          .select('status, total_price, booking_type, created_at, events!inner(id, venue_id, title, event_date)')
+          .gte('created_at', since),
+        supabase.from('venues').select('id, name, is_verified'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        // profiles.created_at potrebbe non esistere: in caso di errore il KPI sparisce.
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', since),
+        supabase.from('venues').select('id', { count: 'exact', head: true }).eq('is_verified', false),
+        supabase.from('bookings').select('id', { count: 'exact', head: true })
+          .not('refund_requested_at', 'is', null)
+          .not('status', 'in', '("cancelled","denied")'),
+      ]);
+      if (evErr) console.error('Errore dashboard admin:', evErr);
+      setEvents(evs || []);
+      setBookings(bks || []);
+      setVenues(vs || []);
+      setCounts({
+        users: usersCount ?? null,
+        newUsers: newUsersRes.error ? null : (newUsersRes.count ?? null),
+        pendingVenues: pendingVenues || 0,
+        pendingRefunds: pendingRefunds || 0,
+      });
       setLoading(false);
-      return;
+    })();
+  }, [fDays]);
+
+  const d = useMemo(() => {
+    const today = todayLocal();
+    const evs = fVenue ? events.filter(e => e.venue_id === fVenue) : events;
+    const bks = (fVenue ? bookings.filter(b => b.events?.venue_id === fVenue) : bookings)
+      .filter(b => b.status !== 'cancelled' && b.status !== 'denied');
+
+    const attivi = evs.filter(e => e.is_active).length;
+    const futuri = evs.filter(e => e.is_active && e.event_date >= today).length;
+    const passati = evs.filter(e => e.event_date < today).length;
+    const soldout = evs.filter(e => e.capacity && e.booked_count >= e.capacity).length;
+
+    const incasso = bks.reduce((s, b) => s + Number(b.total_price || 0), 0);
+    const incassoTavoli = bks.filter(b => b.booking_type === 'table_share').reduce((s, b) => s + Number(b.total_price || 0), 0);
+
+    const withCap = evs.filter(e => e.capacity > 0);
+    const sumBooked = withCap.reduce((s, e) => s + (e.booked_count || 0), 0);
+    const sumCap = withCap.reduce((s, e) => s + e.capacity, 0);
+    const riempimento = sumCap ? Math.round((sumBooked / sumCap) * 100) : null;
+
+    const byVenue = {};
+    for (const b of bks) {
+      const vid = b.events?.venue_id;
+      if (!vid) continue;
+      byVenue[vid] ||= { count: 0, total: 0 };
+      byVenue[vid].count++;
+      byVenue[vid].total += Number(b.total_price || 0);
     }
-    setAuthorized(true);
+    const venueRows = Object.entries(byVenue)
+      .map(([vid, v]) => ({ id: vid, name: venues.find(x => x.id === vid)?.name || 'Locale', ...v }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8);
 
-    const { data } = await supabase.from('venues').select('*').order('created_at', { ascending: false });
-    setVenues(data || []);
+    const byEvent = {};
+    for (const b of bks) {
+      const eid = b.events?.id;
+      if (!eid) continue;
+      byEvent[eid] ||= { title: b.events.title, date: b.events.event_date, count: 0, total: 0 };
+      byEvent[eid].count++;
+      byEvent[eid].total += Number(b.total_price || 0);
+    }
+    const topEvents = Object.values(byEvent).sort((a, b) => b.total - a.total).slice(0, 5);
 
-    // Richieste di rimborso no-show in attesa (l'admin può leggere tutte le bookings via RLS).
-    const { data: rr } = await supabase
-      .from('bookings')
-      .select('id, total_price, fee, snapshot_full_name, refund_requested_at, refund_request_reason, events(title, event_date)')
-      .not('refund_requested_at', 'is', null)
-      .not('status', 'in', '("cancelled","denied")')
-      .order('refund_requested_at', { ascending: true });
-    setRefundReqs(rr || []);
+    return { attivi, futuri, passati, soldout, prenotazioni: bks.length, incasso, incassoTavoli, riempimento, venueRows, topEvents };
+  }, [events, bookings, venues, fVenue]);
 
-    setLoading(false);
-  }
+  if (loading) return <div className="dash-loading">Caricamento dashboard...</div>;
 
-  async function resolveRefund(bookingId, action) {
-    if (action === 'approve' && !confirm('Approvare il rimborso no-show? Verra rimborsato il prezzo del biglietto al netto delle commissioni (Stripe + servizio); il locale incassa € 0.')) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    const res = await fetch('/api/refund/resolve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookingId, accessToken: session.access_token, action }),
-    });
-    const json = await res.json();
-    if (!res.ok) { alert(json.error || 'Operazione non riuscita.'); return; }
-    loadData();
-  }
-
-  async function approveVenue(venueId) {
-    const { error } = await supabase.from('venues').update({ is_verified: true }).eq('id', venueId);
-    if (error) alert('Errore: ' + error.message);
-    else loadData();
-  }
-
-  async function rejectVenue(venueId) {
-    if (!confirm('Sicuro di voler eliminare questo locale? L\'azione e irreversibile.')) return;
-    const { error } = await supabase.from('venues').delete().eq('id', venueId);
-    if (error) alert('Errore: ' + error.message);
-    else loadData();
-  }
-
-  async function unverifyVenue(venueId) {
-    await supabase.from('venues').update({ is_verified: false }).eq('id', venueId);
-    loadData();
-  }
-
-  if (loading) return <div className="dash-loading">Caricamento admin...</div>;
-  if (!authorized) return (
-    <div className="dash-loading">
-      <div style={{textAlign:'center'}}>
-        <h2 style={{color:'#fff', marginBottom:'1rem'}}>Accesso negato</h2>
-        <p style={{color:'var(--text2)'}}>Questa pagina e riservata agli amministratori.</p>
-        <Link href="/" style={{color:'var(--purple-light)', marginTop:'1rem', display:'inline-block'}}>Torna alla home</Link>
-      </div>
-    </div>
-  );
-
-  const pending = venues.filter(v => !v.is_verified);
-  const approved = venues.filter(v => v.is_verified);
+  const daGestire = counts.pendingVenues + counts.pendingRefunds;
 
   return (
-    <div className="dash-page">
-      <nav className="lnav solid">
-        <Link href="/" className="ln-logo">Let&apos;s<span>Night</span> <span className="biz-tag-nav" style={{background:'rgba(239,68,68,.15)', color:'#f87171'}}>Admin</span></Link>
-      </nav>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
+      {daGestire > 0 && (
+        <div className="dash-section" style={{ marginBottom: '2rem', border: '1px solid rgba(251,191,36,.3)', borderRadius: 12, padding: '1.2rem' }}>
+          <h2 className="dash-section-title" style={{ color: '#fbbf24' }}>Da gestire</h2>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {counts.pendingVenues > 0 && (
+              <Link href="/admin/venues" style={{ color: '#fff', fontSize: 14 }}>
+                {counts.pendingVenues} {counts.pendingVenues === 1 ? 'locale in attesa' : 'locali in attesa'} di approvazione →
+              </Link>
+            )}
+            {counts.pendingRefunds > 0 && (
+              <Link href="/admin/bookings" style={{ color: '#fff', fontSize: 14 }}>
+                {counts.pendingRefunds} {counts.pendingRefunds === 1 ? 'richiesta di rimborso' : 'richieste di rimborso'} →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
-      <div className="dash-hero">
-        <div className="dash-label">Admin Panel</div>
-        <h1 className="dash-title">Gestione <em>locali</em></h1>
-        <p className="dash-sub">Approva o rifiuta le registrazioni dei locali.</p>
+      <div className="admin-filters">
+        <select value={fVenue} onChange={e => setFVenue(e.target.value)}>
+          <option value="">Tutti i locali</option>
+          {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+        <select value={fDays} onChange={e => setFDays(e.target.value)}>
+          <option value="7">Ultimi 7 giorni</option>
+          <option value="30">Ultimi 30 giorni</option>
+          <option value="90">Ultimi 90 giorni</option>
+          <option value="365">Ultimo anno</option>
+        </select>
       </div>
 
-      <div style={{maxWidth:'1100px', margin:'0 auto', padding:'2rem'}}>
-        <div className="dash-section" style={{marginBottom:'2rem'}}>
-          <h2 className="dash-section-title">Richieste di rimborso ({refundReqs.length})</h2>
-          {refundReqs.length === 0 ? (
-            <div className="dash-empty"><p>Nessuna richiesta di rimborso in attesa.</p></div>
-          ) : (
-            <div className="biz-events-list">
-              {refundReqs.map(r => {
-                const price = Number(r.total_price) || 0;
-                return (
-                  <div key={r.id} className="biz-event-item">
-                    <div className="biz-event-info">
-                      <h3>{r.snapshot_full_name || 'Utente'}</h3>
-                      <div className="biz-event-meta">
-                        <span>{r.events?.title || 'Evento'}</span>
-                        <span>{r.events?.event_date || '-'}</span>
-                        <span>Rimborso ≈ € {price.toFixed(2)} (biglietto al netto delle commissioni) · locale € 0</span>
-                      </div>
-                    </div>
-                    <div style={{display:'flex', gap:'.5rem'}}>
-                      <button onClick={() => resolveRefund(r.id, 'approve')} className="biz-toggle active">Approva rimborso</button>
-                      <button onClick={() => resolveRefund(r.id, 'reject')} style={{padding:'8px 16px', background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#f87171', borderRadius:'6px', fontSize:'12px', fontWeight:600}}>Rifiuta</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '.8rem', marginBottom: '2rem' }}>
+        {[
+          ['Incasso (periodo)', `€ ${d.incasso.toFixed(0)}`],
+          ['di cui tavoli', `€ ${d.incassoTavoli.toFixed(0)}`],
+          ['Prenotazioni (periodo)', d.prenotazioni],
+          ['Riempimento medio', d.riempimento != null ? `${d.riempimento}%` : '—'],
+          ['Eventi attivi', d.attivi],
+          ['Eventi futuri', d.futuri],
+          ['Eventi passati', d.passati],
+          ['Sold out', d.soldout],
+          ['Utenti totali', counts.users ?? '—'],
+          ...(counts.newUsers != null ? [['Nuovi utenti (periodo)', counts.newUsers]] : []),
+          ['Locali verificati', venues.filter(v => v.is_verified).length],
+          ['Locali in attesa', counts.pendingVenues],
+        ].map(([lab, val]) => (
+          <div key={lab} style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem' }}>
+            <div style={{ color: '#fff', fontSize: 22, fontWeight: 800 }}>{val}</div>
+            <div style={{ color: 'var(--text2)', fontSize: 11, marginTop: 4 }}>{lab}</div>
+          </div>
+        ))}
+      </div>
 
-        <div className="dash-section" style={{marginBottom:'2rem'}}>
-          <h2 className="dash-section-title">In attesa di approvazione ({pending.length})</h2>
-          {pending.length === 0 ? (
-            <div className="dash-empty"><p>Nessun locale in attesa.</p></div>
-          ) : (
-            <div className="biz-events-list">
-              {pending.map(v => (
-                <div key={v.id} className="biz-event-item">
-                  <div className="biz-event-info">
-                    <h3>{v.name}</h3>
-                    <div className="biz-event-meta">
-                      <span>{v.category}</span>
-                      <span>{v.zona}, {v.city}</span>
-                      <span>{v.contact_email}</span>
-                      <span>{v.phone}</span>
-                    </div>
-                    {v.description && <p style={{color:'var(--text2)', fontSize:'13px', marginTop:'.5rem'}}>{v.description}</p>}
-                  </div>
-                  <div style={{display:'flex', gap:'.5rem'}}>
-                    <button onClick={() => approveVenue(v.id)} className="biz-toggle active">Approva</button>
-                    <button onClick={() => rejectVenue(v.id)} style={{padding:'8px 16px', background:'rgba(239,68,68,.15)', border:'1px solid rgba(239,68,68,.3)', color:'#f87171', borderRadius:'6px', fontSize:'12px', fontWeight:600}}>Rifiuta</button>
+      <div className="dash-section" style={{ marginBottom: '2rem' }}>
+        <h2 className="dash-section-title">Incassi per locale (periodo)</h2>
+        {d.venueRows.length === 0 ? (
+          <div className="dash-empty"><p>Nessuna prenotazione nel periodo.</p></div>
+        ) : (
+          <div className="biz-events-list">
+            {d.venueRows.map(v => (
+              <div key={v.id} className="biz-event-item">
+                <div className="biz-event-info">
+                  <h3>{v.name}</h3>
+                  <div className="biz-event-meta">
+                    <span>{v.count} prenotazioni</span>
+                    <span>€ {v.total.toFixed(2)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        <div className="dash-section">
-          <h2 className="dash-section-title">Locali approvati ({approved.length})</h2>
-          {approved.length === 0 ? (
-            <div className="dash-empty"><p>Nessun locale approvato ancora.</p></div>
-          ) : (
-            <div className="biz-events-list">
-              {approved.map(v => (
-                <div key={v.id} className="biz-event-item">
-                  <div className="biz-event-info">
-                    <h3>{v.name}</h3>
-                    <div className="biz-event-meta">
-                      <span>{v.category}</span>
-                      <span>{v.zona}, {v.city}</span>
-                      <span>{v.contact_email || '-'}</span>
-                    </div>
+      <div className="dash-section">
+        <h2 className="dash-section-title">Top eventi (periodo)</h2>
+        {d.topEvents.length === 0 ? (
+          <div className="dash-empty"><p>Nessun dato nel periodo.</p></div>
+        ) : (
+          <div className="biz-events-list">
+            {d.topEvents.map((e, i) => (
+              <div key={i} className="biz-event-item">
+                <div className="biz-event-info">
+                  <h3>{e.title}</h3>
+                  <div className="biz-event-meta">
+                    <span>{e.date}</span>
+                    <span>{e.count} prenotazioni</span>
+                    <span>€ {e.total.toFixed(2)}</span>
                   </div>
-                  <button onClick={() => unverifyVenue(v.id)} style={{padding:'8px 16px', background:'transparent', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:'6px', fontSize:'12px'}}>Sospendi</button>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

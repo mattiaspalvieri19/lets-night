@@ -137,6 +137,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(business)" options={{ headerShown: false }} />
+        <Stack.Screen name="(admin)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding/index" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="event/[id]" options={{ title: 'Evento' }} />

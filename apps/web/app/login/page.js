@@ -38,6 +38,12 @@ function LoginContent() {
       return;
     }
 
+    const { data: adminRow } = await supabase.from('admins').select('user_id').eq('user_id', data.user.id).maybeSingle();
+    if (adminRow) {
+      router.push('/admin');
+      return;
+    }
+
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
 
     if (next) {

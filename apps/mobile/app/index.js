@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
-// Smistamento all'avvio: business → dashboard locale, altrimenti tabs utente.
-// Senza questo, un business riapriva l'app nelle tabs utente e doveva rifare
-// login per tornare alla dashboard.
+// Smistamento all'avvio: admin → area admin, business → dashboard locale,
+// altrimenti tabs utente. Senza questo, un business riapriva l'app nelle tabs
+// utente e doveva rifare login per tornare alla dashboard.
 export default function Index() {
   const [target, setTarget] = useState(null);
 
@@ -14,6 +14,12 @@ export default function Index() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user?.id) {
+          const { data: adminRow } = await supabase
+            .from('admins')
+            .select('user_id')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+          if (adminRow) { setTarget('/(admin)'); return; }
           const { data: p } = await supabase
             .from('profiles')
             .select('role')
