@@ -3,7 +3,8 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-nati
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, LANGS } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 
 export default function BusinessProfile() {
   const [loading, setLoading] = useState(true);
@@ -89,6 +90,9 @@ export default function BusinessProfile() {
         </View>
       </View>
 
+      {/* Lingua app */}
+      <LanguageRow />
+
       {/* Dashboard web */}
       <View style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle, borderRadius: 14, padding: 16 }}>
         <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>Dashboard web completa</Text>
@@ -101,5 +105,26 @@ export default function BusinessProfile() {
         <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 15 }}>Esci dall&apos;account</Text>
       </Pressable>
     </ScrollView>
+  );
+}
+
+function LanguageRow() {
+  const { t, lang } = useI18n();
+  return (
+    <Pressable
+      onPress={() => router.push('/settings/language')}
+      style={({ pressed }) => ({
+        marginHorizontal: 20, marginBottom: 16, backgroundColor: COLORS.bgElev2,
+        borderWidth: 1, borderColor: COLORS.borderSubtle, borderRadius: 14, padding: 16,
+        flexDirection: 'row', alignItems: 'center', opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Ionicons name="language-outline" size={18} color={COLORS.brand} style={{ marginRight: 12 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t('settings.language')}</Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>{LANGS.find(l => l.code === lang)?.label}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={COLORS.textDisabled} />
+    </Pressable>
   );
 }
