@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { getLoyaltyLevel, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 import EmptyState from '../../components/EmptyState';
 import ActivityCard from '../../components/ActivityCard';
@@ -11,8 +12,8 @@ import ActivityCard from '../../components/ActivityCard';
 // Profilo = "chi sei": identità + social + loyalty + badge + attività.
 // Le prenotazioni/QR vivono nella tab Biglietti (niente doppione).
 const TABS = [
-  { id: 'activity',  label: 'Attività' },
-  { id: 'favorites', label: 'Locali' },
+  { id: 'activity',  labelKey: 'profileTab.tabActivity' },
+  { id: 'favorites', labelKey: 'profileTab.tabFavorites' },
 ];
 
 function initialOf(name) {
@@ -20,6 +21,7 @@ function initialOf(name) {
 }
 
 export default function MyProfileScreen() {
+  const { t } = useI18n();
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0 });
@@ -92,28 +94,28 @@ export default function MyProfileScreen() {
         <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(168,85,247,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
           <Text style={{ fontSize: 36 }}>🌙</Text>
         </View>
-        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, marginBottom: 8 }}>Il tuo profilo</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, marginBottom: 8 }}>{t('profileTab.guestTitle')}</Text>
         <Text style={{ color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 21 }}>
-          Accedi per vedere badge, livello e seguire i tuoi amici.
+          {t('profileTab.guestSub')}
         </Text>
         <Pressable
           onPress={() => router.push('/auth/login')}
           style={{ backgroundColor: '#7C3AED', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center', marginBottom: 12 }}
         >
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>Accedi</Text>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>{t('auth.login')}</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/auth/register')}
           style={{ borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center' }}
         >
-          <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>Crea account</Text>
+          <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>{t('auth.createAccount')}</Text>
         </Pressable>
       </View>
     );
   }
 
   const myId = session.user.id;
-  const display = profile?.display_name || profile?.full_name || session.user.email?.split('@')[0] || 'Utente';
+  const display = profile?.display_name || profile?.full_name || session.user.email?.split('@')[0] || t('common.user');
   const handle = profile?.username ? `@${profile.username}` : null;
   const points = profile?.loyalty_points || 0;
   const ll = getLoyaltyLevel(points);
@@ -220,7 +222,7 @@ export default function MyProfileScreen() {
             })}
           >
             <Ionicons name="create-outline" size={16} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Modifica profilo</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('profileTab.editProfileBtn')}</Text>
           </Pressable>
 
           {/* Vedi profilo pubblico */}
@@ -230,7 +232,7 @@ export default function MyProfileScreen() {
             style={({ pressed }) => ({ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, opacity: pressed ? 0.6 : 1 })}
           >
             <Ionicons name="eye-outline" size={15} color="#64748B" />
-            <Text style={{ color: '#64748B', fontSize: 13 }}>Vedi il tuo profilo pubblico</Text>
+            <Text style={{ color: '#64748B', fontSize: 13 }}>{t('profileTab.seePublic')}</Text>
           </Pressable>
         </View>
 
@@ -240,11 +242,11 @@ export default function MyProfileScreen() {
           backgroundColor: COLORS.bgElev2, borderRadius: 14,
           borderWidth: 1, borderColor: 'rgba(168,85,247,0.12)',
         }}>
-          <StatCell value={stats.followers} label="follower" onPress={() => router.push(`/user/${myId}`)} />
+          <StatCell value={stats.followers} label={t('profileTab.followers')} onPress={() => router.push(`/user/${myId}`)} />
           <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 12 }} />
-          <StatCell value={stats.following} label="seguiti" onPress={() => router.push(`/user/${myId}`)} />
+          <StatCell value={stats.following} label={t('profileTab.following')} onPress={() => router.push(`/user/${myId}`)} />
           <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 12 }} />
-          <StatCell value={points} label="punti" onPress={() => router.push('/loyalty')} />
+          <StatCell value={points} label={t('profileTab.points')} onPress={() => router.push('/loyalty')} />
         </View>
 
         {/* Loyalty card */}
@@ -252,16 +254,16 @@ export default function MyProfileScreen() {
 
         {/* Tabs */}
         <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)' }}>
-          {TABS.map(t => {
-            const active = tab === t.id;
+          {TABS.map(tb => {
+            const active = tab === tb.id;
             return (
               <Pressable
-                key={t.id}
-                onPress={() => setTab(t.id)}
+                key={tb.id}
+                onPress={() => setTab(tb.id)}
                 style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: active ? '#A855F7' : 'transparent' }}
               >
                 <Text style={{ color: active ? '#fff' : '#64748B', fontSize: 12, fontWeight: active ? '600' : '500', letterSpacing: 0.2 }}>
-                  {t.label}
+                  {t(tb.labelKey)}
                 </Text>
               </Pressable>
             );
@@ -274,9 +276,9 @@ export default function MyProfileScreen() {
             activities.length === 0 ? (
               <EmptyState
                 compact icon="✨"
-                title="Nessuna attività ancora"
-                subtitle="Prenota eventi e segui amici: la tua attività apparirà qui."
-                actionLabel="Esplora eventi"
+                title={t('profileTab.emptyActivityTitle')}
+                subtitle={t('profileTab.emptyActivitySub')}
+                actionLabel={t('profileTab.exploreEvents')}
                 onAction={() => router.push('/(tabs)')}
               />
             ) : (
@@ -286,7 +288,7 @@ export default function MyProfileScreen() {
 
           {tab === 'favorites' && (
             favorites.length === 0 ? (
-              <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="Salva i locali che ami per ritrovarli qui." />
+              <EmptyState compact icon="❤️" title={t('profileTab.emptyFavTitle')} subtitle={t('profileTab.emptyFavSub')} />
             ) : (
               favorites.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
             )
