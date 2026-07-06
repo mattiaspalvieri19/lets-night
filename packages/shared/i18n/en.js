@@ -170,6 +170,21 @@ export default {
     emptyFavTitle: 'No favorite venues',
     emptyFavSub: 'Save the venues you love to find them here.',
   },
+  notif: {
+    guestTitle: 'Sign in for notifications',
+    emptyTitle: 'No notifications',
+    emptySub: 'Booking confirmations, new followers and your friends’ nights out arrive here.',
+  },
+  activity: {
+    bookingMade: 'booked',
+    goingTo: 'is going to',
+    wasAt: 'was at',
+    photoUploaded: 'uploaded a photo from',
+    badgeUnlocked: 'unlocked',
+    venueFavorited: 'added to favorites',
+    tableOrganized: 'organized a table at',
+    now: 'now',
+  },
   home: {
     featured: 'Featured',
     searchPlaceholder: 'Search event, venue or area',

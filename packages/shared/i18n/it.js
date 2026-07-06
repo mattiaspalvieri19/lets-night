@@ -170,6 +170,21 @@ export default {
     emptyFavTitle: 'Nessun locale preferito',
     emptyFavSub: 'Salva i locali che ami per ritrovarli qui.',
   },
+  notif: {
+    guestTitle: 'Accedi per le notifiche',
+    emptyTitle: 'Nessuna notifica',
+    emptySub: 'Qui arrivano le conferme di prenotazione, i nuovi follower e le serate dei tuoi amici.',
+  },
+  activity: {
+    bookingMade: 'ha prenotato',
+    goingTo: 'andrà a',
+    wasAt: 'è stato a',
+    photoUploaded: 'ha caricato una foto da',
+    badgeUnlocked: 'ha sbloccato',
+    venueFavorited: 'ha aggiunto ai preferiti',
+    tableOrganized: 'ha organizzato un tavolo a',
+    now: 'adesso',
+  },
   home: {
     featured: 'In evidenza',
     searchPlaceholder: 'Cerca evento, locale o zona',

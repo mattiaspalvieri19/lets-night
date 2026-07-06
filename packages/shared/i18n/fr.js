@@ -170,6 +170,21 @@ export default {
     emptyFavTitle: 'Aucun établissement favori',
     emptyFavSub: 'Enregistrez les établissements que vous aimez pour les retrouver ici.',
   },
+  notif: {
+    guestTitle: 'Connectez-vous pour les notifications',
+    emptyTitle: 'Aucune notification',
+    emptySub: 'Les confirmations de réservation, les nouveaux abonnés et les soirées de vos amis arrivent ici.',
+  },
+  activity: {
+    bookingMade: 'a réservé',
+    goingTo: 'ira à',
+    wasAt: 'était à',
+    photoUploaded: 'a partagé une photo de',
+    badgeUnlocked: 'a débloqué',
+    venueFavorited: 'a ajouté aux favoris',
+    tableOrganized: 'a organisé une table à',
+    now: 'maintenant',
+  },
   home: {
     featured: 'À la une',
     searchPlaceholder: 'Cherchez un événement, un lieu ou un quartier',
