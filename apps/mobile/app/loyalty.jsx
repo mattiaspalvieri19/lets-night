@@ -2,17 +2,18 @@ import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/useSession';
-import { COLORS, FONT_FAMILY, getLoyaltyLevel, LOYALTY_LEVELS, formatDate } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, getLoyaltyLevel, LOYALTY_LEVELS } from '@lets-night/shared';
 import MilestoneCard from '../components/MilestoneCard';
 import EmptyState from '../components/EmptyState';
 
 const REWARDS = [
-  { id: 'r1', title: 'Sconto 10% prossimo biglietto', cost: 200 },
-  { id: 'r2', title: 'Drink omaggio', cost: 300 },
-  { id: 'r3', title: 'Accesso prioritario', cost: 500 },
-  { id: 'r4', title: 'Upgrade lista a tavolo', cost: 800 },
-  { id: 'r5', title: 'Badge VIP sul profilo', cost: 1500 },
+  { id: 'r1', titleKey: 'loyaltyScreen.r1', cost: 200 },
+  { id: 'r2', titleKey: 'loyaltyScreen.r2', cost: 300 },
+  { id: 'r3', titleKey: 'loyaltyScreen.r3', cost: 500 },
+  { id: 'r4', titleKey: 'loyaltyScreen.r4', cost: 800 },
+  { id: 'r5', titleKey: 'loyaltyScreen.r5', cost: 1500 },
 ];
 
 function Section({ title, children, action }) {
@@ -28,6 +29,7 @@ function Section({ title, children, action }) {
 }
 
 export default function LoyaltyScreen() {
+  const { t, fmtDate } = useI18n();
   const { session } = useSession();
   const myId = session?.user?.id;
 
@@ -74,9 +76,9 @@ export default function LoyaltyScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <EmptyState
-          title="Accedi per la tua carta fedeltà"
-          subtitle="Accumula punti con ogni serata, sblocca livelli e vantaggi riservati."
-          actionLabel="Accedi"
+          title={t('loyaltyScreen.guestTitle')}
+          subtitle={t('loyaltyScreen.guestSub')}
+          actionLabel={t('auth.login')}
           onAction={() => router.push('/auth/login')}
         />
       </View>
@@ -126,7 +128,7 @@ export default function LoyaltyScreen() {
               <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 38, letterSpacing: -1, lineHeight: 42 }}>
                 {points.toLocaleString()}
               </Text>
-              <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>punti totali</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>{t('loyaltyScreen.totalPoints')}</Text>
             </View>
 
             <View style={{ marginTop: 22 }}>
@@ -143,11 +145,11 @@ export default function LoyaltyScreen() {
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                 <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>
-                  {ll.next ? `Prossimo: ${ll.next.name}` : 'Livello massimo'}
+                  {ll.next ? t('loyaltyScreen.nextLevel', { level: ll.next.name }) : t('loyaltyScreen.maxLevel')}
                 </Text>
                 {ll.next && (
                   <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '600' }}>
-                    {ll.pointsToNext} punti
+                    {t('loyaltyScreen.pointsShort', { count: ll.pointsToNext })}
                   </Text>
                 )}
               </View>
@@ -188,9 +190,9 @@ export default function LoyaltyScreen() {
 
       {/* Stats minimal */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 26 }}>
-        <StatMini label="Sbloccati" value={unlocked.length} />
-        <StatMini label="Totali" value={milestones.length} />
-        <StatMini label="Serate" value={history.length} />
+        <StatMini label={t('loyaltyScreen.statUnlocked')} value={unlocked.length} />
+        <StatMini label={t('loyaltyScreen.statTotal')} value={milestones.length} />
+        <StatMini label={t('loyaltyScreen.statNights')} value={history.length} />
       </View>
 
       {unlocked.length > 0 && (
@@ -202,14 +204,14 @@ export default function LoyaltyScreen() {
       )}
 
       {available.length > 0 && (
-        <Section title="Traguardi disponibili">
+        <Section title={t('loyaltyScreen.sectionMilestones')}>
           {available.map(m => (
             <MilestoneCard key={m.id} milestone={m} unlocked={false} progress={userMilestones[m.id]?.progress || 0} />
           ))}
         </Section>
       )}
 
-      <Section title="Vantaggi">
+      <Section title={t('loyaltyScreen.sectionRewards')}>
         {REWARDS.map(r => {
           const canRedeem = points >= r.cost;
           return (
@@ -222,9 +224,9 @@ export default function LoyaltyScreen() {
             }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: canRedeem ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>
-                  {r.title}
+                  {t(r.titleKey)}
                 </Text>
-                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }}>{r.cost} punti</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }}>{t('loyaltyScreen.pointsShort', { count: r.cost })}</Text>
               </View>
               <View style={{
                 paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6,
@@ -235,7 +237,7 @@ export default function LoyaltyScreen() {
                   color: canRedeem ? COLORS.brand : COLORS.textDisabled,
                   fontSize: 11, fontWeight: '600',
                 }}>
-                  {canRedeem ? 'Riscatta' : 'Bloccato'}
+                  {canRedeem ? t('loyaltyScreen.redeem') : t('loyaltyScreen.locked')}
                 </Text>
               </View>
             </View>
@@ -243,10 +245,10 @@ export default function LoyaltyScreen() {
         })}
       </Section>
 
-      <Section title="Movimenti recenti">
+      <Section title={t('loyaltyScreen.sectionHistory')}>
         {history.length === 0 ? (
           <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', paddingVertical: 16 }}>
-            Prenota il tuo primo evento per iniziare ad accumulare punti.
+            {t('loyaltyScreen.emptyHistory')}
           </Text>
         ) : history.map(b => (
           <View key={b.id} style={{
@@ -257,10 +259,10 @@ export default function LoyaltyScreen() {
           }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>
-                {b.events?.title || 'Prenotazione'}
+                {b.events?.title || t('loyaltyScreen.bookingFallback')}
               </Text>
               <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                {formatDate(b.created_at?.split('T')[0])}
+                {fmtDate(b.created_at?.split('T')[0])}
               </Text>
             </View>
             <Text style={{ color: COLORS.brand, fontWeight: '600', fontSize: 13 }}>+50</Text>
