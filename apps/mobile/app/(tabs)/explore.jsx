@@ -7,14 +7,15 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { CITIES, COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { CITIES, COLORS, FONT_FAMILY, formatTime } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 import UserCard from '../../components/UserCard';
 import EmptyState from '../../components/EmptyState';
 
 const ENTITY_TABS = [
-  { id: 'users',  label: 'Utenti' },
-  { id: 'venues', label: 'Locali' },
-  { id: 'events', label: 'Eventi' },
+  { id: 'users',  labelKey: 'explore.tabUsers' },
+  { id: 'venues', labelKey: 'explore.tabVenues' },
+  { id: 'events', labelKey: 'explore.tabEvents' },
 ];
 
 function normalize(s) {
@@ -22,6 +23,7 @@ function normalize(s) {
 }
 
 export default function SearchScreen() {
+  const { t } = useI18n();
   const { session } = useSession();
   const myId = session?.user?.id;
 
@@ -162,7 +164,7 @@ export default function SearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder={tab === 'users' ? 'Cerca utenti' : tab === 'venues' ? 'Cerca locali' : 'Cerca eventi'}
+            placeholder={tab === 'users' ? t('explore.searchUsers') : tab === 'venues' ? t('explore.searchVenues') : t('explore.searchEvents')}
             placeholderTextColor={COLORS.textMuted}
             autoCapitalize="none"
             style={{ flex: 1, color: COLORS.textPrimary, fontSize: 14, paddingVertical: 0 }}
@@ -177,12 +179,12 @@ export default function SearchScreen() {
 
       {/* Tabs entity */}
       <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.borderSubtle }}>
-        {ENTITY_TABS.map(t => {
-          const active = tab === t.id;
+        {ENTITY_TABS.map(tb => {
+          const active = tab === tb.id;
           return (
             <Pressable
-              key={t.id}
-              onPress={() => setTab(t.id)}
+              key={tb.id}
+              onPress={() => setTab(tb.id)}
               style={{
                 flex: 1, paddingVertical: 12, alignItems: 'center',
                 borderBottomWidth: 1,
@@ -194,7 +196,7 @@ export default function SearchScreen() {
                 fontSize: 12, fontWeight: active ? '700' : '500',
                 letterSpacing: 0.2,
               }}>
-                {t.label} <Text style={{ color: COLORS.textDisabled, fontWeight: '500' }}>({counts[t.id]})</Text>
+                {t(tb.labelKey)} <Text style={{ color: COLORS.textDisabled, fontWeight: '500' }}>({counts[tb.id]})</Text>
               </Text>
             </Pressable>
           );
@@ -206,9 +208,9 @@ export default function SearchScreen() {
         filteredUsers.length === 0 ? (
           <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
-              title={query ? 'Nessun utente trovato' : 'Nessun utente'}
-              subtitle={query ? 'Modifica la ricerca o prova un altro nome.' : 'La community è in crescita.'}
-              actionLabel={query ? 'Reset' : null}
+              title={query ? t('explore.emptyUsersQ') : t('explore.emptyUsers')}
+              subtitle={query ? t('explore.emptyUsersQSub') : t('explore.emptyUsersSub')}
+              actionLabel={query ? t('explore.reset') : null}
               onAction={() => setQuery('')}
             />
           </ScrollView>
@@ -235,9 +237,9 @@ export default function SearchScreen() {
         filteredVenues.length === 0 ? (
           <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
-              title={query ? 'Nessun locale trovato' : 'Nessun locale'}
-              subtitle={query ? 'Prova un altro nome, zona o categoria.' : 'Nessun locale verificato.'}
-              actionLabel={query ? 'Reset' : null}
+              title={query ? t('explore.emptyVenuesQ') : t('explore.emptyVenues')}
+              subtitle={query ? t('explore.emptyVenuesQSub') : t('explore.emptyVenuesSub')}
+              actionLabel={query ? t('explore.reset') : null}
               onAction={() => setQuery('')}
             />
           </ScrollView>
@@ -256,9 +258,9 @@ export default function SearchScreen() {
         filteredEvents.length === 0 ? (
           <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
             <EmptyState
-              title={query ? 'Nessun evento trovato' : 'Nessun evento'}
-              subtitle={query ? 'Prova un altro nome di evento o locale.' : 'Nessun evento in programma.'}
-              actionLabel={query ? 'Reset' : null}
+              title={query ? t('explore.emptyEventsQ') : t('explore.emptyEvents')}
+              subtitle={query ? t('explore.emptyEventsQSub') : t('explore.emptyEventsSub')}
+              actionLabel={query ? t('explore.reset') : null}
               onAction={() => setQuery('')}
             />
           </ScrollView>
@@ -316,6 +318,7 @@ function VenueCard({ venue }) {
 }
 
 function EventResultCard({ event }) {
+  const { fmtDate, fmtPrice } = useI18n();
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
@@ -336,10 +339,10 @@ function EventResultCard({ event }) {
       </Text>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>
-          {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'}
+          {fmtDate(event.event_date)} · {formatTime(event.event_time) || '—'}
         </Text>
         <Text style={{ color: COLORS.textPrimary, fontSize: 13, fontWeight: '700' }}>
-          {getPriceLabel(event.price)}
+          {fmtPrice(event.price)}
         </Text>
       </View>
     </Pressable>
