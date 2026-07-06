@@ -150,7 +150,7 @@ export default function PrivacyScreen() {
               value={!!settings[tg.key]}
               onValueChange={() => toggle(tg.key)}
               trackColor={{ false: COLORS.bgElev3, true: COLORS.brandStrong }}
-              thumbColor={settings[t.key] ? '#fff' : COLORS.textSecondary}
+              thumbColor={settings[tg.key] ? '#fff' : COLORS.textSecondary}
             />
           </View>
         ))}
