@@ -6,16 +6,18 @@ import * as ScreenCapture from 'expo-screen-capture';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/apiUrl';
-import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
+import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatTime, isPastDate } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 
 const STATUS = {
-  confirmed: { label: 'Confermato', color: COLORS.success },
-  pending:   { label: 'In attesa', color: COLORS.warning },
-  cancelled: { label: 'Annullato', color: COLORS.danger },
-  denied:    { label: 'Rimborsato', color: COLORS.danger },
+  confirmed: { labelKey: 'tickets.statusConfirmed', color: COLORS.success },
+  pending:   { labelKey: 'tickets.statusPending', color: COLORS.warning },
+  cancelled: { labelKey: 'tickets.statusCancelled', color: COLORS.danger },
+  denied:    { labelKey: 'tickets.statusRefunded', color: COLORS.danger },
 };
 
 export default function TicketDetailScreen() {
+  const { t, fmtDateFull, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [booking, setBooking] = useState(null);
@@ -61,9 +63,9 @@ export default function TicketDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
         <Ionicons name="ticket-outline" size={40} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 18 }}>Biglietto non trovato</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 18 }}>{t('ticketDetail.notFound')}</Text>
         <Pressable onPress={() => router.back()} style={{ backgroundColor: COLORS.brandStrong, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Torna indietro</Text>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>{t('ticketDetail.goBack')}</Text>
         </Pressable>
       </View>
     );
@@ -97,7 +99,7 @@ export default function TicketDetailScreen() {
   async function handleRequestRefund() {
     setRequesting(true);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setRequesting(false); Alert.alert('Sessione scaduta', 'Rieffettua il login.'); return; }
+    if (!session) { setRequesting(false); Alert.alert(t('ticketDetail.sessionExpired'), t('ticketDetail.reloginBody')); return; }
     try {
       const res = await fetch(`${API_URL}/api/refund/request`, {
         method: 'POST',
@@ -106,12 +108,12 @@ export default function TicketDetailScreen() {
       });
       const json = await res.json();
       setRequesting(false);
-      if (!res.ok) { Alert.alert('Richiesta non inviata', json.error || 'Riprova.'); return; }
+      if (!res.ok) { Alert.alert(t('ticketDetail.reqFailTitle'), json.error || t('common.retry')); return; }
       setRefundRequested(true);
-      Alert.alert('Richiesta inviata', 'La tua richiesta di rimborso è in attesa di approvazione. Ti avviseremo dell\'esito.');
+      Alert.alert(t('ticketDetail.reqSentTitle'), t('ticketDetail.reqSentBody'));
     } catch {
       setRequesting(false);
-      Alert.alert('Errore di connessione', 'Riprova tra poco.');
+      Alert.alert(t('tickets.connErrorTitle'), t('ticketDetail.connErrorBody'));
     }
   }
 
@@ -123,12 +125,12 @@ export default function TicketDetailScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
           <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 22, borderWidth: 1, borderColor: COLORS.borderSubtle, padding: 22, alignItems: 'center' }}>
             <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-              {isTable ? 'Tavolo' : 'Ingresso'}
+              {isTable ? t('tickets.qrTable') : t('tickets.qrEntry')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 18 }}>
               <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: past ? COLORS.textMuted : st.color }} />
               <Text style={{ color: past ? COLORS.textMuted : st.color, fontSize: 13, fontWeight: '700' }}>
-                {past ? 'Evento passato' : st.label}
+                {past ? t('ticketDetail.pastEvent') : t(st.labelKey)}
               </Text>
             </View>
 
@@ -139,7 +141,7 @@ export default function TicketDetailScreen() {
                 </Pressable>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}>
                   <Ionicons name="expand-outline" size={14} color={COLORS.textMuted} />
-                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Tocca per ingrandire</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('ticketDetail.tapToEnlarge')}</Text>
                 </View>
                 <Text style={{ color: COLORS.textDisabled, fontSize: 11, marginTop: 6, textAlign: 'center' }}>
                   Mostra questo QR all&apos;ingresso del locale
@@ -149,9 +151,9 @@ export default function TicketDetailScreen() {
               <View style={{ alignItems: 'center', paddingVertical: 18 }}>
                 <Ionicons name={booking.status === 'denied' ? 'cash-outline' : 'close-circle-outline'} size={40} color={COLORS.textMuted} />
                 <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600', marginTop: 10, textAlign: 'center' }}>
-                  {booking.status === 'denied' ? 'Biglietto rimborsato' : booking.status === 'cancelled' ? 'Prenotazione annullata' : 'Biglietto non più valido'}
+                  {booking.status === 'denied' ? t('ticketDetail.refunded') : booking.status === 'cancelled' ? t('ticketDetail.cancelledB') : t('ticketDetail.invalid')}
                 </Text>
-                <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>Questo biglietto non è valido per l&apos;ingresso.</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>{t('ticketDetail.invalidSub')}</Text>
               </View>
             )}
           </View>
@@ -163,7 +165,7 @@ export default function TicketDetailScreen() {
             {refundPending ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: COLORS.bgElev1, borderRadius: 14, borderWidth: 1, borderColor: COLORS.borderSubtle, padding: 14 }}>
                 <Ionicons name="time-outline" size={18} color={COLORS.warning} />
-                <Text style={{ color: COLORS.textSecondary, fontSize: 13, flex: 1, lineHeight: 18 }}>Richiesta di rimborso inviata — in attesa di approvazione.</Text>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 13, flex: 1, lineHeight: 18 }}>{t('ticketDetail.refundPending')}</Text>
               </View>
             ) : (
               <>
@@ -171,7 +173,7 @@ export default function TicketDetailScreen() {
                   style={({ pressed }) => ({ paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center', opacity: requesting || pressed ? 0.6 : 1 })}>
                   {requesting
                     ? <ActivityIndicator color={COLORS.textSecondary} />
-                    : <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>Non sei entrato? Richiedi il rimborso</Text>}
+                    : <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>{t('ticketDetail.requestRefund')}</Text>}
                 </Pressable>
                 <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8, textAlign: 'center', lineHeight: 16 }}>
                   Solo se non hai effettuato l&apos;ingresso. Ti verrà rimborsato il prezzo del biglietto al netto delle commissioni (di servizio e di pagamento), non rimborsabili. Soggetto ad approvazione.
@@ -202,14 +204,14 @@ export default function TicketDetailScreen() {
           </View>
 
           <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, lineHeight: 28, letterSpacing: -0.5, marginBottom: 14 }}>
-            {event?.title || 'Evento'}
+            {event?.title || t('common.event')}
           </Text>
 
           {/* Riga data/ora */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <Ionicons name="calendar-outline" size={18} color={COLORS.brand} />
             <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>
-              {event ? formatDateFull(event.event_date) : '—'}{event?.event_time ? ` · ${formatTime(event.event_time)}` : ''}
+              {event ? fmtDateFull(event.event_date) : '—'}{event?.event_time ? ` · ${formatTime(event.event_time)}` : ''}
             </Text>
           </View>
 
@@ -217,11 +219,11 @@ export default function TicketDetailScreen() {
           <Pressable onPress={openMaps} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12, opacity: pressed ? 0.6 : 1 })}>
             <Ionicons name="location-outline" size={18} color={COLORS.brand} style={{ marginTop: 1 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600' }}>{venue?.name || 'Locale'}</Text>
+              <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600' }}>{venue?.name || t('common.venue')}</Text>
               <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 2 }}>
                 {[venue?.address, venue?.zona, venue?.city].filter(Boolean).join(', ') || '—'}
               </Text>
-              <Text style={{ color: COLORS.brand, fontSize: 12, fontWeight: '600', marginTop: 4 }}>Apri nelle mappe ›</Text>
+              <Text style={{ color: COLORS.brand, fontSize: 12, fontWeight: '600', marginTop: 4 }}>{t('ticketDetail.openInMaps')}</Text>
             </View>
           </Pressable>
 
@@ -229,8 +231,8 @@ export default function TicketDetailScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 }}>
             <Ionicons name="pricetag-outline" size={18} color={COLORS.brand} />
             <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>
-              {isTable ? 'Quota tavolo: ' : ''}{getPriceLabel(booking.total_price != null ? booking.total_price : event?.price)}
-              {isTable && booking.event_tables ? `  ·  ${booking.event_tables.event_table_types?.name || 'Tavolo'}` : ''}
+              {isTable ? t('ticketDetail.tableShare') : ''}{fmtPrice(booking.total_price != null ? booking.total_price : event?.price)}
+              {isTable && booking.event_tables ? `  ·  ${booking.event_tables.event_table_types?.name || t('eventDetail.tableFallback')}` : ''}
             </Text>
           </View>
 
@@ -250,7 +252,7 @@ export default function TicketDetailScreen() {
               onPress={() => router.push(`/event/${event.id}`)}
               style={({ pressed }) => ({ marginTop: 22, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center', opacity: pressed ? 0.7 : 1 })}
             >
-              <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>Vedi pagina evento</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 14, fontWeight: '600' }}>{t('ticketDetail.seeEvent')}</Text>
             </Pressable>
           )}
         </View>
@@ -260,12 +262,12 @@ export default function TicketDetailScreen() {
       <Modal visible={zoom} transparent animationType="fade" onRequestClose={() => setZoom(false)}>
         <Pressable onPress={() => setZoom(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.94)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
           <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 18 }}>
-            {isTable ? 'Tavolo' : 'Ingresso'} · {event?.title}
+            {isTable ? t('tickets.qrTable') : t('tickets.qrEntry')} · {event?.title}
           </Text>
           <View style={{ backgroundColor: '#fff', padding: 22, borderRadius: 22 }}>
             {booking.qr_code ? <QRCode value={booking.qr_code} size={280} /> : null}
           </View>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 20 }}>Tocca per chiudere</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 20 }}>{t('ticketDetail.tapToClose')}</Text>
         </Pressable>
       </Modal>
     </View>
