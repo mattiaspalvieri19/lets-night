@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, T
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 import { formatDate, formatTime, getPriceLabel, COLORS, FONT_FAMILY } from '@lets-night/shared';
 import EventFormModal from '../../components/EventFormModal';
 
@@ -12,6 +13,7 @@ function todayLocal() {
 }
 
 export default function BusinessEvents() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [venue, setVenue] = useState(null);
@@ -79,7 +81,7 @@ export default function BusinessEvents() {
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16 }}>
         <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 }}>I tuoi eventi</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 22, letterSpacing: -0.3 }}>Gestione eventi</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 22, letterSpacing: -0.3 }}>{t('bizEvents.title')}</Text>
           {venue?.is_verified && (
             <Pressable onPress={() => setShowModal(true)}
               style={{ backgroundColor: COLORS.brand, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 }}>
@@ -113,11 +115,11 @@ export default function BusinessEvents() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 6, marginTop: 12 }}>
           {[
-            ['all',      'Tutti'],
-            ['upcoming', 'Pubblicati'],
-            ['draft',    'Bozze'],
-            ['past',     'Passati'],
-            ['soldout',  'Sold out'],
+            ['all',      t('bizEvents.fAll')],
+            ['upcoming', t('bizEvents.fUpcoming')],
+            ['draft',    t('bizEvents.fDraft')],
+            ['past',     t('bizEvents.fPast')],
+            ['soldout',  t('bizEvents.fSoldout')],
           ].map(([id, label]) => {
             const active = filter === id;
             return (
@@ -151,17 +153,17 @@ export default function BusinessEvents() {
           }}>
             <View style={{ width: 32, height: 1, backgroundColor: COLORS.borderStrong, marginBottom: 16 }} />
             <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 6, textAlign: 'center' }}>
-              {events.length === 0 ? 'Non hai ancora creato eventi' : 'Nessun evento per questo filtro'}
+              {events.length === 0 ? t('bizEvents.emptyNone') : t('bizEvents.emptyFilter')}
             </Text>
             <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', marginBottom: events.length === 0 ? 18 : 0 }}>
               {events.length === 0
-                ? 'Crea il tuo primo evento per iniziare ad accettare prenotazioni.'
-                : 'Cambia filtro o resetta la ricerca.'}
+                ? t('bizEvents.emptyNoneSub')
+                : t('bizEvents.emptyFilterSub')}
             </Text>
             {events.length === 0 && venue?.is_verified && (
               <Pressable onPress={() => setShowModal(true)}
                 style={{ backgroundColor: COLORS.brand, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 }}>
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>Crea evento</Text>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>{t('bizEvents.createEvent')}</Text>
               </Pressable>
             )}
           </View>
@@ -202,7 +204,7 @@ export default function BusinessEvents() {
                     style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: ev.is_active ? 'rgba(74,222,128,0.12)' : 'rgba(100,116,139,0.15)', borderWidth: 1, borderColor: ev.is_active ? 'rgba(74,222,128,0.35)' : 'rgba(100,116,139,0.3)' }}
                   >
                     <Text style={{ color: ev.is_active ? COLORS.success : COLORS.textMuted, fontSize: 12, fontWeight: '700' }}>
-                      {ev.is_active ? 'Attivo' : 'Nascosto'}
+                      {ev.is_active ? t('bizEvents.active') : t('bizEvents.hidden')}
                     </Text>
                   </Pressable>
                 )}
