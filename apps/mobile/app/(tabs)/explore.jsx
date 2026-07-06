@@ -98,6 +98,34 @@ export default function SearchScreen() {
     setBusyId(null);
   }
 
+  if (!session) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.bgElev2, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="search" size={32} color={COLORS.textSecondary} />
+        </View>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 8 }}>
+          {t('explore.guestTitle')}
+        </Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 30 }}>
+          {t('explore.guestSub')}
+        </Text>
+        <Pressable
+          onPress={() => router.push('/auth/login')}
+          style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 15, borderRadius: 12, width: '100%', alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('auth.login')}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push('/auth/register')}
+          style={({ pressed }) => ({ marginTop: 10, paddingVertical: 15, width: '100%', borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 12, alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
+        >
+          <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>{t('tickets.registerFree')}</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   const q = normalize(query);
 
   const filteredUsers = useMemo(() => {

@@ -134,6 +134,8 @@ export default {
     qrShowAtDoor: 'Muestra este código QR en la entrada',
   },
   explore: {
+    guestTitle: 'Encuentra en la comunidad',
+    guestSub: 'Accede para buscar usuarios, locales y eventos y seguir a tus amigos.',
     tabUsers: 'Usuarios',
     tabVenues: 'Locales',
     tabEvents: 'Eventos',
