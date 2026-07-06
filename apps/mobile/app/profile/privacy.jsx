@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator, Switch } from 're
 import { router } from 'expo-router';
 import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 import { useSession } from '../../lib/useSession';
 
 const DEFAULT_PRIVACY = {
@@ -19,18 +20,19 @@ const DEFAULT_PRIVACY = {
 };
 
 const TOGGLES = [
-  { key: 'searchable',          label: 'Mostrami nei risultati di ricerca', sub: 'Gli altri utenti possono trovarti dalla sezione Cerca' },
-  { key: 'show_future_events',  label: 'Mostra serate a cui andrò',          sub: 'Eventi futuri visibili sul tuo profilo' },
-  { key: 'notify_followers_on_booking', label: 'Avvisa i follower quando prenoto', sub: 'I tuoi follower ricevono "esce stasera, prenota anche tu" — solo se mostri anche le serate a cui vai' },
-  { key: 'show_past_events',    label: 'Mostra serate passate',              sub: 'Eventi a cui sei stato' },
-  { key: 'show_photos',         label: 'Mostra foto serate',                 sub: 'Foto caricate dopo gli eventi' },
-  { key: 'show_badges',         label: 'Mostra badge',                       sub: 'I traguardi sbloccati appaiono sul profilo' },
-  { key: 'show_favorite_venues',label: 'Mostra locali preferiti',            sub: null },
-  { key: 'show_followers',      label: 'Mostra follower',                    sub: null },
-  { key: 'show_following',      label: 'Mostra chi segui',                   sub: null },
+  { key: 'searchable',          labelKey: 'privacy.searchable', subKey: 'privacy.searchableSub' },
+  { key: 'show_future_events',  labelKey: 'privacy.showFuture', subKey: 'privacy.showFutureSub' },
+  { key: 'notify_followers_on_booking', labelKey: 'privacy.notifyFollowers', subKey: 'privacy.notifyFollowersSub' },
+  { key: 'show_past_events',    labelKey: 'privacy.showPast', subKey: 'privacy.showPastSub' },
+  { key: 'show_photos',         labelKey: 'privacy.showPhotos', subKey: 'privacy.showPhotosSub' },
+  { key: 'show_badges',         labelKey: 'privacy.showBadges', subKey: 'privacy.showBadgesSub' },
+  { key: 'show_favorite_venues',labelKey: 'privacy.showFavVenues', subKey: null },
+  { key: 'show_followers',      labelKey: 'privacy.showFollowers', subKey: null },
+  { key: 'show_following',      labelKey: 'privacy.showFollowing', subKey: null },
 ];
 
 export default function PrivacyScreen() {
+  const { t } = useI18n();
   const { session } = useSession();
   const myId = session?.user?.id;
   const [loading, setLoading] = useState(true);
@@ -80,8 +82,8 @@ export default function PrivacyScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={{ padding: 20, paddingTop: 24 }}>
-        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Impostazioni</Text>
-        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, marginBottom: 6 }}>Privacy</Text>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{t('privacy.eyebrow')}</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, marginBottom: 6 }}>{t('privacy.title')}</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 22 }}>
           Scegli cosa rendere visibile agli altri utenti.
         </Text>
@@ -89,12 +91,12 @@ export default function PrivacyScreen() {
         {/* Profile visibility */}
         <View style={{ marginBottom: 28 }}>
           <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
-            Visibilità profilo
+            {t('privacy.visibility')}
           </Text>
           {[
-            { id: 'public',  label: 'Pubblico',  desc: 'Chiunque può vedere il tuo profilo' },
-            { id: 'followers', label: 'Solo follower', desc: 'Solo chi ti segue vede le tue attività' },
-            { id: 'private', label: 'Privato', desc: 'Solo tu vedi le tue attività' },
+            { id: 'public',  label: t('privacy.visPublic'),  desc: t('privacy.visPublicDesc') },
+            { id: 'followers', label: t('privacy.visFollowers'), desc: t('privacy.visFollowersDesc') },
+            { id: 'private', label: t('privacy.visPrivate'), desc: t('privacy.visPrivateDesc') },
           ].map(opt => {
             const active = settings.profile_visibility === opt.id;
             return (
@@ -127,11 +129,11 @@ export default function PrivacyScreen() {
 
         {/* Toggle list */}
         <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
-          Cosa rendere visibile
+          {t('privacy.whatVisible')}
         </Text>
-        {TOGGLES.map(t => (
+        {TOGGLES.map(tg => (
           <View
-            key={t.key}
+            key={tg.key}
             style={{
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
               paddingHorizontal: 14, paddingVertical: 14, borderRadius: 12,
@@ -141,12 +143,12 @@ export default function PrivacyScreen() {
             }}
           >
             <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }}>{t.label}</Text>
-              {t.sub && <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 16 }}>{t.sub}</Text>}
+              <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }}>{t(tg.labelKey)}</Text>
+              {tg.subKey && <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 16 }}>{t(tg.subKey)}</Text>}
             </View>
             <Switch
-              value={!!settings[t.key]}
-              onValueChange={() => toggle(t.key)}
+              value={!!settings[tg.key]}
+              onValueChange={() => toggle(tg.key)}
               trackColor={{ false: COLORS.bgElev3, true: COLORS.brandStrong }}
               thumbColor={settings[t.key] ? '#fff' : COLORS.textSecondary}
             />
@@ -160,7 +162,7 @@ export default function PrivacyScreen() {
         {saving && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 14 }}>
             <ActivityIndicator color={COLORS.brand} size="small" />
-            <Text style={{ color: COLORS.brand, fontSize: 12 }}>Salvataggio...</Text>
+            <Text style={{ color: COLORS.brand, fontSize: 12 }}>{t('common.saving')}</Text>
           </View>
         )}
       </View>
