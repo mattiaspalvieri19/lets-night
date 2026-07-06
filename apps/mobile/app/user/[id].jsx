@@ -471,6 +471,7 @@ function BookingRow({ booking }) {
 }
 
 function VenueRow({ venue }) {
+  const { tLabel } = useI18n();
   if (!venue) return null;
   return (
     <Pressable
@@ -494,6 +495,7 @@ function VenueRow({ venue }) {
 }
 
 function EventRow({ event, past }) {
+  const { tLabel } = useI18n();
   if (!event) return null;
   return (
     <Pressable
@@ -517,6 +519,7 @@ function EventRow({ event, past }) {
 }
 
 function VenuePreview({ venue }) {
+  const { tLabel } = useI18n();
   return (
     <Pressable
       onPress={() => router.push(`/venue/${venue.id}`)}

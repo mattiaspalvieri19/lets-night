@@ -314,6 +314,7 @@ function StatCell({ value, label, onPress }) {
 }
 
 function VenueRow({ venue }) {
+  const { tLabel } = useI18n();
   if (!venue) return null;
   return (
     <Pressable
