@@ -91,24 +91,24 @@ export default function MyProfileScreen() {
   if (!session) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg, paddingHorizontal: 32, alignItems: 'center', justifyContent: 'center' }}>
-        <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: 'rgba(168,85,247,0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 22 }}>
-          <Text style={{ fontSize: 36 }}>🌙</Text>
+        <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.bgElev2, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="person" size={32} color={COLORS.textSecondary} />
         </View>
-        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, marginBottom: 8 }}>{t('profileTab.guestTitle')}</Text>
-        <Text style={{ color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 21 }}>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 8 }}>{t('profileTab.guestTitle')}</Text>
+        <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 30 }}>
           {t('profileTab.guestSub')}
         </Text>
         <Pressable
           onPress={() => router.push('/auth/login')}
-          style={{ backgroundColor: '#7C3AED', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center', marginBottom: 12 }}
+          style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 15, borderRadius: 12, width: '100%', alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
         >
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>{t('auth.login')}</Text>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('auth.login')}</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/auth/register')}
-          style={{ borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center' }}
+          style={({ pressed }) => ({ marginTop: 10, paddingVertical: 15, width: '100%', borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 12, alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
         >
-          <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>{t('auth.createAccount')}</Text>
+          <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>{t('auth.createAccount')}</Text>
         </Pressable>
       </View>
     );
