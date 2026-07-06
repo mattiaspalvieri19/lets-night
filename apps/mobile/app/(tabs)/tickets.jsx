@@ -6,10 +6,12 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, isPastDate } from '@lets-night/shared';
+import { COLORS, COLORS_BY_CAT, FONT_FAMILY, formatTime, isPastDate } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 
 function TicketCard({ booking, onPress, onShowQR }) {
+  const { t, fmtDateFull, fmtPrice } = useI18n();
   const event = booking.events;
   const past = event ? isPastDate(event.event_date) : false;
   const isTable = booking.booking_type === 'table_share';
@@ -25,10 +27,10 @@ function TicketCard({ booking, onPress, onShowQR }) {
   }[booking.status] || COLORS.textSecondary;
 
   const statusLabel = {
-    confirmed: 'Confermato',
-    pending: 'In attesa',
-    cancelled: 'Annullato',
-    denied: 'Rimborsato',
+    confirmed: t('tickets.statusConfirmed'),
+    pending: t('tickets.statusPending'),
+    cancelled: t('tickets.statusCancelled'),
+    denied: t('tickets.statusRefunded'),
   }[booking.status] || booking.status;
 
   return (
@@ -59,7 +61,7 @@ function TicketCard({ booking, onPress, onShowQR }) {
           )}
           <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: past ? 'rgba(0,0,0,0.55)' : `${statusColor}26`, borderWidth: 1, borderColor: past ? 'rgba(255,255,255,0.12)' : `${statusColor}55`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
             <Text style={{ color: past ? COLORS.textSecondary : statusColor, fontSize: 11, fontWeight: '800' }}>
-              {past ? 'Passato' : statusLabel}
+              {past ? t('tickets.statusPast') : statusLabel}
             </Text>
           </View>
         </View>
@@ -67,17 +69,17 @@ function TicketCard({ booking, onPress, onShowQR }) {
         {/* Info evento */}
         <View style={{ padding: 14 }}>
           <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
-            {event?.venues?.name || 'Locale'}
+            {event?.venues?.name || t('common.venue')}
           </Text>
           <Text numberOfLines={2} style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, lineHeight: 22, letterSpacing: -0.3, marginBottom: 8 }}>
-            {event?.title || 'Evento'}
+            {event?.title || t('common.event')}
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: 13, flex: 1, marginRight: 12 }}>
-              {event ? formatDateFull(event.event_date) : '—'}{event?.event_time ? ` · ${formatTime(event.event_time)}` : ''}
+              {event ? fmtDateFull(event.event_date) : '—'}{event?.event_time ? ` · ${formatTime(event.event_time)}` : ''}
             </Text>
             <Text style={{ color: past ? COLORS.textMuted : COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
-              {booking.total_price != null ? getPriceLabel(booking.total_price) : (event ? getPriceLabel(event.price) : '—')}
+              {booking.total_price != null ? fmtPrice(booking.total_price) : (event ? fmtPrice(event.price) : '—')}
             </Text>
           </View>
         </View>
@@ -95,7 +97,7 @@ function TicketCard({ booking, onPress, onShowQR }) {
           })}
         >
           <Ionicons name="qr-code" size={17} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{isTable ? 'Tavolo' : 'Ingresso'}</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{isTable ? t('tickets.qrTable') : t('tickets.qrEntry')}</Text>
         </Pressable>
       )}
     </View>
@@ -103,6 +105,7 @@ function TicketCard({ booking, onPress, onShowQR }) {
 }
 
 export default function TicketsScreen() {
+  const { t, fmtDateFull } = useI18n();
   const router = useRouter();
   const { session, loading: loadingAuth } = useSession();
   const [bookings, setBookings] = useState([]);
@@ -183,10 +186,10 @@ export default function TicketsScreen() {
           <Ionicons name="ticket-outline" size={32} color={COLORS.textSecondary} />
         </View>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 8 }}>
-          I tuoi biglietti
+          {t('tickets.guestTitle')}
         </Text>
         <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 30 }}>
-          Accedi per vedere le tue prenotazioni e i biglietti degli eventi.
+          {t('tickets.guestSub')}
         </Text>
         <Pressable
           onPress={() => router.push('/auth/login')}
@@ -199,7 +202,7 @@ export default function TicketsScreen() {
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Accedi</Text>
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('auth.login')}</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push('/auth/register')}
@@ -215,7 +218,7 @@ export default function TicketsScreen() {
           })}
         >
           <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>
-            Registrati gratis
+            {t('tickets.registerFree')}
           </Text>
         </Pressable>
       </View>
@@ -233,10 +236,10 @@ export default function TicketsScreen() {
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 18 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
-          I tuoi acquisti
+          {t('tickets.headerEyebrow')}
         </Text>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 28, letterSpacing: -0.6 }}>
-          Biglietti
+          {t('tickets.headerTitle')}
         </Text>
       </View>
 
@@ -248,16 +251,16 @@ export default function TicketsScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
           <Ionicons name="cloud-offline-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
           <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>
-            Errore di connessione
+            {t('tickets.connErrorTitle')}
           </Text>
           <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
-            Non riusciamo a caricare i tuoi biglietti. Controlla la connessione e riprova.
+            {t('tickets.connErrorSub')}
           </Text>
           <Pressable
             onPress={() => { setLoadingBookings(true); fetchBookings(session.user.id).finally(() => setLoadingBookings(false)); }}
             style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 12, opacity: pressed ? 0.85 : 1 })}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Riprova</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('common.retry')}</Text>
           </Pressable>
         </View>
       ) : bookings.length === 0 ? (
@@ -266,10 +269,10 @@ export default function TicketsScreen() {
             <Ionicons name="ticket-outline" size={32} color={COLORS.textSecondary} />
           </View>
           <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>
-            Nessuna prenotazione
+            {t('tickets.emptyTitle')}
           </Text>
           <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
-            Prenota il tuo primo evento e lo troverai qui.
+            {t('tickets.emptySub')}
           </Text>
           <Pressable
             onPress={() => router.push('/(tabs)')}
@@ -281,7 +284,7 @@ export default function TicketsScreen() {
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Scopri eventi</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('tickets.discover')}</Text>
           </Pressable>
         </View>
       ) : (
@@ -296,14 +299,14 @@ export default function TicketsScreen() {
           {upcoming.length > 0 && (
             <View style={{ marginBottom: 28 }}>
               <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, letterSpacing: -0.3, marginBottom: 12 }}>
-                Prossimi ({upcoming.length})
+                {t('tickets.upcomingCount', { count: upcoming.length })}
               </Text>
               {upcoming.map(b => (
                 <TicketCard
                   key={b.id}
                   booking={b}
                   onPress={() => router.push(`/ticket/${b.id}`)}
-                  onShowQR={b.qr_code ? () => setQrModal({ qr_code: b.qr_code, eventTitle: b.events?.title, eventDate: b.events ? formatDateFull(b.events.event_date) : '' }) : null}
+                  onShowQR={b.qr_code ? () => setQrModal({ qr_code: b.qr_code, eventTitle: b.events?.title, eventDate: b.events ? fmtDateFull(b.events.event_date) : '' }) : null}
                 />
               ))}
             </View>
@@ -312,7 +315,7 @@ export default function TicketsScreen() {
           {past.length > 0 && (
             <View>
               <Text style={{ color: COLORS.textMuted, fontSize: 13, fontWeight: '700', marginBottom: 12 }}>
-                Passati ({past.length})
+                {t('tickets.pastCount', { count: past.length })}
               </Text>
               {past.map(b => (
                 <TicketCard
@@ -333,18 +336,18 @@ export default function TicketsScreen() {
           onPress={() => setQrModal(null)}
         >
           <Pressable style={{ backgroundColor: COLORS.bgElev2, borderRadius: 22, padding: 28, alignItems: 'center', width: '100%' }}>
-            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Il tuo biglietto</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>{t('stackTitles.ticket')}</Text>
             <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, textAlign: 'center', marginBottom: 4 }} numberOfLines={2}>{qrModal?.eventTitle}</Text>
             <Text style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 22 }}>{qrModal?.eventDate}</Text>
             <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 20 }}>
               {qrModal?.qr_code ? <QRCode value={qrModal.qr_code} size={200} /> : null}
             </View>
-            <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20 }}>Mostra questo QR code all'ingresso</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20 }}>{t('tickets.qrShowAtDoor')}</Text>
             <Pressable
               onPress={() => setQrModal(null)}
               style={({ pressed }) => ({ paddingVertical: 13, paddingHorizontal: 44, borderWidth: 1, borderColor: COLORS.borderStrong, borderRadius: 12, opacity: pressed ? 0.7 : 1 })}
             >
-              <Text style={{ color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 }}>Chiudi</Text>
+              <Text style={{ color: COLORS.textSecondary, fontWeight: '700', fontSize: 14 }}>{t('common.close')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
