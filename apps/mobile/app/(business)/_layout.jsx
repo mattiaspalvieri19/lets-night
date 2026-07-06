@@ -4,8 +4,10 @@ import { View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { COLORS } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 
 export default function BusinessLayout() {
+  const { t } = useI18n();
   const [checking, setChecking] = useState(true);
 
   // Gate auth SENZA montare il navigatore in modo condizionale (anti-pattern che
@@ -47,11 +49,11 @@ export default function BusinessLayout() {
           tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} /> }} />
-        <Tabs.Screen name="events" options={{ title: 'Eventi', tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} /> }} />
-        <Tabs.Screen name="bookings" options={{ title: 'Prenotazioni', tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} /> }} />
-        <Tabs.Screen name="scanner" options={{ title: 'Scanner', tabBarIcon: ({ color, size }) => <Ionicons name="qr-code" size={size} color={color} /> }} />
-        <Tabs.Screen name="profile" options={{ title: 'Locale', tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} /> }} />
+        <Tabs.Screen name="index" options={{ title: t('biz.tabDashboard'), tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} /> }} />
+        <Tabs.Screen name="events" options={{ title: t('biz.tabEvents'), tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} /> }} />
+        <Tabs.Screen name="bookings" options={{ title: t('biz.tabBookings'), tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} /> }} />
+        <Tabs.Screen name="scanner" options={{ title: t('biz.tabScanner'), tabBarIcon: ({ color, size }) => <Ionicons name="qr-code" size={size} color={color} /> }} />
+        <Tabs.Screen name="profile" options={{ title: t('biz.tabVenue'), tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} /> }} />
         {/* Route del gruppo ma non tab: senza href:null comparirebbe come sesto tab */}
         <Tabs.Screen name="venue/edit" options={{ href: null }} />
       </Tabs>

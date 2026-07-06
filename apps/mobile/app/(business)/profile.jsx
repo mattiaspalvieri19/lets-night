@@ -7,6 +7,7 @@ import { COLORS, FONT_FAMILY, LANGS } from '@lets-night/shared';
 import { useI18n } from '../../lib/i18n';
 
 export default function BusinessProfile() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [venue, setVenue] = useState(null);
   const [user, setUser] = useState(null);
@@ -34,8 +35,8 @@ export default function BusinessProfile() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }} showsVerticalScrollIndicator={false}>
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 24 }}>
-        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Il tuo locale</Text>
-        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 24 }}>{venue?.name || 'Locale'}</Text>
+        <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{t('biz.yourVenue')}</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 24 }}>{venue?.name || t('common.venue')}</Text>
       </View>
 
       {/* Stato verifica */}
@@ -43,10 +44,10 @@ export default function BusinessProfile() {
         <Ionicons name={venue?.is_verified ? 'checkmark-circle' : 'time-outline'} size={24} color={venue?.is_verified ? COLORS.success : COLORS.warning} />
         <View>
           <Text style={{ color: venue?.is_verified ? COLORS.success : COLORS.warning, fontWeight: '700', fontSize: 14 }}>
-            {venue?.is_verified ? 'Locale verificato' : 'In attesa di approvazione'}
+            {venue?.is_verified ? t('biz.verified') : t('biz.pendingApproval')}
           </Text>
           <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
-            {venue?.is_verified ? 'Il tuo locale è pubblico su Let\'s Night' : 'Il team ti contatterà entro 24-48 ore'}
+            {venue?.is_verified ? t('biz.verifiedSub') : t('biz.pendingSub')}
           </Text>
         </View>
       </View>
@@ -54,17 +55,17 @@ export default function BusinessProfile() {
       {/* Dati locale */}
       <View style={{ marginHorizontal: 20, marginBottom: 12, backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: COLORS.borderSubtle }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15 }}>Dati locale</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15 }}>{t('biz.venueData')}</Text>
           <Pressable onPress={() => router.push('/(business)/venue/edit')} hitSlop={6}>
-            <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 13 }}>Modifica</Text>
+            <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 13 }}>{t('common.edit')}</Text>
           </Pressable>
         </View>
         {[
-          ['Categoria', venue?.category],
-          ['Città', venue?.city],
-          ['Zona', venue?.zona],
-          ['Indirizzo', venue?.address],
-          ['Telefono', venue?.phone],
+          [t('biz.category'), venue?.category],
+          [t('biz.city'), venue?.city],
+          [t('biz.zone'), venue?.zona],
+          [t('biz.address'), venue?.address],
+          [t('biz.phone'), venue?.phone],
         ].filter(([, v]) => v).map(([label, value]) => (
           <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.borderSubtle }}>
             <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{label}</Text>
@@ -78,12 +79,12 @@ export default function BusinessProfile() {
         style={({ pressed }) => ({ marginHorizontal: 20, marginBottom: 20, backgroundColor: COLORS.brandStrong, borderRadius: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, opacity: pressed ? 0.85 : 1 })}
       >
         <Ionicons name="create-outline" size={16} color="#fff" />
-        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>Modifica locale</Text>
+        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>{t('biz.editVenue')}</Text>
       </Pressable>
 
       {/* Dati account */}
       <View style={{ marginHorizontal: 20, marginBottom: 32, backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: COLORS.borderSubtle }}>
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 14 }}>Account</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 14 }}>{t('biz.account')}</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 }}>
           <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Email</Text>
           <Text style={{ color: '#fff', fontSize: 12, maxWidth: '65%', textAlign: 'right' }}>{user?.email}</Text>
@@ -95,14 +96,14 @@ export default function BusinessProfile() {
 
       {/* Dashboard web */}
       <View style={{ marginHorizontal: 20, marginBottom: 16, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle, borderRadius: 14, padding: 16 }}>
-        <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>Dashboard web completa</Text>
+        <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 14, marginBottom: 4 }}>{t('biz.webDashboard')}</Text>
         <Text style={{ color: COLORS.textMuted, fontSize: 12, lineHeight: 18 }}>
-          Per statistiche avanzate e gestione eventi visita letsnight.it/business dal browser.
+          {t('biz.webDashboardSub')}
         </Text>
       </View>
 
       <Pressable onPress={handleLogout} style={({ pressed }) => ({ marginHorizontal: 20, marginBottom: 40, borderWidth: 1, borderColor: 'rgba(239,68,68,0.35)', borderRadius: 14, paddingVertical: 16, alignItems: 'center', opacity: pressed ? 0.7 : 1 })}>
-        <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 15 }}>Esci dall&apos;account</Text>
+        <Text style={{ color: COLORS.danger, fontWeight: '700', fontSize: 15 }}>{t('biz.logoutBtn')}</Text>
       </Pressable>
     </ScrollView>
   );
