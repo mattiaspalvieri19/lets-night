@@ -28,7 +28,7 @@ export default function ActivityCard({ activity, hideAuthor }) {
   const { t, fmtDate } = useI18n();
   const router = useRouter();
   const meta = ACTIVITY_META[activity.type] || { icon: 'ellipse-outline' };
-  const metaLabel = metaLabelKey ? t(metaLabelKey) : activity.type;
+  const metaLabel = meta.labelKey ? t(meta.labelKey) : activity.type;
   const target = activity.events?.title
     || activity.venues?.name
     || activity.milestone_title
