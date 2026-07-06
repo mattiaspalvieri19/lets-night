@@ -3,6 +3,8 @@ import en from './en.js';
 import es from './es.js';
 import fr from './fr.js';
 
+export { DATE_NAMES } from './locale-data.js';
+
 export const LANGS = [
   { code: 'it', label: 'Italiano' },
   { code: 'en', label: 'English' },

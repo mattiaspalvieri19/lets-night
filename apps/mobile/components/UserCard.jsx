@@ -1,14 +1,16 @@
 import { View, Text, Pressable, ActivityIndicator, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 function initialOf(name) {
   return (name || '?').trim().charAt(0).toUpperCase();
 }
 
 export default function UserCard({ user, isFollowing, onToggleFollow, busy, hideFollow }) {
+  const { t } = useI18n();
   const router = useRouter();
-  const display = user.display_name || user.full_name || user.username || 'Utente';
+  const display = user.display_name || user.full_name || user.username || t('common.user');
   const handle = user.username ? `@${user.username}` : null;
 
   return (
@@ -96,7 +98,7 @@ export default function UserCard({ user, isFollowing, onToggleFollow, busy, hide
               fontSize: 12,
               fontWeight: '700',
             }}>
-              {isFollowing ? 'Segui già' : 'Segui'}
+              {isFollowing ? t('social.following') : t('social.follow')}
             </Text>
           )}
         </Pressable>

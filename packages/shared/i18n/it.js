@@ -20,6 +20,7 @@ export default {
     user: 'Utente',
     event: 'Evento',
     venue: 'Locale',
+    open: 'Apri',
     freeLabel: 'Gratuito',
   },
   tabs: {
@@ -100,6 +101,25 @@ export default {
     sentTitle: 'Richiesta inviata',
     sentCheckEmail: 'Controlla la tua email',
     sentHint: 'Clicca il link di conferma. Il team Let’s Night verificherà il tuo locale entro 24-48 ore.',
+  },
+  social: {
+    follow: 'Segui',
+    following: 'Segui già',
+  },
+  loyalty: {
+    points: 'punti',
+    pointsToNext: '{points} punti al livello {level}',
+    maxLevel: 'Livello massimo raggiunto',
+  },
+  home: {
+    featured: 'In evidenza',
+    searchPlaceholder: 'Cerca evento, locale o zona',
+    upcoming: 'In programma',
+    eventsCount: { one: '{count} evento', other: '{count} eventi' },
+    emptyTitle: 'Nessun evento trovato',
+    emptySub: 'Prova a modificare filtri, città o data.',
+    resetFilters: 'Reset filtri',
+    otherEvents: 'Altri eventi',
   },
   onboarding: {
     welcomeTitle: 'Benvenuto su',

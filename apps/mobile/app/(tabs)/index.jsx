@@ -4,7 +4,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
-import { CATS, CITIES, QUICK_TAGS, COLORS, FONT_FAMILY, isInDateRange, formatDate, todayLocal } from '@lets-night/shared';
+import { CATS, CITIES, QUICK_TAGS, COLORS, FONT_FAMILY, isInDateRange, todayLocal } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 import EventCard from '../../components/EventCard';
 import FeaturedCard from '../../components/FeaturedCard';
 import EmptyState from '../../components/EmptyState';
@@ -39,6 +40,7 @@ function timeSlotMatch(slot, eventTime) {
 
 
 export default function HomeScreen() {
+  const { t, fmtDate } = useI18n();
   const [city, setCity] = useState('Milano');
   const [cat, setCat] = useState('Tutti');
   const [quickTag, setQuickTag] = useState(null);
@@ -171,7 +173,7 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 64, paddingBottom: 6, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 }}>
-              Milano · {formatDate(todayLocal())}
+              Milano · {fmtDate(todayLocal())}
             </Text>
             <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.8 }}>
               Let&apos;s Night
@@ -218,7 +220,7 @@ export default function HomeScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Cerca evento, locale o zona"
+              placeholder={t('home.searchPlaceholder')}
               placeholderTextColor={COLORS.textMuted}
               style={{ flex: 1, color: COLORS.textPrimary, fontSize: 14, paddingVertical: 0 }}
             />
@@ -303,19 +305,19 @@ export default function HomeScreen() {
         {/* Section title */}
         <View style={{ paddingHorizontal: 20, marginTop: 28, marginBottom: 14, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 21, letterSpacing: -0.3 }}>
-            In programma
+            {t('home.upcoming')}
           </Text>
           <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>
-            {sorted.length} {sorted.length === 1 ? 'evento' : 'eventi'}
+            {t('home.eventsCount', { count: sorted.length })}
           </Text>
         </View>
 
         {sorted.length === 0 ? (
           <EmptyState
             icon="🌃"
-            title="Nessun evento trovato"
-            subtitle="Prova a modificare filtri, città o data."
-            actionLabel={(cat !== 'Tutti' || quickTag || search || adv) ? 'Reset filtri' : null}
+            title={t('home.emptyTitle')}
+            subtitle={t('home.emptySub')}
+            actionLabel={(cat !== 'Tutti' || quickTag || search || adv) ? t('home.resetFilters') : null}
             onAction={() => { setCat('Tutti'); setQuickTag(null); setSearch(''); setAdv(null); }}
           />
         ) : (
@@ -328,7 +330,7 @@ export default function HomeScreen() {
             {featured && grid.length > 0 && (
               <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
                 <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                  Altri eventi
+                  {t('home.otherEvents')}
                 </Text>
               </View>
             )}

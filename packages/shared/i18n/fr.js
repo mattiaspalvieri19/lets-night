@@ -20,6 +20,7 @@ export default {
     user: 'Utilisateur',
     event: 'Événement',
     venue: 'Établissement',
+    open: 'Ouvrir',
     freeLabel: 'Gratuit',
   },
   tabs: {
@@ -100,6 +101,25 @@ export default {
     sentTitle: 'Demande envoyée',
     sentCheckEmail: 'Vérifiez votre email',
     sentHint: 'Cliquez sur le lien de confirmation. L’équipe Let’s Night vérifiera votre établissement sous 24-48 heures.',
+  },
+  social: {
+    follow: 'Suivre',
+    following: 'Abonné',
+  },
+  loyalty: {
+    points: 'points',
+    pointsToNext: '{points} points avant le niveau {level}',
+    maxLevel: 'Niveau maximum atteint',
+  },
+  home: {
+    featured: 'À la une',
+    searchPlaceholder: 'Cherchez un événement, un lieu ou un quartier',
+    upcoming: 'À venir',
+    eventsCount: { one: '{count} événement', other: '{count} événements' },
+    emptyTitle: 'Aucun événement trouvé',
+    emptySub: 'Essayez de modifier les filtres, la ville ou la date.',
+    resetFilters: 'Réinitialiser les filtres',
+    otherEvents: 'Autres événements',
   },
   onboarding: {
     welcomeTitle: 'Bienvenue sur',
