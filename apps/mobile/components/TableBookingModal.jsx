@@ -138,7 +138,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
       if (!res.ok || !json.url) {
         setLoading(false);
         submitting.current = false;
-        setError(json.error || t('booking.payCreateError'));
+        setError((json.code && t('serverErrors.' + json.code) !== 'serverErrors.' + json.code) ? t('serverErrors.' + json.code) : (json.error || t('booking.payCreateError')));
         return;
       }
 

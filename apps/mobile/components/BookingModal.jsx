@@ -148,7 +148,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
           setError(t('booking.alreadyTab'));
           return;
         }
-        throw new Error(json.error || t('booking.payCreateError'));
+        throw new Error((json.code && t('serverErrors.' + json.code) !== 'serverErrors.' + json.code) ? t('serverErrors.' + json.code) : (json.error || t('booking.payCreateError')));
       }
 
       // sessionId noto PRIMA del browser: in Expo Go il deep link letsnight:// non torna

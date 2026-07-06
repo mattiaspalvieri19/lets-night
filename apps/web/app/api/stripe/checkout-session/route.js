@@ -82,7 +82,7 @@ export async function POST(request) {
     .maybeSingle();
 
   if (evError || !event) {
-    return NextResponse.json({ error: 'Evento non trovato' }, { status: 404 });
+    return NextResponse.json({ error: 'Evento non trovato', code: 'EVENT_NOT_FOUND' }, { status: 404 });
   }
 
   if (event.event_date) {
@@ -90,7 +90,7 @@ export async function POST(request) {
     today.setHours(0, 0, 0, 0);
     const [y, m, d] = event.event_date.split('-').map(Number);
     if (new Date(y, m - 1, d) < today) {
-      return NextResponse.json({ error: 'Evento passato' }, { status: 400 });
+      return NextResponse.json({ error: 'Evento passato', code: 'EVENT_PAST' }, { status: 400 });
     }
   }
 
@@ -106,12 +106,12 @@ export async function POST(request) {
   if (tableAction === 'open' || tableAction === 'join') {
     const shareNum = Number(share);
     if (!Number.isFinite(shareNum) || shareNum < TABLE_MIN_SHARE) {
-      return NextResponse.json({ error: `Quota minima ${TABLE_MIN_SHARE} €` }, { status: 400 });
+      return NextResponse.json({ error: `Quota minima ${TABLE_MIN_SHARE} €`, code: 'SHARE_TOO_LOW' }, { status: 400 });
     }
 
     // Una prenotazione per evento: se hai già un ingresso (o un altro tavolo) per questo evento, blocca.
     if (await hasActiveBooking(supabase, user.id, eventId)) {
-      return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', duplicate: true }, { status: 409 });
+      return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', code: 'ALREADY_BOOKED', duplicate: true }, { status: 409 });
     }
 
     let typeName;
@@ -129,10 +129,10 @@ export async function POST(request) {
         .eq('event_id', eventId)
         .maybeSingle();
       if (!type) {
-        return NextResponse.json({ error: 'Tipologia tavolo non trovata' }, { status: 404 });
+        return NextResponse.json({ error: 'Tipologia tavolo non trovata', code: 'TYPE_NOT_FOUND' }, { status: 404 });
       }
       if (shareNum > Number(type.total_price)) {
-        return NextResponse.json({ error: 'La quota supera il prezzo del tavolo' }, { status: 400 });
+        return NextResponse.json({ error: 'La quota supera il prezzo del tavolo', code: 'SHARE_EXCEEDS' }, { status: 400 });
       }
       const { count: openCount } = await supabase
         .from('event_tables')
@@ -140,7 +140,7 @@ export async function POST(request) {
         .eq('type_id', typeId)
         .neq('status', 'cancelled');
       if ((openCount || 0) >= type.tables_count) {
-        return NextResponse.json({ error: 'Tavoli esauriti per questa tipologia' }, { status: 409 });
+        return NextResponse.json({ error: 'Tavoli esauriti per questa tipologia', code: 'TABLES_FULL' }, { status: 409 });
       }
       typeName = type.name;
 
@@ -160,10 +160,10 @@ export async function POST(request) {
         .eq('event_id', eventId)
         .maybeSingle();
       if (!table) {
-        return NextResponse.json({ error: 'Tavolo non trovato' }, { status: 404 });
+        return NextResponse.json({ error: 'Tavolo non trovato', code: 'TABLE_NOT_FOUND' }, { status: 404 });
       }
       if (table.status !== 'open') {
-        return NextResponse.json({ error: 'Questo tavolo è già al completo' }, { status: 409 });
+        return NextResponse.json({ error: 'Questo tavolo è già al completo', code: 'TABLE_FULL' }, { status: 409 });
       }
       const { data: members } = await supabase
         .from('bookings')
@@ -172,15 +172,15 @@ export async function POST(request) {
         .not('status', 'in', '("cancelled","denied")');
       const list = members || [];
       if (list.some(m => m.user_id === user.id)) {
-        return NextResponse.json({ error: 'Fai già parte di questo tavolo.', duplicate: true }, { status: 409 });
+        return NextResponse.json({ error: 'Fai già parte di questo tavolo.', code: 'ALREADY_MEMBER', duplicate: true }, { status: 409 });
       }
       if (list.length >= table.max_people) {
-        return NextResponse.json({ error: 'Tavolo al completo' }, { status: 409 });
+        return NextResponse.json({ error: 'Tavolo al completo', code: 'TABLE_FULL' }, { status: 409 });
       }
       const paid = list.reduce((s, m) => s + Number(m.total_price || 0), 0);
       const remaining = Number(table.total_price) - paid;
       if (shareNum > remaining) {
-        return NextResponse.json({ error: `Restano ${remaining.toFixed(2)} € da coprire: la quota non può superarli` }, { status: 400 });
+        return NextResponse.json({ error: `Restano ${remaining.toFixed(2)} € da coprire: la quota non può superarli`, code: 'SHARE_EXCEEDS_REMAINING' }, { status: 400 });
       }
       typeName = table.event_table_types?.name || 'Tavolo';
 
@@ -220,7 +220,7 @@ export async function POST(request) {
       });
     } catch (e) {
       console.error('Stripe checkout.sessions.create (table):', e);
-      return NextResponse.json({ error: 'Servizio pagamenti non disponibile' }, { status: 502 });
+      return NextResponse.json({ error: 'Servizio pagamenti non disponibile', code: 'PAYMENTS_DOWN' }, { status: 502 });
     }
 
     return NextResponse.json({ url: session.url, sessionId: session.id });
@@ -231,7 +231,7 @@ export async function POST(request) {
   // O un tavolo per questo evento. Senza, Stripe incasserebbe e fulfillBooking catcherebbe il
   // 23505 nel DB lasciando un pagamento orfano (poi rimborsato).
   if (await hasActiveBooking(supabase, user.id, eventId)) {
-    return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', duplicate: true }, { status: 409 });
+    return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', code: 'ALREADY_BOOKED', duplicate: true }, { status: 409 });
   }
 
   const pricing = computeBookingPrice(event, bookingType, quantity);
@@ -278,7 +278,7 @@ export async function POST(request) {
     });
   } catch (e) {
     console.error('Stripe checkout.sessions.create:', e);
-    return NextResponse.json({ error: 'Servizio pagamenti non disponibile' }, { status: 502 });
+    return NextResponse.json({ error: 'Servizio pagamenti non disponibile', code: 'PAYMENTS_DOWN' }, { status: 502 });
   }
 
   return NextResponse.json({ url: session.url, sessionId: session.id });
