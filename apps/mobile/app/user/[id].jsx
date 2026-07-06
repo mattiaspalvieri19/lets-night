@@ -3,20 +3,21 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, I
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 import { useSession } from '../../lib/useSession';
 import { COLORS, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
 import EmptyState from '../../components/EmptyState';
 
 const USER_TABS = [
-  { id: 'going',      label: 'Andrà a' },
-  { id: 'past',       label: 'È stato a' },
-  { id: 'favorites',  label: 'Locali' },
+  { id: 'going',      labelKey: 'userProfile.tabGoing' },
+  { id: 'past',       labelKey: 'userProfile.tabWas' },
+  { id: 'favorites',  labelKey: 'userProfile.tabFavs' },
 ];
 const BUSINESS_TABS = [
-  { id: 'future',   label: 'Prossimi' },
-  { id: 'past_ev',  label: 'Storico' },
-  { id: 'venue',    label: 'Il locale' },
-  { id: 'contact',  label: 'Contatti' },
+  { id: 'future',   labelKey: 'userProfile.tabFuture' },
+  { id: 'past_ev',  labelKey: 'userProfile.tabPastEv' },
+  { id: 'venue',    labelKey: 'userProfile.tabVenue' },
+  { id: 'contact',  labelKey: 'userProfile.tabContact' },
 ];
 
 function initialOf(name) {
@@ -24,6 +25,7 @@ function initialOf(name) {
 }
 
 export default function PublicProfileScreen() {
+  const { t } = useI18n();
   const { id } = useLocalSearchParams();
   const { session } = useSession();
   const myId = session?.user?.id;
@@ -216,9 +218,9 @@ export default function PublicProfileScreen() {
       <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <EmptyState
           icon="🔍"
-          title="Utente non trovato"
-          subtitle="Il profilo che cerchi non esiste o è stato rimosso."
-          actionLabel="Indietro"
+          title={t('userProfile.notFound')}
+          subtitle={t('userProfile.notFoundSub')}
+          actionLabel={t('userProfile.backBtn')}
           onAction={() => router.back()}
         />
       </View>
@@ -227,7 +229,7 @@ export default function PublicProfileScreen() {
 
   const ps = profile.privacy_settings || {};
   const isPrivate = ps.profile_visibility === 'private';
-  const display = profile.display_name || profile.full_name || profile.username || 'Utente';
+  const display = profile.display_name || profile.full_name || profile.username || t('common.user');
   const handle = profile.username ? `@${profile.username}` : null;
   const isBusiness = profile.role === 'business';
   const TABS = isBusiness ? BUSINESS_TABS : USER_TABS;
@@ -274,12 +276,12 @@ export default function PublicProfileScreen() {
         {/* Interests pills */}
         {Array.isArray(profile.interests) && profile.interests.length > 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14, justifyContent: 'center' }}>
-            {profile.interests.map(t => (
-              <View key={t} style={{
+            {profile.interests.map(chip => (
+              <View key={chip} style={{
                 backgroundColor: COLORS.borderSubtle,
                 borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
               }}>
-                <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '600' }}>{t}</Text>
+                <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '600' }}>{chip}</Text>
               </View>
             ))}
           </View>
@@ -295,12 +297,12 @@ export default function PublicProfileScreen() {
               </View>
               <View style={{ alignItems: 'center' }}>
                 <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
-                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>follower</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>{t('userProfile.followers')}</Text>
               </View>
               {bizVenue?.is_verified && (
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: COLORS.success, fontSize: 17, fontWeight: '900' }}>✓</Text>
-                  <Text style={{ color: COLORS.success, fontSize: 11, marginTop: 2 }}>verificato</Text>
+                  <Text style={{ color: COLORS.success, fontSize: 11, marginTop: 2 }}>{t('userProfile.verified')}</Text>
                 </View>
               )}
             </>
@@ -309,13 +311,13 @@ export default function PublicProfileScreen() {
               {(ps.show_followers !== false || isOwn) && (
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.followers}</Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>follower</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>{t('userProfile.followers')}</Text>
                 </View>
               )}
               {(ps.show_following !== false || isOwn) && (
                 <View style={{ alignItems: 'center' }}>
                   <Text style={{ color: COLORS.textPrimary, fontSize: 17, fontWeight: '900' }}>{stats.following}</Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>seguiti</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>{t('userProfile.following')}</Text>
                 </View>
               )}
             </>
@@ -346,7 +348,7 @@ export default function PublicProfileScreen() {
                 color: isFollowing ? COLORS.brand : COLORS.textPrimary,
                 fontWeight: '700', fontSize: 14,
               }}>
-                {isFollowing ? 'Segui già' : 'Segui'}
+                {isFollowing ? t('social.following') : t('social.follow')}
               </Text>
             )}
           </Pressable>
@@ -358,8 +360,8 @@ export default function PublicProfileScreen() {
         <View style={{ paddingHorizontal: 20, paddingBottom: 40 }}>
           <EmptyState
             icon="🔒"
-            title="Profilo privato"
-            subtitle="Solo i follower approvati possono vedere le attività di questo utente."
+            title={t('userProfile.privateTitle')}
+            subtitle={t('userProfile.privateSub')}
             compact
           />
         </View>
@@ -369,12 +371,12 @@ export default function PublicProfileScreen() {
       {(!isPrivate || isOwn || isFollowing) && (
         <>
           <View style={{ flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.borderSubtle }}>
-            {TABS.map(t => {
-              const active = tab === t.id;
+            {TABS.map(tb => {
+              const active = tab === tb.id;
               return (
                 <Pressable
-                  key={t.id}
-                  onPress={() => setTab(t.id)}
+                  key={tb.id}
+                  onPress={() => setTab(tb.id)}
                   style={{
                     flex: 1, paddingVertical: 12, alignItems: 'center',
                     borderBottomWidth: 1,
@@ -386,7 +388,7 @@ export default function PublicProfileScreen() {
                     fontSize: 11, fontWeight: active ? '600' : '500',
                     letterSpacing: 0.2,
                   }}>
-                    {t.label}
+                    {t(tb.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -397,40 +399,40 @@ export default function PublicProfileScreen() {
             {/* USER TABS */}
             {!isBusiness && tab === 'going' && (
               futureBookings.length === 0
-                ? <EmptyState compact icon="📅" title="Niente in calendario" subtitle="Niente eventi futuri condivisi." />
+                ? <EmptyState compact icon="📅" title={t('userProfile.emptyGoingT')} subtitle={t('userProfile.emptyGoingS')} />
                 : futureBookings.map(b => <BookingRow key={b.id} booking={b} />)
             )}
             {!isBusiness && tab === 'past' && (
               pastBookings.length === 0
-                ? <EmptyState compact icon="🌙" title="Nessuna serata passata" subtitle="Niente eventi passati condivisi." />
+                ? <EmptyState compact icon="🌙" title={t('userProfile.emptyPastT')} subtitle={t('userProfile.emptyPastS')} />
                 : pastBookings.map(b => <BookingRow key={b.id} booking={b} />)
             )}
             {!isBusiness && tab === 'favorites' && (
               favoriteVenues.length === 0
-                ? <EmptyState compact icon="❤️" title="Nessun locale preferito" subtitle="I locali aggiunti ai preferiti appariranno qui." />
+                ? <EmptyState compact icon="❤️" title={t('userProfile.emptyFavT')} subtitle={t('userProfile.emptyFavS')} />
                 : favoriteVenues.map(f => <VenueRow key={f.venue_id} venue={f.venues} />)
             )}
 
             {/* BUSINESS TABS */}
             {isBusiness && tab === 'future' && (
               bizFutureEvents.length === 0
-                ? <EmptyState compact icon="🎉" title="Nessun evento in arrivo" subtitle="Questo locale non ha eventi futuri pubblicati." />
+                ? <EmptyState compact icon="🎉" title={t('userProfile.emptyBizFutureT')} subtitle={t('userProfile.emptyBizFutureS')} />
                 : bizFutureEvents.map(e => <EventRow key={e.id} event={e} />)
             )}
             {isBusiness && tab === 'past_ev' && (
               bizPastEvents.length === 0
-                ? <EmptyState compact icon="📅" title="Nessuno storico" subtitle="Nessun evento passato." />
+                ? <EmptyState compact icon="📅" title={t('userProfile.emptyBizPastT')} subtitle={t('userProfile.emptyBizPastS')} />
                 : bizPastEvents.map(e => <EventRow key={e.id} event={e} past />)
             )}
             {isBusiness && tab === 'venue' && (
               bizVenue
                 ? <VenuePreview venue={bizVenue} />
-                : <EmptyState compact icon="📍" title="Nessun locale associato" subtitle="Questo account non ha ancora un locale registrato." />
+                : <EmptyState compact icon="📍" title={t('userProfile.emptyBizVenueT')} subtitle={t('userProfile.emptyBizVenueS')} />
             )}
             {isBusiness && tab === 'contact' && (
               bizVenue
                 ? <ContactInfo venue={bizVenue} />
-                : <EmptyState compact icon="📞" title="Nessun contatto" subtitle="Informazioni di contatto non disponibili." />
+                : <EmptyState compact icon="📞" title={t('userProfile.emptyContactT')} subtitle={t('userProfile.emptyContactS')} />
             )}
           </View>
         </>
@@ -458,7 +460,7 @@ function BookingRow({ booking }) {
       })}
     >
       <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-        {ev.venues?.name || 'Locale'}
+        {ev.venues?.name || t('common.venue')}
       </Text>
       <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{ev.title}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
@@ -546,7 +548,7 @@ function VenuePreview({ venue }) {
         </Text>
       )}
       <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 13 }}>Apri pagina locale</Text>
+        <Text style={{ color: COLORS.brand, fontWeight: '700', fontSize: 13 }}>{t('userProfile.openVenuePage')}</Text>
         <Text style={{ color: COLORS.brand, fontSize: 18 }}>›</Text>
       </View>
     </Pressable>
@@ -554,16 +556,17 @@ function VenuePreview({ venue }) {
 }
 
 function ContactInfo({ venue }) {
+  const { t } = useI18n();
   const items = [
-    venue.phone        && { icon: '📞', label: 'Telefono', value: venue.phone },
-    venue.contact_email&& { icon: '✉️', label: 'Email',    value: venue.contact_email },
-    venue.address      && { icon: '📍', label: 'Indirizzo', value: `${venue.address}\n${venue.zona}, ${venue.city}` },
-    venue.website      && { icon: '🌐', label: 'Sito web',  value: venue.website },
+    venue.phone        && { icon: '📞', label: t('userProfile.cPhone'), value: venue.phone },
+    venue.contact_email&& { icon: '✉️', label: t('userProfile.cEmail'),    value: venue.contact_email },
+    venue.address      && { icon: '📍', label: t('userProfile.cAddress'), value: `${venue.address}\n${venue.zona}, ${venue.city}` },
+    venue.website      && { icon: '🌐', label: t('userProfile.cWebsite'),  value: venue.website },
     venue.instagram    && { icon: '📷', label: 'Instagram', value: venue.instagram },
   ].filter(Boolean);
 
   if (items.length === 0) {
-    return <EmptyState compact icon="📞" title="Nessun contatto pubblico" subtitle="Il locale non ha condiviso informazioni di contatto." />;
+    return <EmptyState compact icon="📞" title={t('userProfile.emptyContactPubT')} subtitle={t('userProfile.emptyContactPubS')} />;
   }
   return (
     <View>
