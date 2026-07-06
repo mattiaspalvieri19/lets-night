@@ -279,6 +279,7 @@ export default function SearchScreen() {
 }
 
 function VenueCard({ venue }) {
+  const { tLabel } = useI18n();
   return (
     <Pressable
       onPress={() => router.push(`/venue/${venue.id}`)}
@@ -290,7 +291,7 @@ function VenueCard({ venue }) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600' }}>
-          {venue.category}
+          {tLabel(venue.category)}
         </Text>
         {venue.is_partner && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: COLORS.brandSubtle, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 }}>
@@ -318,7 +319,7 @@ function VenueCard({ venue }) {
 }
 
 function EventResultCard({ event }) {
-  const { fmtDate, fmtPrice } = useI18n();
+  const { tLabel, fmtDate, fmtPrice } = useI18n();
   return (
     <Pressable
       onPress={() => router.push(`/event/${event.id}`)}
@@ -329,7 +330,7 @@ function EventResultCard({ event }) {
       })}
     >
       <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', fontWeight: '600', marginBottom: 5 }}>
-        {event.category}
+        {tLabel(event.category)}
       </Text>
       <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15, letterSpacing: -0.2, marginBottom: 4 }} numberOfLines={2}>
         {event.title}

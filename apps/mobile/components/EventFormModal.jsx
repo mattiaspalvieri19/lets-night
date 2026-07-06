@@ -38,7 +38,7 @@ const labelStyle = { color: COLORS.textMuted, fontSize: 11, marginBottom: 6, tex
 // Form evento condiviso tra creazione (events.jsx) e modifica (business-event/[id]).
 // Data via calendario, orari via picker a scorrimento. Formato salvato: YYYY-MM-DD / HH:MM.
 export default function EventFormModal({ visible, onClose, mode = 'create', venueId, event, onSaved }) {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(EMPTY);
   const [coverAsset, setCoverAsset] = useState(null);
@@ -204,7 +204,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
                     {CATS_NO_TUTTI.map(c => (
                       <Pressable key={c} onPress={() => setForm(f => ({ ...f, category: c }))}
                         style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: form.category === c ? COLORS.brandStrong : COLORS.bgElev3, borderWidth: 1, borderColor: form.category === c ? COLORS.brandStrong : COLORS.borderSubtle }}>
-                        <Text style={{ color: form.category === c ? '#fff' : COLORS.textSecondary, fontSize: 13 }}>{c}</Text>
+                        <Text style={{ color: form.category === c ? '#fff' : COLORS.textSecondary, fontSize: 13 }}>{tLabel(c)}</Text>
                       </Pressable>
                     ))}
                   </View>

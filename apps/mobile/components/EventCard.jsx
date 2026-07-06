@@ -7,7 +7,7 @@ import { useI18n } from '../lib/i18n';
 // che avranno cover_image). Senza foto: poster tipografico (categoria gigante ritagliata +
 // tint di categoria) → mai un box vuoto. Stile/colori dell'app, niente gradienti arcobaleno.
 export default function EventCard({ event, onPress }) {
-  const { t, lang, fmtPrice } = useI18n();
+  const { t, tLabel, lang, fmtPrice } = useI18n();
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
   const photo = event.cover_image || null;
 
@@ -61,7 +61,7 @@ export default function EventCard({ event, onPress }) {
             {/* tint di categoria sottile + parola categoria ritagliata */}
             <View style={{ position: 'absolute', top: -50, right: -40, width: 220, height: 220, borderRadius: 110, backgroundColor: accent, opacity: 0.1 }} />
             <Text numberOfLines={1} style={{ position: 'absolute', bottom: -12, left: -2, fontFamily: FONT_FAMILY.displayHeavy, fontSize: 92, letterSpacing: -3, color: accent, opacity: 0.18 }}>
-              {(event.category || 'NIGHT').toUpperCase()}
+              {(tLabel(event.category) || 'NIGHT').toUpperCase()}
             </Text>
           </>
         )}

@@ -6,7 +6,7 @@ import { useI18n } from '../lib/i18n';
 // Card "in evidenza" editoriale: foto a tutta card con scrim per il testo.
 // Senza foto: fondo neutro + categoria in display gigante.
 export default function FeaturedCard({ event, onPress }) {
-  const { t, fmtDate, fmtPrice } = useI18n();
+  const { t, tLabel, fmtDate, fmtPrice } = useI18n();
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
   const photo = event.cover_image || null;
 
@@ -33,7 +33,7 @@ export default function FeaturedCard({ event, onPress }) {
             color: accent, opacity: 0.13,
           }}
         >
-          {(event.category || 'Night').toUpperCase()}
+          {(tLabel(event.category) || 'Night').toUpperCase()}
         </Text>
       )}
       {/* Scrim fotografico: garantisce la leggibilità del testo in basso */}
@@ -47,7 +47,7 @@ export default function FeaturedCard({ event, onPress }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
             <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-              {t('home.featured')} · {event.category}
+              {t('home.featured')} · {tLabel(event.category)}
             </Text>
           </View>
         </View>

@@ -36,7 +36,7 @@ function initialOf(name) {
 }
 
 export default function EditProfileScreen() {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const { session } = useSession();
   const myId = session?.user?.id;
 
@@ -93,10 +93,10 @@ export default function EditProfileScreen() {
     if (key === 'username') setUsernameError('');
   }
 
-  function toggleInterest(t) {
+  function toggleInterest(opt) {
     setForm(s => ({
       ...s,
-      interests: s.interests.includes(t)
+      interests: s.interests.includes(opt)
         ? s.interests.filter(x => x !== t)
         : [...s.interests, t],
     }));
@@ -392,12 +392,12 @@ export default function EditProfileScreen() {
             {t('profileEdit.interests')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {INTERESTS_OPTIONS.map(t => {
-              const active = form.interests.includes(t);
+            {INTERESTS_OPTIONS.map(opt => {
+              const active = form.interests.includes(opt);
               return (
                 <Pressable
-                  key={t}
-                  onPress={() => toggleInterest(t)}
+                  key={opt}
+                  onPress={() => toggleInterest(opt)}
                   style={{
                     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14,
                     backgroundColor: active ? COLORS.brandStrong : COLORS.bgElev3,
@@ -405,7 +405,7 @@ export default function EditProfileScreen() {
                   }}
                 >
                   <Text style={{ color: active ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>
-                    {t}
+                    {tLabel(opt)}
                   </Text>
                 </Pressable>
               );

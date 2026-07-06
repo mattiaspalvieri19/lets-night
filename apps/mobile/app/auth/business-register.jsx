@@ -7,7 +7,7 @@ import { CATS_NO_TUTTI, CITIES, COLORS, FONT_FAMILY } from '@lets-night/shared';
 import { useI18n } from '../../lib/i18n';
 
 export default function BusinessRegisterScreen() {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const [form, setForm] = useState({
     venueName: '',
     category: 'Discoteca',
@@ -147,7 +147,7 @@ export default function BusinessRegisterScreen() {
               {CATS_NO_TUTTI.map(c => (
                 <Pressable key={c} onPress={() => update('category')(c)}
                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: form.category === c ? '#FAFAFA' : COLORS.bgElev3 }}>
-                  <Text style={{ color: form.category === c ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: form.category === c ? '700' : '500' }}>{c}</Text>
+                  <Text style={{ color: form.category === c ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: form.category === c ? '700' : '500' }}>{tLabel(c)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -160,7 +160,7 @@ export default function BusinessRegisterScreen() {
                 {CITIES.map(c => (
                   <Pressable key={c} onPress={() => update('city')(c)}
                     style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: form.city === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}>
-                    <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{c}</Text>
+                    <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{tLabel(c)}</Text>
                   </Pressable>
                 ))}
               </View>

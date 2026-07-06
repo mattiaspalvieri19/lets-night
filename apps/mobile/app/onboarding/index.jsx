@@ -13,7 +13,7 @@ const { width } = Dimensions.get('window');
 const TOTAL_STEPS = 4;
 
 export default function OnboardingScreen() {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const [step, setStep] = useState(0);
   const city = DEFAULT_CITY; // single-city: nessuna selezione, default Milano
   const [interests, setInterests] = useState([]);
@@ -145,12 +145,12 @@ export default function OnboardingScreen() {
               showsVerticalScrollIndicator={false}
             >
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-                {INTERESTS_OPTIONS.map(t => {
-                  const active = interests.includes(t);
+                {INTERESTS_OPTIONS.map(opt => {
+                  const active = interests.includes(opt);
                   return (
                     <Pressable
-                      key={t}
-                      onPress={() => toggleInterest(t)}
+                      key={opt}
+                      onPress={() => toggleInterest(opt)}
                       style={({ pressed }) => ({
                         paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999,
                         backgroundColor: active ? '#FAFAFA' : COLORS.bgElev3,
@@ -158,7 +158,7 @@ export default function OnboardingScreen() {
                       })}
                     >
                       <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontWeight: active ? '800' : '600', fontSize: 14 }}>
-                        {t}
+                        {tLabel(opt)}
                       </Text>
                     </Pressable>
                   );

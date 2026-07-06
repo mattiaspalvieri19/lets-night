@@ -21,7 +21,7 @@ function initialOf(name) {
 }
 
 export default function MyProfileScreen() {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0 });
@@ -328,7 +328,7 @@ function VenueRow({ venue }) {
       <View style={{ flex: 1 }}>
         <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }} numberOfLines={1}>{venue.name}</Text>
         <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>
-          {venue.category} · {venue.zona}, {venue.city}
+          {tLabel(venue.category)} · {venue.zona}, {venue.city}
         </Text>
       </View>
       <Text style={{ color: '#A855F7', fontSize: 18 }}>›</Text>

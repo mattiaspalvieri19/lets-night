@@ -11,7 +11,7 @@ import { useI18n } from '../../lib/i18n';
 import LoyaltyBlock from '../../components/LoyaltyBlock';
 
 function TicketCard({ booking, onPress, onShowQR }) {
-  const { t, fmtDateFull, fmtPrice } = useI18n();
+  const { t, tLabel, fmtDateFull, fmtPrice } = useI18n();
   const event = booking.events;
   const past = event ? isPastDate(event.event_date) : false;
   const isTable = booking.booking_type === 'table_share';
@@ -55,7 +55,7 @@ function TicketCard({ booking, onPress, onShowQR }) {
             <>
               <View style={{ position: 'absolute', top: -40, right: -30, width: 170, height: 170, borderRadius: 85, backgroundColor: accent, opacity: 0.1 }} />
               <Text numberOfLines={1} style={{ position: 'absolute', bottom: -8, left: -2, fontFamily: FONT_FAMILY.displayHeavy, fontSize: 60, letterSpacing: -2, color: accent, opacity: 0.18 }}>
-                {(event?.category || 'NIGHT').toUpperCase()}
+                {(tLabel(event?.category) || 'NIGHT').toUpperCase()}
               </Text>
             </>
           )}

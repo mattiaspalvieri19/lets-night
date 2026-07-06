@@ -25,7 +25,7 @@ function initialOf(name) {
 }
 
 export default function PublicProfileScreen() {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const { id } = useLocalSearchParams();
   const { session } = useSession();
   const myId = session?.user?.id;
@@ -485,7 +485,7 @@ function VenueRow({ venue }) {
       <View style={{ flex: 1 }}>
         <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '700' }} numberOfLines={1}>{venue.name}</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 2 }}>
-          {venue.category} · {venue.zona}, {venue.city}
+          {tLabel(venue.category)} · {venue.zona}, {venue.city}
         </Text>
       </View>
       <Text style={{ color: COLORS.brand, fontSize: 18 }}>›</Text>
@@ -506,7 +506,7 @@ function EventRow({ event, past }) {
       })}
     >
       <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-        {event.category}
+        {tLabel(event.category)}
       </Text>
       <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={2}>{event.title}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
@@ -539,7 +539,7 @@ function VenuePreview({ venue }) {
         )}
       </View>
       <Text style={{ color: COLORS.textPrimary, fontSize: 22, fontWeight: '900' }}>{venue.name}</Text>
-      <Text style={{ color: COLORS.brand, fontSize: 13, marginTop: 4 }}>{venue.category}</Text>
+      <Text style={{ color: COLORS.brand, fontSize: 13, marginTop: 4 }}>{tLabel(venue.category)}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 8 }}>📍 {venue.zona}, {venue.city}</Text>
       {venue.address && <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>{venue.address}</Text>}
       {venue.description && (

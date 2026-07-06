@@ -8,7 +8,7 @@ import { useI18n } from '../../lib/i18n';
 import EventCard from '../../components/EventCard';
 
 export default function VenueDetailScreen() {
-  const { t, fmtDate, fmtPrice } = useI18n();
+  const { t, tLabel, fmtDate, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [venue, setVenue] = useState(null);
@@ -155,7 +155,7 @@ export default function VenueDetailScreen() {
               color: COLORS.brand, opacity: 0.1,
             }}
           >
-            {(venue.category || 'Night').toUpperCase()}
+            {(tLabel(venue.category) || 'Night').toUpperCase()}
           </Text>
         )}
 
@@ -203,7 +203,7 @@ export default function VenueDetailScreen() {
           {venue.category && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
               <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('venueDetail.type')}</Text>
-              <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{venue.category}</Text>
+              <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{tLabel(venue.category)}</Text>
             </View>
           )}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: venue.phone ? 14 : 0 }}>

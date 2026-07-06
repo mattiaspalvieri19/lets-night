@@ -40,7 +40,7 @@ function timeSlotMatch(slot, eventTime) {
 
 
 export default function HomeScreen() {
-  const { t, fmtDate } = useI18n();
+  const { t, tLabel, fmtDate } = useI18n();
   const [city, setCity] = useState('Milano');
   const [cat, setCat] = useState('Tutti');
   const [quickTag, setQuickTag] = useState(null);
@@ -269,7 +269,7 @@ export default function HomeScreen() {
                   color: active ? COLORS.bg : COLORS.textSecondary,
                   fontWeight: active ? '700' : '500',
                   fontSize: 13,
-                }}>{c}</Text>
+                }}>{tLabel(c)}</Text>
               </Pressable>
             );
           })}
@@ -277,12 +277,12 @@ export default function HomeScreen() {
 
         {/* Quick tags */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 2 }}>
-          {QUICK_TAGS.map(t => {
-            const active = quickTag === t;
+          {QUICK_TAGS.map(tag => {
+            const active = quickTag === tag;
             return (
               <Pressable
-                key={t}
-                onPress={() => setQuickTag(active ? null : t)}
+                key={tag}
+                onPress={() => setQuickTag(active ? null : tag)}
                 style={{
                   paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999,
                   borderWidth: 1,
@@ -295,7 +295,7 @@ export default function HomeScreen() {
                   fontSize: 12,
                   fontWeight: active ? '600' : '500',
                 }}>
-                  {t}
+                  {tLabel(tag)}
                 </Text>
               </Pressable>
             );

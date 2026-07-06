@@ -11,7 +11,7 @@ import TableBookingModal from '../../components/TableBookingModal';
 import { scheduleEventReminder, cancelReminder } from '../../lib/notifications';
 
 export default function EventDetailScreen() {
-  const { t, fmtDateFull, fmtPrice } = useI18n();
+  const { t, tLabel, fmtDateFull, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [event, setEvent] = useState(null);
@@ -173,7 +173,7 @@ export default function EventDetailScreen() {
           )}
           <View className="absolute top-4 right-4">
             <View className="bg-black/40 px-3 py-1 rounded-full">
-              <Text className="text-white text-xs font-semibold">{event.category}</Text>
+              <Text className="text-white text-xs font-semibold">{tLabel(event.category)}</Text>
             </View>
           </View>
           <Text className="text-white text-2xl font-bold leading-tight">{event.title}</Text>

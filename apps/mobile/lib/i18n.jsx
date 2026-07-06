@@ -66,6 +66,12 @@ export function LanguageProvider({ children }) {
     ready,
     setLang,
     t: (key, params) => translate(lang, key, params),
+    tLabel: (value) => {
+      if (!value) return value;
+      const k = 'labels.' + value;
+      const r = translate(lang, k);
+      return r === k ? value : r;
+    },
     fmtDate: d => formatDate(d, lang),
     fmtDateFull: d => formatDateFull(d, lang),
     fmtPrice: p => getPriceLabel(p, lang),

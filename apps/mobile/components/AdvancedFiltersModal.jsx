@@ -92,7 +92,7 @@ export default function AdvancedFiltersModal({
   onApply,
   onClose,
 }) {
-  const { t } = useI18n();
+  const { t, tLabel } = useI18n();
   const [state, setState] = useState({ ...EMPTY, ...initial });
 
   useEffect(() => {
@@ -151,7 +151,7 @@ export default function AdvancedFiltersModal({
             {CITIES.length > 1 && (
               <Section title={t('filters.city')}>
                 {CITIES.map(c => (
-                  <Chip key={c} label={c} active={state.cities.includes(c)}
+                  <Chip key={c} label={tLabel(c)} active={state.cities.includes(c)}
                     onPress={() => toggle('cities', c)} />
                 ))}
               </Section>
@@ -187,7 +187,7 @@ export default function AdvancedFiltersModal({
             {/* Tipo evento */}
             <Section title={t('filters.eventType')}>
               {CATS_NO_TUTTI.map(c => (
-                <Chip key={c} label={c} active={state.cats.includes(c)}
+                <Chip key={c} label={tLabel(c)} active={state.cats.includes(c)}
                   onPress={() => toggle('cats', c)} />
               ))}
             </Section>
@@ -230,7 +230,7 @@ export default function AdvancedFiltersModal({
             {/* Musica */}
             <Section title={t('filters.music')}>
               {MUSIC_TYPES.map(m => (
-                <Chip key={m} label={m} active={state.musicTypes.includes(m)}
+                <Chip key={m} label={tLabel(m)} active={state.musicTypes.includes(m)}
                   onPress={() => toggle('musicTypes', m)} />
               ))}
             </Section>
@@ -239,7 +239,7 @@ export default function AdvancedFiltersModal({
             <Section title={t('filters.dressCode')}>
               <Chip label={t('filters.any')} active={!state.dressCode} onPress={() => set('dressCode', null)} />
               {DRESS_CODES.map(d => (
-                <Chip key={d} label={d} active={state.dressCode === d}
+                <Chip key={d} label={tLabel(d)} active={state.dressCode === d}
                   onPress={() => set('dressCode', d)} />
               ))}
             </Section>
@@ -248,7 +248,7 @@ export default function AdvancedFiltersModal({
             <Section title={t('filters.ageTarget')}>
               <Chip label={t('filters.any')} active={!state.ageTarget} onPress={() => set('ageTarget', null)} />
               {AGE_TARGETS.map(a => (
-                <Chip key={a} label={a} active={state.ageTarget === a}
+                <Chip key={a} label={tLabel(a)} active={state.ageTarget === a}
                   onPress={() => set('ageTarget', a)} />
               ))}
             </Section>
