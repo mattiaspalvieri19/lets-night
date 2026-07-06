@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Share, Alert, Lin
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 import { useSession } from '../../lib/useSession';
 import { COLORS_BY_CAT, formatDateFull, formatTime, isPastDate, getPriceLabel } from '@lets-night/shared';
 import BookingModal from '../../components/BookingModal';
@@ -10,6 +11,7 @@ import TableBookingModal from '../../components/TableBookingModal';
 import { scheduleEventReminder, cancelReminder } from '../../lib/notifications';
 
 export default function EventDetailScreen() {
+  const { t, fmtDateFull, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [event, setEvent] = useState(null);
@@ -76,7 +78,7 @@ export default function EventDetailScreen() {
   async function handleShare() {
     if (!event) return;
     await Share.share({
-      message: `${event.title} — ${event.venues?.name}\n${formatDateFull(event.event_date)} alle ${formatTime(event.event_time)}\n\nTrova questo evento su Let's Night!`,
+      message: `${event.title} — ${event.venues?.name}\n${fmtDateFull(event.event_date)} ${t('eventDetail.shareAt')} ${formatTime(event.event_time)}\n\n${t('eventDetail.shareMsg')}`,
     });
   }
 
@@ -84,11 +86,11 @@ export default function EventDetailScreen() {
   async function guardBooking() {
     if (!session) {
       Alert.alert(
-        'Accedi per prenotare',
-        'Devi essere registrato per prenotare un evento.',
+        t('eventDetail.loginToBookTitle'),
+        t('eventDetail.loginToBookBody'),
         [
-          { text: 'Annulla', style: 'cancel' },
-          { text: 'Accedi', onPress: () => router.push('/auth/login') },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('auth.login'), onPress: () => router.push('/auth/login') },
         ]
       );
       return false;
@@ -100,7 +102,7 @@ export default function EventDetailScreen() {
       .eq('id', session.user.id)
       .maybeSingle();
     if (prof?.role === 'business') {
-      Alert.alert('Account business', 'Gli account business non possono prenotare eventi. Accedi con un account utente.');
+      Alert.alert(t('eventDetail.bizAccountTitle'), t('eventDetail.bizAccountBody'));
       return false;
     }
     return true;
@@ -119,7 +121,7 @@ export default function EventDetailScreen() {
       event.venues?.address || `${event.venues?.name}, ${event.venues?.city}`
     );
     Alert.alert(
-      'Apri con',
+      t('eventDetail.openWith'),
       null,
       [
         {
@@ -132,7 +134,7 @@ export default function EventDetailScreen() {
             Linking.openURL(`https://maps.google.com/?q=${query}`)
           ),
         },
-        { text: 'Annulla', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   }
@@ -148,8 +150,8 @@ export default function EventDetailScreen() {
   if (notFound || !event) {
     return (
       <View className="flex-1 bg-dark items-center justify-center px-6">
-        <Text className="text-white text-xl font-bold mb-2">Evento non trovato</Text>
-        <Text className="text-gray-400 text-center">Questo evento non esiste o è stato rimosso.</Text>
+        <Text className="text-white text-xl font-bold mb-2">{t('eventDetail.notFoundTitle')}</Text>
+        <Text className="text-gray-400 text-center">{t('eventDetail.notFoundBody')}</Text>
       </View>
     );
   }
@@ -183,17 +185,17 @@ export default function EventDetailScreen() {
           <View className="bg-card rounded-2xl p-5 mb-4">
             <View className="flex-row justify-between mb-4">
               <View>
-                <Text className="text-gray-400 text-xs mb-1">Data</Text>
-                <Text className="text-white font-semibold">{formatDateFull(event.event_date)}</Text>
+                <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.date')}</Text>
+                <Text className="text-white font-semibold">{fmtDateFull(event.event_date)}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-gray-400 text-xs mb-1">Orario</Text>
+                <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.time')}</Text>
                 <Text className="text-white font-semibold">{formatTime(event.event_time) || '—'}</Text>
               </View>
             </View>
             <View className="flex-row justify-between">
               <View>
-                <Text className="text-gray-400 text-xs mb-1">Dove</Text>
+                <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.where')}</Text>
                 {event.venues?.id ? (
                   <Pressable onPress={() => router.push(`/venue/${event.venues.id}`)}>
                     <Text className="text-brand-light font-semibold">{event.venues?.zona}, {event.venues?.city}</Text>
@@ -203,8 +205,8 @@ export default function EventDetailScreen() {
                 )}
               </View>
               <View className="items-end">
-                <Text className="text-gray-400 text-xs mb-1">Prezzo</Text>
-                <Text className="text-brand font-bold text-lg">{getPriceLabel(event.price)}</Text>
+                <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.price')}</Text>
+                <Text className="text-brand font-bold text-lg">{fmtPrice(event.price)}</Text>
               </View>
             </View>
             {event.capacity != null && event.capacity > 0 && (() => {
@@ -213,8 +215,8 @@ export default function EventDetailScreen() {
               const color = pct >= 50 ? '#4ADE80' : pct >= 20 ? '#FBBF24' : '#F87171';
               return (
                 <View className="flex-row justify-between mt-4 pt-4 border-t border-gray-800">
-                  <Text className="text-gray-400 text-xs self-center">Disponibilità</Text>
-                  <Text style={{ color, fontWeight: '600', fontSize: 13 }}>{available} / {event.capacity} posti</Text>
+                  <Text className="text-gray-400 text-xs self-center">{t('eventDetail.availability')}</Text>
+                  <Text style={{ color, fontWeight: '600', fontSize: 13 }}>{t('eventDetail.seats', { available, capacity: event.capacity })}</Text>
                 </View>
               );
             })()}
@@ -227,7 +229,7 @@ export default function EventDetailScreen() {
               className="bg-card rounded-2xl p-4 mb-4 flex-row items-center justify-between"
             >
               <View className="flex-1">
-                <Text className="text-gray-400 text-xs mb-1">Locale</Text>
+                <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.venueLabel')}</Text>
                 <Text className="text-white font-semibold">{event.venues.name}</Text>
                 <Text className="text-gray-400 text-sm">{event.venues.zona}, {event.venues.city}</Text>
               </View>
@@ -242,7 +244,7 @@ export default function EventDetailScreen() {
           >
             <Ionicons name="navigate-outline" size={20} color="#fff" />
             <View className="flex-1">
-              <Text className="text-white font-semibold">Apri in Maps</Text>
+              <Text className="text-white font-semibold">{t('eventDetail.openMaps')}</Text>
               <Text className="text-gray-400 text-sm" numberOfLines={1}>
                 {event.venues?.address || `${event.venues?.zona}, ${event.venues?.city}`}
               </Text>
@@ -253,7 +255,7 @@ export default function EventDetailScreen() {
           {/* Descrizione */}
           {event.description ? (
             <View className="mb-4">
-              <Text className="text-white font-semibold text-base mb-2">Descrizione</Text>
+              <Text className="text-white font-semibold text-base mb-2">{t('eventDetail.description')}</Text>
               <Text className="text-gray-400 leading-6">{event.description}</Text>
             </View>
           ) : null}
@@ -266,13 +268,13 @@ export default function EventDetailScreen() {
                   onPress={handleBook}
                   className="flex-1 bg-brand rounded-xl py-4 items-center"
                 >
-                  <Text className="text-white font-bold text-base">Prenota</Text>
+                  <Text className="text-white font-bold text-base">{t('eventDetail.book')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleShare}
                   className="border border-gray-700 rounded-xl py-4 px-5 items-center"
                 >
-                  <Text className="text-white">Condividi</Text>
+                  <Text className="text-white">{t('eventDetail.share')}</Text>
                 </Pressable>
               </View>
               {/* Promemoria */}
@@ -281,14 +283,14 @@ export default function EventDetailScreen() {
                   if (reminderId) {
                     await cancelReminder(reminderId);
                     setReminderId(null);
-                    Alert.alert('Promemoria rimosso', 'Non riceverai più la notifica per questo evento.');
+                    Alert.alert(t('eventDetail.reminderRemovedTitle'), t('eventDetail.reminderRemovedBody'));
                   } else {
                     const id = await scheduleEventReminder(event);
                     if (id) {
                       setReminderId(id);
-                      Alert.alert('Promemoria impostato', 'Ti avviseremo 24 ore prima dell\'evento.');
+                      Alert.alert(t('eventDetail.reminderSetTitle'), t('eventDetail.reminderSetBody'));
                     } else {
-                      Alert.alert('Non disponibile', 'L\'evento è tra meno di 24 ore o già passato.');
+                      Alert.alert(t('eventDetail.reminderNATitle'), t('eventDetail.reminderNABody'));
                     }
                   }
                 }}
@@ -303,7 +305,7 @@ export default function EventDetailScreen() {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name="notifications-outline" size={16} color={reminderId ? '#A855F7' : '#9CA3AF'} />
                   <Text style={{ color: reminderId ? '#A855F7' : '#9CA3AF', fontSize: 14, fontWeight: '600' }}>
-                    {reminderId ? 'Promemoria impostato' : 'Ricordami 24h prima'}
+                    {reminderId ? t('eventDetail.reminderSet') : t('eventDetail.remindMe')}
                   </Text>
                 </View>
               </Pressable>
@@ -313,61 +315,61 @@ export default function EventDetailScreen() {
           {/* Tavoli */}
           {!isPast && tableTypes.length > 0 && (
             <View className="mb-6">
-              <Text className="text-white font-semibold text-base mb-1">Tavoli</Text>
+              <Text className="text-white font-semibold text-base mb-1">{t('eventDetail.tables')}</Text>
               <Text className="text-gray-400 text-xs mb-3">
-                Apri un tavolo per il tuo gruppo o unisciti a uno aperto pagando la tua quota.
+                {t('eventDetail.tablesSub')}
               </Text>
 
-              {tableTypes.map(t => {
-                const used = tables.filter(x => x.type_id === t.id).length;
-                const left = Math.max(0, (t.tables_count || 0) - used);
+              {tableTypes.map(tt => {
+                const used = tables.filter(x => x.type_id === tt.id).length;
+                const left = Math.max(0, (tt.tables_count || 0) - used);
                 return (
-                  <View key={t.id} className="bg-card rounded-2xl p-4 mb-3">
+                  <View key={tt.id} className="bg-card rounded-2xl p-4 mb-3">
                     <View className="flex-row justify-between items-start mb-1">
-                      <Text className="text-white font-semibold text-base flex-1 mr-3">{t.name}</Text>
-                      <Text className="text-white font-bold text-base">{Number(t.total_price)} €</Text>
+                      <Text className="text-white font-semibold text-base flex-1 mr-3">{tt.name}</Text>
+                      <Text className="text-white font-bold text-base">{Number(tt.total_price)} €</Text>
                     </View>
                     <Text className="text-gray-400 text-xs mb-1">
-                      Fino a {t.max_people} persone · {left === 0 ? 'esauriti' : `${left} ${left === 1 ? 'disponibile' : 'disponibili'}`}
+                      {t('eventDetail.upTo', { max: tt.max_people })} · {left === 0 ? t('eventDetail.slotsNone') : t('eventDetail.slotsCount', { count: left })}
                     </Text>
-                    {t.includes ? (
-                      <Text className="text-gray-400 text-sm mb-3 leading-5">{t.includes}</Text>
+                    {tt.includes ? (
+                      <Text className="text-gray-400 text-sm mb-3 leading-5">{tt.includes}</Text>
                     ) : (
                       <View className="mb-2" />
                     )}
                     <Pressable
                       disabled={left === 0}
-                      onPress={() => handleTable({ action: 'open', type: t })}
+                      onPress={() => handleTable({ action: 'open', type: tt })}
                       className={`rounded-xl py-3 items-center ${left === 0 ? 'bg-card2' : 'bg-brand'}`}
                     >
                       <Text className={left === 0 ? 'text-gray-500 font-semibold' : 'text-white font-bold'}>
-                        {left === 0 ? 'Esauriti' : 'Apri un tavolo'}
+                        {left === 0 ? t('eventDetail.soldOutBtn') : t('eventDetail.openTable')}
                       </Text>
                     </Pressable>
                   </View>
                 );
               })}
 
-              {tables.filter(t => t.visibility === 'public' && t.status === 'open').length > 0 && (
+              {tables.filter(x => x.visibility === 'public' && x.status === 'open').length > 0 && (
                 <View className="mt-1">
                   <Text className="text-gray-400 text-xs mb-2" style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                    Tavoli aperti — unisciti
+                    {t('eventDetail.openTablesJoin')}
                   </Text>
-                  {tables.filter(t => t.visibility === 'public' && t.status === 'open').map(t => {
-                    const remaining = Math.max(0, Number(t.total_price) - Number(t.collected || 0));
+                  {tables.filter(x => x.visibility === 'public' && x.status === 'open').map(tb => {
+                    const remaining = Math.max(0, Number(tb.total_price) - Number(tb.collected || 0));
                     return (
                       <Pressable
-                        key={t.id}
-                        onPress={() => handleTable({ action: 'join', table: t })}
+                        key={tb.id}
+                        onPress={() => handleTable({ action: 'join', table: tb })}
                         className="bg-card rounded-2xl p-4 mb-2 flex-row items-center justify-between"
                       >
                         <View className="flex-1 mr-3">
-                          <Text className="text-white font-semibold">{t.event_table_types?.name || 'Tavolo'}</Text>
+                          <Text className="text-white font-semibold">{tb.event_table_types?.name || t('eventDetail.tableFallback')}</Text>
                           <Text className="text-gray-400 text-xs mt-1">
-                            {t.people_count}/{t.max_people} persone · mancano {remaining.toFixed(0)} €
+                            {t('eventDetail.tableStatus', { count: tb.people_count, max: tb.max_people, remaining: remaining.toFixed(0) })}
                           </Text>
                         </View>
-                        <Text className="text-brand-light font-semibold">Unisciti</Text>
+                        <Text className="text-brand-light font-semibold">{t('eventDetail.join')}</Text>
                       </Pressable>
                     );
                   })}
@@ -380,7 +382,7 @@ export default function EventDetailScreen() {
           {otherEvents.length > 0 && (
             <View>
               <Text className="text-white font-semibold text-base mb-3">
-                Altri eventi a {event.venues?.name}
+                {t('eventDetail.otherEventsAt', { venue: event.venues?.name })}
               </Text>
               <View className="gap-3">
                 {otherEvents.map(ev => (
@@ -392,10 +394,10 @@ export default function EventDetailScreen() {
                     <View className="flex-1 mr-3">
                       <Text className="text-white font-semibold" numberOfLines={1}>{ev.title}</Text>
                       <Text className="text-gray-400 text-sm mt-1">
-                        {formatDateFull(ev.event_date)} · {formatTime(ev.event_time)}
+                        {fmtDateFull(ev.event_date)} · {formatTime(ev.event_time)}
                       </Text>
                     </View>
-                    <Text className="text-brand font-semibold">{getPriceLabel(ev.price)}</Text>
+                    <Text className="text-brand font-semibold">{fmtPrice(ev.price)}</Text>
                   </Pressable>
                 ))}
               </View>
