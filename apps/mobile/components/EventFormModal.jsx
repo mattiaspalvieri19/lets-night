@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { uploadPickedImage, imageExt } from '../lib/uploadImage';
 import { COLORS, FONT_FAMILY, CATS_NO_TUTTI } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 const EMPTY = { title: '', description: '', category: 'Discoteca', event_date: '', event_time: '', end_time: '', price: '', capacity: '' };
 
@@ -37,6 +38,7 @@ const labelStyle = { color: COLORS.textMuted, fontSize: 11, marginBottom: 6, tex
 // Form evento condiviso tra creazione (events.jsx) e modifica (business-event/[id]).
 // Data via calendario, orari via picker a scorrimento. Formato salvato: YYYY-MM-DD / HH:MM.
 export default function EventFormModal({ visible, onClose, mode = 'create', venueId, event, onSaved }) {
+  const { t } = useI18n();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(EMPTY);
   const [coverAsset, setCoverAsset] = useState(null);
@@ -68,7 +70,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
 
   async function pickCover() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permesso negato', 'Consenti l\'accesso alla galleria nelle impostazioni del telefono.'); return; }
+    if (status !== 'granted') { Alert.alert(t('profileEdit.permDeniedTitle'), t('profileEdit.permDeniedBody')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [16, 10], quality: 0.75, base64: true });
     if (result.canceled || !result.assets?.[0]) return;
     setCoverAsset(result.assets[0]);
@@ -89,11 +91,11 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
   async function submit() {
     if (saving) return;
     if (!form.title || !form.event_date || !form.event_time || !form.end_time) {
-      Alert.alert('Campi mancanti', 'Titolo, data, orario di inizio e di fine sono obbligatori.');
+      Alert.alert(t('eventForm.missingTitle'), t('eventForm.missingBody'));
       return;
     }
     if (!isEdit && form.event_date < todayLocal()) {
-      Alert.alert('Data nel passato', 'Non puoi creare un evento per una data passata.');
+      Alert.alert(t('eventForm.pastDateTitle'), t('eventForm.pastDateBody'));
       return;
     }
     const price = parseNumber(form.price) ?? 0;
@@ -114,12 +116,12 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
       let eventId = isEdit ? event.id : null;
       if (isEdit) {
         const { error } = await supabase.from('events').update(payload).eq('id', event.id);
-        if (error) { Alert.alert('Errore', error.message); return; }
+        if (error) { Alert.alert(t('common.error'), error.message); return; }
       } else {
         const { data: created, error } = await supabase.from('events')
           .insert({ ...payload, venue_id: venueId, has_tables: false, is_active: true })
           .select('id').single();
-        if (error) { Alert.alert('Errore', error.message); return; }
+        if (error) { Alert.alert(t('common.error'), error.message); return; }
         eventId = created?.id;
       }
       // Cover: solo se è stata scelta una NUOVA foto. Bucket 'venue-covers', path event-<id>.
@@ -130,7 +132,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
           await supabase.from('events').update({ cover_image: `${publicUrl}?v=${Date.now()}` }).eq('id', eventId);
         } catch (err) {
           console.error('Errore upload cover evento:', err);
-          Alert.alert(isEdit ? 'Salvato' : 'Evento creato', 'La copertina però non è stata caricata: potrai aggiungerla più tardi.');
+          Alert.alert(isEdit ? t('eventForm.savedNoCoverTitleEdit') : t('eventForm.savedNoCoverTitleNew'), t('eventForm.savedNoCoverBody'));
         }
       }
       onSaved?.();
@@ -155,35 +157,35 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Pressable onPress={onClose} hitSlop={8}><Ionicons name="close" size={24} color={COLORS.textSecondary} /></Pressable>
-                <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 18 }}>{isEdit ? 'Modifica evento' : 'Nuovo evento'}</Text>
+                <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 18 }}>{isEdit ? t('eventForm.editTitle') : t('eventForm.newTitle')}</Text>
               </View>
               <Pressable onPress={submit} disabled={saving} hitSlop={8} style={({ pressed }) => ({ opacity: saving || pressed ? 0.5 : 1 })}>
-                {saving ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{isEdit ? 'Salva' : 'Pubblica'}</Text>}
+                {saving ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{isEdit ? t('eventForm.saveBtn') : t('eventForm.publishBtn')}</Text>}
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               {/* Copertina */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={labelStyle}>Copertina</Text>
+                <Text style={labelStyle}>{t('eventForm.cover')}</Text>
                 <Pressable onPress={pickCover} style={{ height: 150, borderRadius: 12, overflow: 'hidden', backgroundColor: COLORS.bgElev3, borderWidth: 1, borderColor: COLORS.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
                   {coverPreview ? (
                     <>
                       <Image source={{ uri: coverPreview }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                       <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                         <Ionicons name="camera" size={13} color="#fff" />
-                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Cambia</Text>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>{t('eventForm.change')}</Text>
                       </View>
                     </>
                   ) : (
                     <View style={{ alignItems: 'center', gap: 6 }}>
                       <Ionicons name="image-outline" size={22} color={COLORS.textMuted} />
-                      <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Aggiungi una copertina (opzionale)</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('eventForm.addCover')}</Text>
                     </View>
                   )}
                 </Pressable>
               </View>
               {/* Titolo + Descrizione */}
-              {[['Titolo', 'title', 'Es. Saturday Night Fever'], ['Descrizione', 'description', 'Descrivi l\'evento...']].map(([label, key, ph]) => (
+              {[[t('eventForm.fTitle'), 'title', t('eventForm.fTitlePh')], [t('eventForm.fDesc'), 'description', t('eventForm.fDescPh')]].map(([label, key, ph]) => (
                 <View key={key} style={{ marginBottom: 14 }}>
                   <Text style={labelStyle}>{label}</Text>
                   <TextInput
@@ -196,7 +198,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
               ))}
               {/* Categoria */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={labelStyle}>Categoria</Text>
+                <Text style={labelStyle}>{t('eventForm.fCategory')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
                     {CATS_NO_TUTTI.map(c => (
@@ -210,15 +212,15 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
               </View>
               {/* Data — calendario */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={labelStyle}>Data</Text>
+                <Text style={labelStyle}>{t('eventForm.fDate')}</Text>
                 <Pressable onPress={() => setPicker('date')} style={{ ...inputStyle, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={{ color: form.event_date ? '#fff' : COLORS.textDisabled, fontSize: 14 }}>{form.event_date ? prettyDate(form.event_date) : 'Seleziona la data'}</Text>
+                  <Text style={{ color: form.event_date ? '#fff' : COLORS.textDisabled, fontSize: 14 }}>{form.event_date ? prettyDate(form.event_date) : t('eventForm.selectDate')}</Text>
                   <Ionicons name="calendar-outline" size={18} color={COLORS.textMuted} />
                 </Pressable>
               </View>
               {/* Orari — picker a scorrimento */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-                {[['Inizio', 'start', 'event_time'], ['Fine', 'end', 'end_time']].map(([label, pk, key]) => (
+                {[[t('eventForm.fStart'), 'start', 'event_time'], [t('eventForm.fEnd'), 'end', 'end_time']].map(([label, pk, key]) => (
                   <View key={key} style={{ flex: 1 }}>
                     <Text style={labelStyle}>{label}</Text>
                     <Pressable onPress={() => setPicker(pk)} style={{ ...inputStyle, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -230,7 +232,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
               </View>
               {/* Prezzo + Capienza */}
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-                {[['Prezzo (EUR)', 'price', '0'], ['Capienza', 'capacity', 'Illimitata']].map(([label, key, ph]) => (
+                {[[t('eventForm.fPrice'), 'price', '0'], [t('eventForm.fCapacity'), 'capacity', t('eventForm.unlimited')]].map(([label, key, ph]) => (
                   <View key={key} style={{ flex: 1 }}>
                     <Text style={labelStyle}>{label}</Text>
                     <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor={COLORS.textDisabled} keyboardType="numeric" style={inputStyle} />
@@ -240,7 +242,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
               {!isEdit && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
                   <Ionicons name="information-circle-outline" size={15} color={COLORS.textMuted} />
-                  <Text style={{ color: COLORS.textMuted, fontSize: 12, flex: 1, lineHeight: 16 }}>Dopo aver pubblicato, tocca l&apos;evento per aggiungere i tavoli.</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12, flex: 1, lineHeight: 16 }}>{t('eventForm.tablesHint')}</Text>
                 </View>
               )}
             </ScrollView>
@@ -253,7 +255,7 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
             <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setPicker(null)} />
             <View style={{ backgroundColor: COLORS.bgElev2, paddingBottom: 30, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 20, paddingVertical: 12 }}>
-                <Pressable onPress={() => setPicker(null)} hitSlop={8}><Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Fatto</Text></Pressable>
+                <Pressable onPress={() => setPicker(null)} hitSlop={8}><Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{t('eventForm.done')}</Text></Pressable>
               </View>
               <DateTimePicker
                 value={pickerValue}
