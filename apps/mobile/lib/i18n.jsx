@@ -4,6 +4,10 @@ import { supabase } from './supabase';
 import { translate, isValidLang, DEFAULT_LANG, formatDate, formatDateFull, getPriceLabel } from '@lets-night/shared';
 
 const LANG_KEY = 'letsnight.lang';
+// Lingua scelta esplicitamente da sloggato (pill login/registrazione): deve
+// prevalere sul valore del profilo al primo accesso, altrimenti il profilo
+// (settato in un login precedente) la sovrascriverebbe.
+const LANG_PENDING_KEY = 'letsnight.lang.pending';
 
 const I18nContext = createContext(null);
 
@@ -27,6 +31,16 @@ export function LanguageProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION') || !session?.user?.id) return;
       (async () => {
+        // Scelta esplicita pre-login (pill): vince sul profilo e lo aggiorna.
+        const pending = await AsyncStorage.getItem(LANG_PENDING_KEY).catch(() => null);
+        if (pending && isValidLang(pending)) {
+          if (!cancelled) setLangState(pending);
+          AsyncStorage.setItem(LANG_KEY, pending).catch(() => {});
+          AsyncStorage.removeItem(LANG_PENDING_KEY).catch(() => {});
+          const { error: upErr } = await supabase.from('profiles').update({ language: pending }).eq('id', session.user.id);
+          if (upErr) console.error('Errore salvataggio lingua:', upErr);
+          return;
+        }
         const { data: p, error } = await supabase
           .from('profiles')
           .select('language')
@@ -58,6 +72,9 @@ export function LanguageProvider({ children }) {
     if (session?.user?.id) {
       const { error } = await supabase.from('profiles').update({ language: code }).eq('id', session.user.id);
       if (error) console.error('Errore salvataggio lingua:', error);
+    } else {
+      // Da sloggato: ricorda la scelta per applicarla (con priorità) al login.
+      AsyncStorage.setItem(LANG_PENDING_KEY, code).catch(() => {});
     }
   }, []);
 
