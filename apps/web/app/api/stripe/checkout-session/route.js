@@ -52,16 +52,16 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Body non valido' }, { status: 400 });
+    return NextResponse.json({ error: 'Body non valido', code: 'BAD_BODY' }, { status: 400 });
   }
 
   const { eventId, quantity, bookingType, accessToken, tableAction, typeId, tableId, visibility, share, returnBase } = body || {};
 
   if (!accessToken || typeof accessToken !== 'string') {
-    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
+    return NextResponse.json({ error: 'Non autenticato', code: 'UNAUTHENTICATED' }, { status: 401 });
   }
   if (!eventId || typeof eventId !== 'string') {
-    return NextResponse.json({ error: 'eventId mancante' }, { status: 400 });
+    return NextResponse.json({ error: 'eventId mancante', code: 'MISSING_PARAM' }, { status: 400 });
   }
 
   const supabase = createClient(
@@ -71,7 +71,7 @@ export async function POST(request) {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(accessToken);
   if (authError || !user) {
-    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
+    return NextResponse.json({ error: 'Non autenticato', code: 'UNAUTHENTICATED' }, { status: 401 });
   }
 
   const { data: event, error: evError } = await supabase
@@ -119,7 +119,7 @@ export async function POST(request) {
 
     if (tableAction === 'open') {
       if (!typeId || typeof typeId !== 'string') {
-        return NextResponse.json({ error: 'typeId mancante' }, { status: 400 });
+        return NextResponse.json({ error: 'typeId mancante', code: 'MISSING_PARAM' }, { status: 400 });
       }
       const vis = visibility === 'private' ? 'private' : 'public';
       const { data: type } = await supabase
@@ -151,7 +151,7 @@ export async function POST(request) {
       };
     } else {
       if (!tableId || typeof tableId !== 'string') {
-        return NextResponse.json({ error: 'tableId mancante' }, { status: 400 });
+        return NextResponse.json({ error: 'tableId mancante', code: 'MISSING_PARAM' }, { status: 400 });
       }
       const { data: table } = await supabase
         .from('event_tables')
@@ -237,11 +237,11 @@ export async function POST(request) {
   const pricing = computeBookingPrice(event, bookingType, quantity);
 
   if (pricing.isFree) {
-    return NextResponse.json({ error: 'Evento gratuito: usa il flusso diretto' }, { status: 400 });
+    return NextResponse.json({ error: 'Evento gratuito: usa il flusso diretto', code: 'FREE_EVENT_DIRECT' }, { status: 400 });
   }
 
   if (event.capacity != null && (event.booked_count || 0) + pricing.safeQty > event.capacity) {
-    return NextResponse.json({ error: 'Capienza esaurita' }, { status: 409 });
+    return NextResponse.json({ error: 'Capienza esaurita', code: 'CAPACITY_FULL' }, { status: 409 });
   }
 
   let session;

@@ -179,7 +179,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
       // 402 = pagamento non completato → vero annullamento: chiudi in silenzio.
       if (confirmRes.status === 402) return;
       // Altri esiti (refund automatici inclusi): il server manda già il messaggio giusto.
-      setError(confirmJson.error || t('tableModal.confirmFailed'));
+      setError((confirmJson.code && t('serverErrors.' + confirmJson.code) !== 'serverErrors.' + confirmJson.code) ? t('serverErrors.' + confirmJson.code) : (confirmJson.error || t('tableModal.confirmFailed')));
     } catch (e) {
       console.error('Errore checkout tavolo:', e);
       setLoading(false);
@@ -213,7 +213,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                 {t('tableModal.joined')}
               </Text>
               <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 20 }}>
-                Mostra questo QR all'ingresso.{'\n'}Lo ritrovi sempre nella tab Biglietti.
+                {t('booking.showQr')}{'\n'}{t('booking.findInTickets')}
               </Text>
               {lastQR && (
                 <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 22 }}>
@@ -276,7 +276,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                   </View>
                   {visibility === 'private' && (
                     <Text style={{ color: COLORS.textDisabled, fontSize: 11, marginTop: 8, lineHeight: 15 }}>
-                      Gli inviti agli amici arrivano a breve: per ora su un tavolo privato conviene coprire l'intero importo.
+                      {t('tableModal.privateHint')}
                     </Text>
                   )}
                 </View>
@@ -353,7 +353,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               </View>
 
               <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
-                Rimborso solo se il locale ti nega l'ingresso. Nessun rimborso per mancata presentazione.
+                {t('booking.policy')}
               </Text>
 
               {error ? (

@@ -4,7 +4,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
-import { formatDate, formatTime, getPriceLabel, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 import EventFormModal from '../../components/EventFormModal';
 
 function todayLocal() {
@@ -13,7 +13,7 @@ function todayLocal() {
 }
 
 export default function BusinessEvents() {
-  const { t } = useI18n();
+  const { t, tLabel, fmtDate, fmtPrice } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [venue, setVenue] = useState(null);
@@ -182,15 +182,15 @@ export default function BusinessEvents() {
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
-                  <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>{ev.category}</Text>
+                  <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>{tLabel(ev.category)}</Text>
                   <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 15, marginBottom: 4 }} numberOfLines={2}>{ev.title}</Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{formatDate(ev.event_date)} · {formatTime(ev.event_time)}</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{fmtDate(ev.event_date)} · {formatTime(ev.event_time)}</Text>
                   <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                     <Ionicons name="clipboard-outline" size={13} color={COLORS.textSecondary} />
                     <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{bookingsCount} prenotazioni</Text>
                   </View>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{getPriceLabel(ev.price)}</Text>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{fmtPrice(ev.price)}</Text>
                     {ev.capacity && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                         <Ionicons name="people-outline" size={13} color={COLORS.textSecondary} />

@@ -36,8 +36,8 @@ export default function OnboardingScreen() {
     if (step > 0) setStep(step - 1);
   }
 
-  function toggleInterest(t) {
-    setInterests(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+  function toggleInterest(opt) {
+    setInterests(prev => prev.includes(opt) ? prev.filter(x => x !== opt) : [...prev, opt]);
   }
 
   async function handleNotifPermission() {

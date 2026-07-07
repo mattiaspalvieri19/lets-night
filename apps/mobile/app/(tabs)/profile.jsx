@@ -21,7 +21,7 @@ function initialOf(name) {
 }
 
 export default function MyProfileScreen() {
-  const { t, tLabel } = useI18n();
+  const { t } = useI18n();
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({ followers: 0, following: 0 });

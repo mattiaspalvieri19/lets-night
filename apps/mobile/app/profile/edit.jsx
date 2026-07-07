@@ -97,8 +97,8 @@ export default function EditProfileScreen() {
     setForm(s => ({
       ...s,
       interests: s.interests.includes(opt)
-        ? s.interests.filter(x => x !== t)
-        : [...s.interests, t],
+        ? s.interests.filter(x => x !== opt)
+        : [...s.interests, opt],
     }));
   }
 

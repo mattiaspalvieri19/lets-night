@@ -91,7 +91,6 @@ export default function BusinessProfile() {
         </View>
       </View>
 
-      {/* Lingua app */}
       <LanguageRow />
 
       {/* Dashboard web */}

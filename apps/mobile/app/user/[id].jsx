@@ -281,7 +281,7 @@ export default function PublicProfileScreen() {
                 backgroundColor: COLORS.borderSubtle,
                 borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
               }}>
-                <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '600' }}>{chip}</Text>
+                <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: '600' }}>{tLabel(chip)}</Text>
               </View>
             ))}
           </View>
@@ -444,6 +444,7 @@ export default function PublicProfileScreen() {
 }
 
 function BookingRow({ booking }) {
+  const { fmtDate, fmtPrice } = useI18n();
   const ev = booking.events;
   if (!ev) return null;
   return (
@@ -464,14 +465,14 @@ function BookingRow({ booking }) {
       </Text>
       <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{ev.title}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
-        {formatDate(ev.event_date)} · {formatTime(ev.event_time) || '—'} · {getPriceLabel(ev.price)}
+        {fmtDate(ev.event_date)} · {formatTime(ev.event_time) || '—'} · {fmtPrice(ev.price)}
       </Text>
     </Pressable>
   );
 }
 
 function VenueRow({ venue }) {
-  const { tLabel } = useI18n();
+  const { tLabel, fmtDate, fmtPrice } = useI18n();
   if (!venue) return null;
   return (
     <Pressable
@@ -495,7 +496,7 @@ function VenueRow({ venue }) {
 }
 
 function EventRow({ event, past }) {
-  const { tLabel } = useI18n();
+  const { tLabel, fmtDate, fmtPrice } = useI18n();
   if (!event) return null;
   return (
     <Pressable
@@ -512,14 +513,14 @@ function EventRow({ event, past }) {
       </Text>
       <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '800' }} numberOfLines={2}>{event.title}</Text>
       <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
-        {formatDate(event.event_date)} · {formatTime(event.event_time) || '—'} · {getPriceLabel(event.price)}
+        {fmtDate(event.event_date)} · {formatTime(event.event_time) || '—'} · {fmtPrice(event.price)}
       </Text>
     </Pressable>
   );
 }
 
 function VenuePreview({ venue }) {
-  const { tLabel } = useI18n();
+  const { tLabel, fmtDate, fmtPrice } = useI18n();
   return (
     <Pressable
       onPress={() => router.push(`/venue/${venue.id}`)}

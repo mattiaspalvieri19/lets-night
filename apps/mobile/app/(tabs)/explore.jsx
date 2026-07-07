@@ -75,6 +75,8 @@ export default function SearchScreen() {
   }
 
   useFocusEffect(useCallback(() => {
+    // Da ospite la tab mostra solo la CTA di accesso: niente query sprecate.
+    if (!session) { setLoading(false); return; }
     setLoading(true);
     loadAll().finally(() => setLoading(false));
   }, [myId]));

@@ -37,7 +37,7 @@ function euro(v) {
 }
 
 export default function BusinessEventDetailScreen() {
-  const { t, fmtDateFull } = useI18n();
+  const { t, tLabel, fmtDateFull } = useI18n();
   const { id } = useLocalSearchParams();
   const [event, setEvent] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -282,7 +282,7 @@ export default function BusinessEventDetailScreen() {
       {/* Header evento */}
       <View style={{ padding: 20, paddingTop: 16 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
-          {event.category}
+          {tLabel(event.category)}
         </Text>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, lineHeight: 28, letterSpacing: -0.4 }}>{event.title}</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 6 }}>

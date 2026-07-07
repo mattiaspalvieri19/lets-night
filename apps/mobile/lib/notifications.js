@@ -62,7 +62,7 @@ export async function sendLocalNotification({ title, body, data = {} }) {
 
 // Promemoria evento: notifica 24h prima
 // Restituisce l'id del task schedulato (utile per cancellarlo)
-export async function scheduleEventReminder(event) {
+export async function scheduleEventReminder(event, texts) {
   const timeStr = event.event_time || '20:00:00';
   const [h, m] = timeStr.split(':').map(Number);
   const eventDate = new Date(`${event.event_date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00`);
@@ -72,8 +72,8 @@ export async function scheduleEventReminder(event) {
 
   const id = await Notifications.scheduleNotificationAsync({
     content: {
-      title: `Stasera: ${event.title}`,
-      body: `L'evento inizia alle ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}. Ricorda il tuo QR!`,
+      title: texts?.title || `Stasera: ${event.title}`,
+      body: texts?.body || `L'evento inizia alle ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}. Ricorda il tuo QR!`,
       data: { type: 'reminder', eventId: event.id },
     },
     trigger: { type: 'date', date: notifyAt },

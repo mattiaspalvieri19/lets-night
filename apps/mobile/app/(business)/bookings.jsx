@@ -4,10 +4,10 @@ import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { formatDateFull, formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 export default function BusinessBookings() {
-  const { t } = useI18n();
+  const { t, fmtDateFull } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [venueId, setVenueId] = useState(null);
@@ -97,7 +97,7 @@ export default function BusinessBookings() {
                 <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 2 }}>{b.profiles?.phone || t('biz.noPhone')}</Text>
                 <Text style={{ color: COLORS.brand, fontSize: 11, marginBottom: 6 }} numberOfLines={1}>{b.events?.title}</Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>
-                  {formatDateFull(b.events?.event_date)} · {formatTime(b.events?.event_time)}
+                  {fmtDateFull(b.events?.event_date)} · {formatTime(b.events?.event_time)}
                 </Text>
                 <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>
                   {b.quantity} {b.quantity > 1 ? 'posti' : 'posto'} · EUR {b.total_price}

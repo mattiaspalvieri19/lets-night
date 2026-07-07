@@ -13,7 +13,7 @@ export default function DeleteAccountScreen() {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const confirmWord = t('settings.delConfirmWord');
+  const confirmWord = t('settings.delConfirmWord').toLowerCase();
 
   async function handleDelete() {
     if (confirm.trim().toLowerCase() !== confirmWord) return;

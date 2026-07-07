@@ -194,7 +194,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
         else msg = t('booking.priceChangedRefund');
         setError(msg);
       } else {
-        setError(confirmJson.error || t('booking.confirmFailed'));
+        setError((confirmJson.code && t('serverErrors.' + confirmJson.code) !== 'serverErrors.' + confirmJson.code) ? t('serverErrors.' + confirmJson.code) : (confirmJson.error || t('booking.confirmFailed')));
       }
     } catch (e) {
       console.error('Errore checkout:', e);

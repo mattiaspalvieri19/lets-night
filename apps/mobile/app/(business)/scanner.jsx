@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { API_URL } from '../../lib/apiUrl';
 import { useI18n } from '../../lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { formatDateFull, formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 function initials(name) {
   return (name || '')
@@ -28,7 +28,7 @@ const ALERTS = {
 };
 
 export default function ScannerScreen() {
-  const { t } = useI18n();
+  const { t, fmtDateFull } = useI18n();
   const [permission, requestPermission] = useCameraPermissions();
   const [active, setActive] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -286,7 +286,7 @@ export default function ScannerScreen() {
 
           <View style={{ backgroundColor: COLORS.bgElev3, borderRadius: 12, padding: 14, marginBottom: 16 }}>
             <Text style={{ fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 14, marginBottom: 4 }} numberOfLines={2}>{b.event.title}</Text>
-            <Text style={{ color: wrongNight ? '#F87171' : COLORS.brand, fontSize: 13 }}>{formatDateFull(b.event.date)} · {formatTime(b.event.time)}</Text>
+            <Text style={{ color: wrongNight ? '#F87171' : COLORS.brand, fontSize: 13 }}>{fmtDateFull(b.event.date)} · {formatTime(b.event.time)}</Text>
             {b.table ? (
               <View style={{ marginTop: 10, backgroundColor: COLORS.brandSubtle, borderRadius: 8, padding: 10 }}>
                 <Text style={{ color: COLORS.brand, fontWeight: '800', fontSize: 13 }}>TAVOLO {b.table.typeName}</Text>

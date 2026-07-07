@@ -285,7 +285,10 @@ export default function EventDetailScreen() {
                     setReminderId(null);
                     Alert.alert(t('eventDetail.reminderRemovedTitle'), t('eventDetail.reminderRemovedBody'));
                   } else {
-                    const id = await scheduleEventReminder(event);
+                    const id = await scheduleEventReminder(event, {
+                      title: t('notif.reminderTitle', { title: event.title }),
+                      body: t('notif.reminderBody', { time: formatTime(event.event_time) }),
+                    });
                     if (id) {
                       setReminderId(id);
                       Alert.alert(t('eventDetail.reminderSetTitle'), t('eventDetail.reminderSetBody'));
