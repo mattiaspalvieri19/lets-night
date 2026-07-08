@@ -57,3 +57,7 @@ supabase/.branches/
 # Artefatti TypeScript auto-generati da expo/nativewind (progetto JS puro)
 apps/mobile/tsconfig.json
 apps/mobile/nativewind-env.d.ts
+
+# File spuri da esecuzione Expo dalla root (usare sempre apps/mobile)
+/.expo/
+/tsconfig.json
