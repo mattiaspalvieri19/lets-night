@@ -16,6 +16,7 @@ apps/web/out/
 # Expo / React Native
 apps/mobile/.expo/
 apps/mobile/dist/
+apps/mobile/dist-check/
 apps/mobile/android/
 apps/mobile/ios/
 
