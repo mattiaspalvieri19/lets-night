@@ -19,7 +19,7 @@ export default function SupportTicketScreen() {
   const { id } = useLocalSearchParams();
   const { t, fmtDate } = useI18n();
   const router = useRouter();
-  const { session } = useSession();
+  const { session, loading: loadingAuth } = useSession();
   const myId = session?.user?.id;
 
   const [ticket, setTicket] = useState(null);
@@ -61,11 +61,13 @@ export default function SupportTicketScreen() {
   }, [id]);
 
   useFocusEffect(useCallback(() => {
+    // Aspetta useSession: session è null al primo render anche da loggato → evita redirect-loop.
+    if (loadingAuth) return;
     if (!myId) { router.replace('/auth/login'); return; }
     setLoading(true);
     loadAll().finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, id]));
+  }, [myId, loadingAuth, id]));
 
   async function send() {
     const body = reply.trim();

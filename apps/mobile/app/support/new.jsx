@@ -15,7 +15,7 @@ const CATS = ['booking', 'payment', 'account', 'event', 'bug', 'other'];
 export default function SupportNewScreen() {
   const { t, lang, fmtDate } = useI18n();
   const router = useRouter();
-  const { session } = useSession();
+  const { session, loading: loadingAuth } = useSession();
   const myId = session?.user?.id;
 
   const [category, setCategory] = useState(null);
@@ -26,6 +26,9 @@ export default function SupportNewScreen() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
+    // Aspetta che useSession finisca: al primo render session è null (loading)
+    // anche se l'utente è loggato → senza questa guardia si redirige a login = loop.
+    if (loadingAuth) return;
     if (!myId) { router.replace('/auth/login'); return; }
     (async () => {
       const { data } = await supabase
@@ -37,7 +40,7 @@ export default function SupportNewScreen() {
       setMyBookings((data || []).filter(b => b.events));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId]);
+  }, [myId, loadingAuth]);
 
   async function pickScreenshot() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
