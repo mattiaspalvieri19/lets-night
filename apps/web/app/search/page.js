@@ -22,6 +22,7 @@ export default function SearchPage() {
   const [events, setEvents] = useState([]);
   const [followingIds, setFollowingIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
+  const [isBusiness, setIsBusiness] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('users');
   const [q, setQ] = useState('');
@@ -31,6 +32,11 @@ export default function SearchPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id || null;
       setMyId(uid);
+      if (uid) {
+        // Parità con l'app: gli account business non hanno funzioni social.
+        const { data: prof } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle();
+        setIsBusiness(prof?.role === 'business');
+      }
 
       const today = new Date().toISOString().split('T')[0];
       const [usersRes, venuesRes, eventsRes, followsRes] = await Promise.all([
@@ -68,6 +74,7 @@ export default function SearchPage() {
 
   async function toggleFollow(targetId) {
     if (!myId) { window.location.href = '/login?next=/search'; return; }
+    if (isBusiness) return;
     setBusyId(targetId);
     if (followingIds.has(targetId)) {
       await supabase.from('follows').delete().eq('follower_id', myId).eq('following_id', targetId);
@@ -179,7 +186,7 @@ export default function SearchPage() {
                             </div>
                           )}
                         </div>
-                        {myId && (
+                        {myId && !isBusiness && (
                           <button
                             onClick={() => toggleFollow(u.id)}
                             disabled={busyId === u.id}

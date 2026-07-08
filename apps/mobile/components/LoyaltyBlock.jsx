@@ -1,8 +1,10 @@
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, FONT_FAMILY, getLoyaltyLevel } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 export default function LoyaltyBlock({ points = 0, compact }) {
+  const { t } = useI18n();
   const router = useRouter();
   const { level, next, progress, pointsToNext } = getLoyaltyLevel(points);
 
@@ -30,11 +32,11 @@ export default function LoyaltyBlock({ points = 0, compact }) {
               textTransform: 'uppercase',
               fontWeight: '600',
             }}>
-              Carta fedeltà
+              {t('stackTitles.loyalty')}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, gap: 6 }}>
               <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 30, letterSpacing: -0.5 }}>{points}</Text>
-              <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>punti</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('loyalty.points')}</Text>
             </View>
             <Text style={{ color: level.color, fontWeight: '600', fontSize: 13, marginTop: 4, letterSpacing: 0.2 }}>
               {level.name}
@@ -47,7 +49,7 @@ export default function LoyaltyBlock({ points = 0, compact }) {
             borderWidth: 1,
             borderColor: COLORS.borderStrong,
           }}>
-            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 11 }}>Apri</Text>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 11 }}>{t('common.open')}</Text>
           </View>
         </View>
 
@@ -66,8 +68,8 @@ export default function LoyaltyBlock({ points = 0, compact }) {
           </View>
           <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>
             {next
-              ? `${pointsToNext} punti al livello ${next.name}`
-              : 'Livello massimo raggiunto'}
+              ? t('loyalty.pointsToNext', { points: pointsToNext, level: next.name })
+              : t('loyalty.maxLevel')}
           </Text>
         </View>
       </View>

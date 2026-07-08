@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
+import { useI18n } from '../../../lib/i18n';
 import { uploadPickedImage, imageExt } from '../../../lib/uploadImage';
 import { CATS_NO_TUTTI, CITIES, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
@@ -23,6 +24,7 @@ function normInstagram(v) {
 }
 
 export default function EditVenue() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -67,7 +69,7 @@ export default function EditVenue() {
   async function pickCover() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permesso negato', 'Consenti l\'accesso alla galleria nelle impostazioni del telefono.');
+      Alert.alert(t('profileEdit.permDeniedTitle'), t('profileEdit.permDeniedBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -81,7 +83,7 @@ export default function EditVenue() {
 
     const asset = result.assets[0];
     if (asset.fileSize && asset.fileSize > MAX_COVER_MB * 1024 * 1024) {
-      Alert.alert('Foto troppo grande', `Max ${MAX_COVER_MB}MB.`);
+      Alert.alert(t('venueEdit.photoTooBig'), t('venueEdit.photoMax', { mb: MAX_COVER_MB }));
       return;
     }
 
@@ -92,13 +94,13 @@ export default function EditVenue() {
       const versioned = `${publicUrl}?v=${Date.now()}`;
       const { error: upErr } = await supabase.from('venues').update({ cover_image: versioned }).eq('id', venue.id);
       if (upErr) {
-        Alert.alert('Errore', 'Foto caricata ma non salvata.');
+        Alert.alert(t('common.error'), t('venueEdit.photoNotSaved'));
         return;
       }
       setCoverUrl(versioned);
     } catch (e) {
       console.error('Errore upload cover:', e);
-      Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
+      Alert.alert(t('common.error'), t('profileEdit.photoError'));
     } finally {
       setUploading(false);
     }
@@ -106,11 +108,11 @@ export default function EditVenue() {
 
   async function save() {
     if (saving) return;
-    if (!form.name.trim()) { Alert.alert('Manca il nome', 'Il nome del locale è obbligatorio.'); return; }
+    if (!form.name.trim()) { Alert.alert(t('venueEdit.nameMissingT'), t('venueEdit.nameMissingB')); return; }
 
     const cleanWebsite = form.website ? safeUrl(form.website) : '';
     if (form.website && !cleanWebsite) {
-      Alert.alert('Sito non valido', 'Inserisci un URL http o https valido.');
+      Alert.alert(t('venueEdit.badSiteT'), t('venueEdit.badSiteB'));
       return;
     }
 
@@ -130,22 +132,22 @@ export default function EditVenue() {
     const { error: upErr } = await supabase.from('venues').update(patch).eq('id', venue.id);
     setSaving(false);
     if (upErr) {
-      Alert.alert('Errore', 'Salvataggio fallito. Riprova.');
+      Alert.alert(t('common.error'), t('venueEdit.saveFailed'));
       console.error(upErr);
       return;
     }
     dirty.current = false;
-    Alert.alert('Salvato', 'Le modifiche sono attive.', [{ text: 'OK', onPress: () => router.back() }]);
+    Alert.alert(t('venueEdit.savedT'), t('venueEdit.savedB'), [{ text: t('common.ok'), onPress: () => router.back() }]);
   }
 
   function handleBack() {
     if (!dirty.current) { router.back(); return; }
     Alert.alert(
-      'Modifiche non salvate',
-      'Vuoi uscire senza salvare?',
+      t('venueEdit.unsavedT'),
+      t('venueEdit.unsavedB'),
       [
-        { text: 'Annulla', style: 'cancel' },
-        { text: 'Esci', style: 'destructive', onPress: () => router.back() },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('venueEdit.exit'), style: 'destructive', onPress: () => router.back() },
       ],
     );
   }
@@ -170,19 +172,19 @@ export default function EditVenue() {
           </View>
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' }}>Modifica</Text>
-          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 18 }}>Il tuo locale</Text>
+          <Text style={{ color: COLORS.brand, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' }}>{t('venueEdit.eyebrow')}</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 18 }}>{t('venueEdit.title')}</Text>
         </View>
         <Pressable onPress={save} disabled={saving} hitSlop={6}
           style={({ pressed }) => ({ opacity: saving || pressed ? 0.5 : 1 })}
         >
-          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Salva</Text>}
+          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{t('common.save')}</Text>}
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
         {/* Cover */}
-        <Text style={Styles.sectionLabel}>Foto di copertina</Text>
+        <Text style={Styles.sectionLabel}>{t('venueEdit.coverLabel')}</Text>
         <Pressable onPress={pickCover} disabled={uploading} style={{
           aspectRatio: 16/10, backgroundColor: COLORS.bgElev3, borderRadius: 14, overflow: 'hidden',
           borderWidth: 1, borderColor: COLORS.borderSubtle, marginBottom: 22,
@@ -193,7 +195,7 @@ export default function EditVenue() {
           ) : (
             <View style={{ alignItems: 'center' }}>
               <Ionicons name="image-outline" size={36} color={COLORS.textMuted} />
-              <Text style={{ color: COLORS.textMuted, marginTop: 8, fontSize: 13 }}>Tocca per scegliere una foto</Text>
+              <Text style={{ color: COLORS.textMuted, marginTop: 8, fontSize: 13 }}>{t('venueEdit.pickPhoto')}</Text>
             </View>
           )}
           {uploading && (
@@ -204,52 +206,52 @@ export default function EditVenue() {
         </Pressable>
 
         {/* Nome */}
-        <FieldLabel label="Nome" required />
-        <TextInput style={Styles.input} value={form.name} onChangeText={t => setField('name', t)} maxLength={80} placeholder="Nome del locale" placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fName')} required />
+        <TextInput style={Styles.input} value={form.name} onChangeText={v => setField('name', v)} maxLength={80} placeholder={t('venueEdit.fNamePh')} placeholderTextColor={COLORS.textDisabled} />
 
         {/* Descrizione */}
-        <FieldLabel label="Descrizione" />
+        <FieldLabel label={t('venueEdit.fDesc')} />
         <TextInput
           style={[Styles.input, { minHeight: 110, textAlignVertical: 'top' }]}
           value={form.description}
-          onChangeText={t => setField('description', t)}
+          onChangeText={v => setField('description', v)}
           maxLength={1000}
           multiline
-          placeholder="Racconta il tuo locale: atmosfera, musica, cosa lo rende unico..."
+          placeholder={t('venueEdit.fDescPh')}
           placeholderTextColor={COLORS.textDisabled}
         />
         <Text style={{ color: COLORS.textMuted, fontSize: 11, textAlign: 'right', marginBottom: 14 }}>{form.description.length}/1000</Text>
 
         {/* Categoria */}
-        <FieldLabel label="Categoria" required />
+        <FieldLabel label={t('venueEdit.fCategory')} required />
         <ChipRow value={form.category} options={CATS_NO_TUTTI} onChange={v => setField('category', v)} />
 
         {/* Città — nascosta in modalità single-city */}
         {CITIES.length > 1 && (
           <>
-            <FieldLabel label="Città" required />
+            <FieldLabel label={t('venueEdit.fCity')} required />
             <ChipRow value={form.city} options={CITIES} onChange={v => setField('city', v)} />
           </>
         )}
 
         {/* Zona */}
-        <FieldLabel label="Zona" />
-        <TextInput style={Styles.input} value={form.zona} onChangeText={t => setField('zona', t)} maxLength={50} placeholder="Navigli, Brera..." placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fZone')} />
+        <TextInput style={Styles.input} value={form.zona} onChangeText={v => setField('zona', v)} maxLength={50} placeholder={t('venueEdit.fZonePh')} placeholderTextColor={COLORS.textDisabled} />
 
         {/* Indirizzo */}
-        <FieldLabel label="Indirizzo" />
-        <TextInput style={Styles.input} value={form.address} onChangeText={t => setField('address', t)} maxLength={120} placeholder="Via Tortona 1" placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fAddress')} />
+        <TextInput style={Styles.input} value={form.address} onChangeText={v => setField('address', v)} maxLength={120} placeholder={t('venueEdit.fAddressPh')} placeholderTextColor={COLORS.textDisabled} />
 
-        <Text style={[Styles.sectionLabel, { marginTop: 18 }]}>Contatti</Text>
+        <Text style={[Styles.sectionLabel, { marginTop: 18 }]}>{t('venueEdit.contacts')}</Text>
 
-        <FieldLabel label="Telefono" />
-        <TextInput style={Styles.input} value={form.phone} onChangeText={t => setField('phone', t)} keyboardType="phone-pad" maxLength={30} placeholder="+39 ..." placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fPhone')} />
+        <TextInput style={Styles.input} value={form.phone} onChangeText={v => setField('phone', v)} keyboardType="phone-pad" maxLength={30} placeholder="+39 ..." placeholderTextColor={COLORS.textDisabled} />
 
-        <FieldLabel label="Email" />
-        <TextInput style={Styles.input} value={form.email} onChangeText={t => setField('email', t)} keyboardType="email-address" autoCapitalize="none" maxLength={120} placeholder="info@locale.it" placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fEmail')} />
+        <TextInput style={Styles.input} value={form.email} onChangeText={v => setField('email', v)} keyboardType="email-address" autoCapitalize="none" maxLength={120} placeholder="info@locale.it" placeholderTextColor={COLORS.textDisabled} />
 
-        <FieldLabel label="Sito web" />
-        <TextInput style={Styles.input} value={form.website} onChangeText={t => setField('website', t)} keyboardType="url" autoCapitalize="none" maxLength={200} placeholder="https://..." placeholderTextColor={COLORS.textDisabled} />
+        <FieldLabel label={t('venueEdit.fWebsite')} />
+        <TextInput style={Styles.input} value={form.website} onChangeText={v => setField('website', v)} keyboardType="url" autoCapitalize="none" maxLength={200} placeholder="https://..." placeholderTextColor={COLORS.textDisabled} />
 
         <FieldLabel label="Instagram" />
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgElev3, borderRadius: 10, borderWidth: 1, borderColor: COLORS.borderSubtle, marginBottom: 14 }}>
@@ -257,7 +259,7 @@ export default function EditVenue() {
           <TextInput
             style={[Styles.input, { flex: 1, marginBottom: 0, backgroundColor: 'transparent', borderWidth: 0 }]}
             value={form.instagram}
-            onChangeText={t => setField('instagram', t)}
+            onChangeText={v => setField('instagram', v)}
             autoCapitalize="none"
             maxLength={50}
             placeholder="nome_locale"

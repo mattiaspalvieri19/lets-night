@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
 import { uploadPickedImage, imageExt } from '../../lib/uploadImage';
+import { useI18n } from '../../lib/i18n';
 import { COLORS, FONT_FAMILY, CITIES, INTERESTS_OPTIONS } from '@lets-night/shared';
 
 function Field({ label, ...inputProps }) {
@@ -35,6 +36,7 @@ function initialOf(name) {
 }
 
 export default function EditProfileScreen() {
+  const { t, tLabel } = useI18n();
   const { session } = useSession();
   const myId = session?.user?.id;
 
@@ -91,19 +93,19 @@ export default function EditProfileScreen() {
     if (key === 'username') setUsernameError('');
   }
 
-  function toggleInterest(t) {
+  function toggleInterest(opt) {
     setForm(s => ({
       ...s,
-      interests: s.interests.includes(t)
-        ? s.interests.filter(x => x !== t)
-        : [...s.interests, t],
+      interests: s.interests.includes(opt)
+        ? s.interests.filter(x => x !== opt)
+        : [...s.interests, opt],
     }));
   }
 
   async function pickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permesso negato', 'Consenti l\'accesso alla galleria nelle impostazioni del telefono.');
+      Alert.alert(t('profileEdit.permDeniedTitle'), t('profileEdit.permDeniedBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -125,7 +127,7 @@ export default function EditProfileScreen() {
       setAvatarUrl(versioned);
     } catch (e) {
       console.error('Errore upload avatar:', e);
-      Alert.alert('Errore', 'Impossibile caricare la foto. Riprova.');
+      Alert.alert(t('common.error'), t('profileEdit.photoError'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -144,7 +146,7 @@ export default function EditProfileScreen() {
 
     const phone = form.phone.trim();
     if (phone && !/^\+?[\d\s\-()]{7,20}$/.test(phone)) {
-      setError('Numero di telefono non valido.');
+      setError(t('profileEdit.phoneInvalid'));
       return;
     }
 
@@ -153,7 +155,7 @@ export default function EditProfileScreen() {
     if (username && username !== originalUsername.toLowerCase()) {
       const { data: avail } = await supabase.rpc('check_username_available', { p_username: username });
       if (avail === false) {
-        setUsernameError('Username già in uso.');
+        setUsernameError(t('profileEdit.usernameTaken'));
         setSaving(false);
         return;
       }
@@ -162,12 +164,12 @@ export default function EditProfileScreen() {
     if (phone && phone !== originalPhone) {
       const { data: avail, error: rpcErr } = await supabase.rpc('check_phone_available', { p_phone: phone });
       if (rpcErr || avail == null) {
-        setError('Verifica telefono non riuscita. Riprova.');
+        setError(t('auth.errorPhoneCheck'));
         setSaving(false);
         return;
       }
       if (avail === false) {
-        setError('Numero di telefono già associato a un altro account.');
+        setError(t('profileEdit.phoneTakenOther'));
         setSaving(false);
         return;
       }
@@ -184,8 +186,8 @@ export default function EditProfileScreen() {
     }).eq('id', myId);
 
     setSaving(false);
-    if (err) { setError('Impossibile salvare: ' + err.message); return; }
-    Alert.alert('Salvato', 'Le modifiche sono state salvate.', [
+    if (err) { setError(t('profileEdit.saveError') + err.message); return; }
+    Alert.alert(t('profileEdit.savedTitle'), t('profileEdit.savedBody'), [
       { text: 'OK', onPress: () => router.back() },
     ]);
   }
@@ -220,9 +222,9 @@ export default function EditProfileScreen() {
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </View>
         </Pressable>
-        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 20 }}>Modifica profilo</Text>
+        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 20 }}>{t('profileEdit.title')}</Text>
         <Pressable onPress={save} disabled={saving} hitSlop={6} style={({ pressed }) => ({ opacity: saving || pressed ? 0.5 : 1 })}>
-          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>Salva</Text>}
+          {saving ? <ActivityIndicator color={COLORS.textPrimary} size="small" /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{t('common.save')}</Text>}
         </Pressable>
       </View>
       <ScrollView
@@ -265,7 +267,7 @@ export default function EditProfileScreen() {
             </View>
           </Pressable>
           <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>
-            Tocca per cambiare foto
+            {t('profileEdit.changePhoto')}
           </Text>
         </View>
 
@@ -276,15 +278,15 @@ export default function EditProfileScreen() {
         ) : null}
 
         <Field
-          label="Nome visualizzato"
-          placeholder="Es. Mattia S."
+          label={t('profileEdit.displayName')}
+          placeholder={t('profileEdit.displayNamePlaceholder')}
           value={form.display_name}
           onChangeText={v => update('display_name', v)}
         />
 
         <View style={{ marginBottom: 16 }}>
           <Field
-            label="Username (opzionale)"
+            label={t('profileEdit.username')}
             placeholder="mattia.s"
             value={form.username}
             onChangeText={v => update('username', v)}
@@ -296,8 +298,8 @@ export default function EditProfileScreen() {
         </View>
 
         <Field
-          label="Bio"
-          placeholder="Una breve descrizione di te..."
+          label={t('profileEdit.bio')}
+          placeholder={t('profileEdit.bioPlaceholder')}
           value={form.bio}
           onChangeText={v => update('bio', v)}
           multiline
@@ -306,7 +308,7 @@ export default function EditProfileScreen() {
         />
 
         <Field
-          label="Telefono (opzionale)"
+          label={t('auth.phoneOptional')}
           placeholder="+39 333 000 0000"
           value={form.phone}
           onChangeText={v => update('phone', v)}
@@ -316,10 +318,10 @@ export default function EditProfileScreen() {
         {/* Sesso */}
         <View style={{ marginBottom: 16 }}>
           <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-            Sesso
+            {t('auth.gender')}
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
-            {[{ v: 'M', l: 'Uomo' }, { v: 'F', l: 'Donna' }, { v: 'X', l: 'Altro' }].map(g => (
+            {[{ v: 'M', l: t('auth.genderM') }, { v: 'F', l: t('auth.genderF') }, { v: 'X', l: t('auth.genderX') }].map(g => (
               <Pressable
                 key={g.v}
                 onPress={() => update('gender', form.gender === g.v ? null : g.v)}
@@ -361,7 +363,7 @@ export default function EditProfileScreen() {
         {CITIES.length > 1 && (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Città
+              {t('auth.city')}
             </Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {CITIES.map(c => (
@@ -387,15 +389,15 @@ export default function EditProfileScreen() {
         {/* Interessi */}
         <View style={{ marginBottom: 28 }}>
           <Text style={{ color: COLORS.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-            Interessi nightlife
+            {t('profileEdit.interests')}
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {INTERESTS_OPTIONS.map(t => {
-              const active = form.interests.includes(t);
+            {INTERESTS_OPTIONS.map(opt => {
+              const active = form.interests.includes(opt);
               return (
                 <Pressable
-                  key={t}
-                  onPress={() => toggleInterest(t)}
+                  key={opt}
+                  onPress={() => toggleInterest(opt)}
                   style={{
                     paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14,
                     backgroundColor: active ? COLORS.brandStrong : COLORS.bgElev3,
@@ -403,7 +405,7 @@ export default function EditProfileScreen() {
                   }}
                 >
                   <Text style={{ color: active ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>
-                    {t}
+                    {tLabel(opt)}
                   </Text>
                 </Pressable>
               );

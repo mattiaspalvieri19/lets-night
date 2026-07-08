@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
+import { useI18n } from '../../lib/i18n';
 
 export default function AuthLayout() {
+  const { t } = useI18n();
   return (
     <Stack
       screenOptions={{
@@ -12,9 +14,9 @@ export default function AuthLayout() {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen name="login" options={{ title: 'Accedi' }} />
-      <Stack.Screen name="register" options={{ title: 'Crea account' }} />
-      <Stack.Screen name="business-register" options={{ title: 'Registra locale' }} />
+      <Stack.Screen name="login" options={{ title: t('auth.login') }} />
+      <Stack.Screen name="register" options={{ title: t('auth.createAccount') }} />
+      <Stack.Screen name="business-register" options={{ title: t('authBiz.title') }} />
       <Stack.Screen name="callback" options={{ headerShown: false }} />
     </Stack>
   );

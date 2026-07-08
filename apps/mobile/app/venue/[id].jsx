@@ -3,10 +3,12 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, Linking, I
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatTime } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 import EventCard from '../../components/EventCard';
 
 export default function VenueDetailScreen() {
+  const { t, tLabel, fmtDate, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [venue, setVenue] = useState(null);
@@ -84,12 +86,12 @@ export default function VenueDetailScreen() {
       const { error } = await supabase.from('favorite_venues')
         .delete().eq('user_id', myId).eq('venue_id', id);
       if (!error) setIsFav(false);
-      else Alert.alert('Errore', 'Impossibile aggiornare i preferiti. Riprova.');
+      else Alert.alert(t('common.error'), t('venueDetail.favError'));
     } else {
       const { error } = await supabase.from('favorite_venues')
         .insert({ user_id: myId, venue_id: id });
       if (!error) setIsFav(true);
-      else Alert.alert('Errore', 'Impossibile aggiornare i preferiti. Riprova.');
+      else Alert.alert(t('common.error'), t('venueDetail.favError'));
     }
     setFavBusy(false);
   }
@@ -98,7 +100,7 @@ export default function VenueDetailScreen() {
     if (!venue) return;
     const query = encodeURIComponent(venue.address || `${venue.name}, ${venue.city}`);
     Alert.alert(
-      'Apri con',
+      t('eventDetail.openWith'),
       null,
       [
         { text: 'Apple Maps', onPress: () => Linking.openURL(`maps:?q=${query}`) },
@@ -108,7 +110,7 @@ export default function VenueDetailScreen() {
             Linking.openURL(`https://maps.google.com/?q=${query}`)
           ),
         },
-        { text: 'Annulla', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   }
@@ -128,8 +130,8 @@ export default function VenueDetailScreen() {
   if (notFound || !venue) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, marginBottom: 8 }}>Locale non trovato</Text>
-        <Text style={{ color: COLORS.textMuted, textAlign: 'center' }}>Questo locale non esiste o è stato rimosso.</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, marginBottom: 8 }}>{t('venueDetail.notFoundTitle')}</Text>
+        <Text style={{ color: COLORS.textMuted, textAlign: 'center' }}>{t('venueDetail.notFoundBody')}</Text>
       </View>
     );
   }
@@ -153,7 +155,7 @@ export default function VenueDetailScreen() {
               color: COLORS.brand, opacity: 0.1,
             }}
           >
-            {(venue.category || 'Night').toUpperCase()}
+            {(tLabel(venue.category) || 'Night').toUpperCase()}
           </Text>
         )}
 
@@ -200,17 +202,17 @@ export default function VenueDetailScreen() {
         <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 18, marginBottom: 16 }}>
           {venue.category && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Tipo</Text>
-              <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{venue.category}</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('venueDetail.type')}</Text>
+              <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{tLabel(venue.category)}</Text>
             </View>
           )}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: venue.phone ? 14 : 0 }}>
-            <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Zona</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('venueDetail.zone')}</Text>
             <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }}>{venue.zona}, {venue.city}</Text>
           </View>
           {venue.phone && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Telefono</Text>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('venueDetail.phone')}</Text>
               <Pressable onPress={handlePhone}>
                 <Text style={{ color: COLORS.brand, fontWeight: '600' }}>{venue.phone}</Text>
               </Pressable>
@@ -229,7 +231,7 @@ export default function VenueDetailScreen() {
             })}
           >
             <Ionicons name="navigate-outline" size={16} color={COLORS.textSecondary} />
-            <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>Apri in Maps</Text>
+            <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>{t('eventDetail.openMaps')}</Text>
           </Pressable>
           {venue.phone && (
             <Pressable
@@ -241,7 +243,7 @@ export default function VenueDetailScreen() {
               })}
             >
               <Ionicons name="call-outline" size={16} color={COLORS.textSecondary} />
-              <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>Chiama</Text>
+              <Text style={{ color: COLORS.textSecondary, fontWeight: '600', fontSize: 14 }}>{t('venueDetail.call')}</Text>
             </Pressable>
           )}
         </View>
@@ -249,7 +251,7 @@ export default function VenueDetailScreen() {
         {/* Descrizione */}
         {venue.description ? (
           <View style={{ marginBottom: 26 }}>
-            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 8 }}>Info</Text>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 8 }}>{t('venueDetail.info')}</Text>
             <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 22 }}>{venue.description}</Text>
           </View>
         ) : null}
@@ -258,7 +260,7 @@ export default function VenueDetailScreen() {
         {upcomingEvents.length > 0 && (
           <View style={{ marginBottom: 26 }}>
             <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3, marginBottom: 12 }}>
-              Prossimi eventi ({upcomingEvents.length})
+              {t('venueDetail.upcomingEvents', { count: upcomingEvents.length })}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {upcomingEvents.map(ev => (
@@ -273,8 +275,8 @@ export default function VenueDetailScreen() {
         {upcomingEvents.length === 0 && (
           <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 24, alignItems: 'center', marginBottom: 26 }}>
             <Ionicons name="calendar-outline" size={26} color={COLORS.textMuted} style={{ marginBottom: 10 }} />
-            <Text style={{ color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4 }}>Nessun evento in programma</Text>
-            <Text style={{ color: COLORS.textMuted, textAlign: 'center', fontSize: 13 }}>Al momento non ci sono eventi programmati per questo locale.</Text>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '700', marginBottom: 4 }}>{t('venueDetail.emptyEventsTitle')}</Text>
+            <Text style={{ color: COLORS.textMuted, textAlign: 'center', fontSize: 13 }}>{t('venueDetail.emptyEventsBody')}</Text>
           </View>
         )}
 
@@ -286,10 +288,10 @@ export default function VenueDetailScreen() {
               style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}
             >
               <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>
-                Ultimi eventi ({pastEvents.length})
+                {t('venueDetail.pastEvents', { count: pastEvents.length })}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{showPast ? 'Nascondi' : 'Mostra'}</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{showPast ? t('venueDetail.hide') : t('venueDetail.show')}</Text>
                 <Ionicons name={showPast ? 'chevron-up' : 'chevron-down'} size={14} color={COLORS.textMuted} />
               </View>
             </Pressable>
@@ -308,10 +310,10 @@ export default function VenueDetailScreen() {
                     <View style={{ flex: 1, marginRight: 12 }}>
                       <Text style={{ color: COLORS.textPrimary, fontWeight: '600' }} numberOfLines={1}>{ev.title}</Text>
                       <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
-                        {formatDate(ev.event_date)} · {formatTime(ev.event_time)}
+                        {fmtDate(ev.event_date)} · {formatTime(ev.event_time)}
                       </Text>
                     </View>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{getPriceLabel(ev.price)}</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{fmtPrice(ev.price)}</Text>
                   </Pressable>
                 ))}
               </View>

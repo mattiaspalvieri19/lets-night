@@ -21,12 +21,12 @@ export async function POST(request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Body non valido' }, { status: 400 });
+    return NextResponse.json({ error: 'Body non valido', code: 'BAD_BODY' }, { status: 400 });
   }
   const { sessionId, accessToken } = body || {};
 
   if (!sessionId || typeof sessionId !== 'string') {
-    return NextResponse.json({ error: 'sessionId mancante' }, { status: 400 });
+    return NextResponse.json({ error: 'sessionId mancante', code: 'MISSING_PARAM' }, { status: 400 });
   }
 
   const supabase = createClient(
@@ -39,7 +39,7 @@ export async function POST(request) {
     session = await stripe().checkout.sessions.retrieve(sessionId);
   } catch (e) {
     console.error('Stripe retrieve session:', e);
-    return NextResponse.json({ error: 'Sessione non trovata' }, { status: 404 });
+    return NextResponse.json({ error: 'Sessione non trovata', code: 'SESSION_NOT_FOUND' }, { status: 404 });
   }
 
   // Token opzionale: se presente e coerente col proprietario → potremo restituire il QR.
@@ -49,7 +49,7 @@ export async function POST(request) {
     if (user && session.metadata?.userId === user.id) owner = true;
     else if (user && session.metadata?.userId !== user.id) {
       // Token di un altro utente: non confermare la sessione altrui.
-      return NextResponse.json({ error: 'Sessione non valida' }, { status: 403 });
+      return NextResponse.json({ error: 'Sessione non valida', code: 'SESSION_INVALID' }, { status: 403 });
     }
   }
 
@@ -57,6 +57,7 @@ export async function POST(request) {
   if (!result.ok) {
     return NextResponse.json({
       error: result.error || 'Errore',
+      code: result.code || null,
       refunded: !!result.refunded,
       oversold: !!result.oversold,
       duplicate: !!result.duplicate,

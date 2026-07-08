@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } 
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/useSession';
 import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 
@@ -25,6 +26,7 @@ function relativeTime(iso) {
 }
 
 export default function NotificationsScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { session } = useSession();
   const myId = session?.user?.id;
@@ -73,12 +75,12 @@ export default function NotificationsScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
         <Ionicons name="notifications-outline" size={40} color={COLORS.textMuted} style={{ marginBottom: 12 }} />
-        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>Accedi per le notifiche</Text>
+        <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>{t('notif.guestTitle')}</Text>
         <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 21, marginBottom: 22 }}>
           Prenotazioni, nuovi follower e serate degli amici in un posto solo.
         </Text>
         <Pressable onPress={() => router.push('/auth/login')} style={{ backgroundColor: COLORS.brandStrong, paddingHorizontal: 26, paddingVertical: 13, borderRadius: 12 }}>
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Accedi</Text>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>{t('auth.login')}</Text>
         </Pressable>
       </View>
     );
@@ -102,9 +104,9 @@ export default function NotificationsScreen() {
           <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.bgElev2, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
             <Ionicons name="notifications-outline" size={32} color={COLORS.textSecondary} />
           </View>
-          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8 }}>Nessuna notifica</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, marginBottom: 8 }}>{t('notif.emptyTitle')}</Text>
           <Text style={{ color: COLORS.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 21 }}>
-            Qui arrivano le conferme di prenotazione, i nuovi follower e le serate dei tuoi amici.
+            {t('notif.emptySub')}
           </Text>
         </ScrollView>
       ) : (

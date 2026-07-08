@@ -5,7 +5,8 @@ import * as ScreenCapture from 'expo-screen-capture';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { COLORS, FONT_FAMILY, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatTime, generateBookingQR, computeBookingPrice } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 import { sendLocalNotification } from '../lib/notifications';
 import { API_URL } from '../lib/apiUrl';
 
@@ -27,6 +28,7 @@ function euro(v) {
 }
 
 export default function BookingModal({ visible, onClose, event, session }) {
+  const { t, fmtDateFull, fmtPrice } = useI18n();
   const [quantity, setQuantity] = useState(1);
   const [bookingType, setBookingType] = useState('ticket');
   const [loading, setLoading] = useState(false);
@@ -74,8 +76,8 @@ export default function BookingModal({ visible, onClose, event, session }) {
     setSuccess(true);
     try {
       sendLocalNotification({
-        title: 'Prenotazione confermata!',
-        body: `${event.title} — ${formatDateFull(event.event_date)}`,
+        title: t('booking.notifTitle'),
+        body: `${event.title} — ${fmtDateFull(event.event_date)}`,
         data: { type: 'booking', event_id: event.id },
       });
     } catch {}
@@ -88,7 +90,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
   async function handleConfirm() {
     if (submitting.current || !pricing) return;
     if (!session) {
-      setError('Sessione scaduta. Rieffettua il login.');
+      setError(t('booking.sessionExpired'));
       return;
     }
 
@@ -117,9 +119,9 @@ export default function BookingModal({ visible, onClose, event, session }) {
       setLoading(false);
       submitting.current = false;
       if (err) {
-        if (err.code === '23505') setError('Hai già prenotato questo evento.');
-        else if (err.code === '23514' || /CAPACITY_FULL/.test(err.message || '')) setError('Posti esauriti per questo evento.');
-        else { setError('Prenotazione non riuscita. Riprova.'); console.error('Errore booking:', err); }
+        if (err.code === '23505') setError(t('booking.already'));
+        else if (err.code === '23514' || /CAPACITY_FULL/.test(err.message || '')) setError(t('booking.soldOut'));
+        else { setError(t('booking.genericFail')); console.error('Errore booking:', err); }
         return;
       }
       onBookingSuccess(qrCode);
@@ -143,10 +145,10 @@ export default function BookingModal({ visible, onClose, event, session }) {
         if (json?.duplicate) {
           setLoading(false);
           submitting.current = false;
-          setError('Hai già prenotato questo evento. Lo trovi nella tab Biglietti.');
+          setError(t('booking.alreadyTab'));
           return;
         }
-        throw new Error(json.error || 'Errore creazione pagamento');
+        throw new Error((json.code && t('serverErrors.' + json.code) !== 'serverErrors.' + json.code) ? t('serverErrors.' + json.code) : (json.error || t('booking.payCreateError')));
       }
 
       // sessionId noto PRIMA del browser: in Expo Go il deep link letsnight:// non torna
@@ -187,18 +189,18 @@ export default function BookingModal({ visible, onClose, event, session }) {
       if (confirmRes.status === 402) return;
       if (confirmJson.refunded) {
         let msg;
-        if (confirmJson.duplicate) msg = 'Avevi già una prenotazione per questo evento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
-        else if (confirmJson.oversold) msg = 'Posti esauriti dopo il pagamento. Il rimborso è stato avviato automaticamente: lo vedrai sulla tua carta entro 5-10 giorni lavorativi.';
-        else msg = 'Il prezzo dell\'evento è cambiato dopo il pagamento. Rimborso automatico avviato: lo vedrai sulla carta entro 5-10 giorni lavorativi.';
+        if (confirmJson.duplicate) msg = t('booking.dupRefund');
+        else if (confirmJson.oversold) msg = t('booking.oversoldRefund');
+        else msg = t('booking.priceChangedRefund');
         setError(msg);
       } else {
-        setError(confirmJson.error || 'Pagamento riuscito ma prenotazione non confermata. Contatta supporto.');
+        setError((confirmJson.code && t('serverErrors.' + confirmJson.code) !== 'serverErrors.' + confirmJson.code) ? t('serverErrors.' + confirmJson.code) : (confirmJson.error || t('booking.confirmFailed')));
       }
     } catch (e) {
       console.error('Errore checkout:', e);
       setLoading(false);
       submitting.current = false;
-      setError('Errore di connessione. Riprova.');
+      setError(t('booking.connError'));
     }
   }
 
@@ -223,10 +225,10 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 <Ionicons name="checkmark" size={28} color={COLORS.success} />
               </View>
               <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 22, letterSpacing: -0.4, marginBottom: 6 }}>
-                Prenotato!
+                {t('booking.booked')}
               </Text>
               <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 20 }}>
-                Mostra questo QR all'ingresso.{'\n'}Lo ritrovi sempre nella tab Biglietti.
+                {t('booking.showQr')}{'\n'}{t('booking.findInTickets')}
               </Text>
               {lastQR && (
                 <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 22 }}>
@@ -237,7 +239,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 onPress={handleClose}
                 style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 15, borderRadius: 12, width: '100%', alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
               >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Chiudi</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('common.close')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -249,7 +251,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
                     {event.title}
                   </Text>
                   <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>
-                    {event.venues?.name ? `${event.venues.name} · ` : ''}{formatDateFull(event.event_date)} · {formatTime(event.event_time) || '—'}
+                    {event.venues?.name ? `${event.venues.name} · ` : ''}{fmtDateFull(event.event_date)} · {formatTime(event.event_time) || '—'}
                   </Text>
                 </View>
                 <Pressable onPress={handleClose} hitSlop={10}>
@@ -267,8 +269,8 @@ export default function BookingModal({ visible, onClose, event, session }) {
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     {[
-                      { id: 'ticket', label: 'Ingresso', sub: getPriceLabel(safePrice) },
-                      { id: 'table',  label: 'Tavolo',   sub: safeTablePrice > 0 ? `${safeTablePrice} €` : 'Su richiesta' },
+                      { id: 'ticket', label: t('booking.entry'), sub: fmtPrice(safePrice) },
+                      { id: 'table',  label: t('booking.table'),   sub: safeTablePrice > 0 ? `${safeTablePrice} €` : t('booking.onRequest') },
                     ].map(opt => {
                       const active = bookingType === opt.id;
                       return (
@@ -296,7 +298,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
               {/* Quantità */}
               {pricing.bookingType !== 'table' && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '600' }}>Posti</Text>
+                  <Text style={{ color: COLORS.textPrimary, fontSize: 15, fontWeight: '600' }}>{t('booking.seats')}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
                     <Pressable
                       onPress={() => setQuantity(q => Math.max(1, q - 1))}
@@ -334,26 +336,26 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 {!pricing.isFree && (
                   <>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Subtotale</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('booking.subtotal')}</Text>
                       <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{euro(pricing.lineTotal)}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Commissione</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('booking.fee')}</Text>
                       <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{euro(pricing.fee)}</Text>
                     </View>
                   </>
                 )}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>Totale</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('booking.total')}</Text>
                   <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, letterSpacing: -0.4 }}>
-                    {pricing.isFree ? 'Gratuito' : euro(pricing.total)}
+                    {pricing.isFree ? t('booking.freeLabel') : euro(pricing.total)}
                   </Text>
                 </View>
               </View>
 
               {!pricing.isFree && (
                 <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
-                  Rimborso solo se il locale ti nega l'ingresso. Nessun rimborso per mancata presentazione.
+                  {t('booking.policy')}
                 </Text>
               )}
 
@@ -377,7 +379,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
                 {loading
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>
-                      {pricing.isFree ? 'Conferma prenotazione' : `Paga ${euro(pricing.total)}`}
+                      {pricing.isFree ? t('booking.confirmFree') : t('booking.pay', { amount: euro(pricing.total) })}
                     </Text>
                 }
               </Pressable>

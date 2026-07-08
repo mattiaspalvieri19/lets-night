@@ -174,7 +174,7 @@ export default function AdminEvents() {
           return (
             <Pressable
               key={ev.id}
-              onPress={() => router.push(`/(admin)/event/${ev.id}`)}
+              onPress={() => router.push(`/(admin)/manage-event/${ev.id}`)}
               style={({ pressed }) => ({
                 backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, marginBottom: 12,
                 borderWidth: 1, borderColor: ev.is_active ? COLORS.borderStrong : COLORS.borderSubtle,

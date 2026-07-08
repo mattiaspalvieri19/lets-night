@@ -1,10 +1,12 @@
 import { Pressable, View, Text, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatDate, formatTime, getPriceLabel } from '@lets-night/shared';
+import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatTime } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 // Card "in evidenza" editoriale: foto a tutta card con scrim per il testo.
 // Senza foto: fondo neutro + categoria in display gigante.
 export default function FeaturedCard({ event, onPress }) {
+  const { t, tLabel, fmtDate, fmtPrice } = useI18n();
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
   const photo = event.cover_image || null;
 
@@ -31,7 +33,7 @@ export default function FeaturedCard({ event, onPress }) {
             color: accent, opacity: 0.13,
           }}
         >
-          {(event.category || 'Night').toUpperCase()}
+          {(tLabel(event.category) || 'Night').toUpperCase()}
         </Text>
       )}
       {/* Scrim fotografico: garantisce la leggibilità del testo in basso */}
@@ -45,14 +47,14 @@ export default function FeaturedCard({ event, onPress }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 }}>
             <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-              In evidenza · {event.category}
+              {t('home.featured')} · {tLabel(event.category)}
             </Text>
           </View>
         </View>
 
         <View>
           <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
-            {formatDate(event.event_date)} · {formatTime(event.event_time)}
+            {fmtDate(event.event_date)} · {formatTime(event.event_time)}
           </Text>
           <Text
             numberOfLines={2}
@@ -70,7 +72,7 @@ export default function FeaturedCard({ event, onPress }) {
             </Text>
             <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 }}>
               <Text style={{ color: '#0A0A0C', fontSize: 14, fontWeight: '800' }}>
-                {getPriceLabel(event.price)}
+                {fmtPrice(event.price)}
               </Text>
             </View>
           </View>

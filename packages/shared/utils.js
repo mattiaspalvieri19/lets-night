@@ -1,9 +1,5 @@
 import { BOOKING_FEE } from './constants.js';
-
-const DAYS_SHORT  = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-const DAYS_FULL   = ['Domenica', 'Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato'];
-const MONTHS_SHORT = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-const MONTHS_FULL  = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+import { DATE_NAMES, FREE_LABELS } from './i18n/locale-data.js';
 
 // Parsa una stringa 'YYYY-MM-DD' come ora locale (non UTC) per evitare shift di data nelle timezone negative
 function parseLocalDate(dateStr) {
@@ -11,18 +7,20 @@ function parseLocalDate(dateStr) {
   return new Date(y, m - 1, d);
 }
 
-// "Ven 15 Gen"
-export function formatDate(dateStr) {
+// "Ven 15 Gen" — lang opzionale ('it' default: i call-site web restano invariati)
+export function formatDate(dateStr, lang = 'it') {
   if (!dateStr) return '';
+  const n = DATE_NAMES[lang] || DATE_NAMES.it;
   const d = parseLocalDate(dateStr);
-  return DAYS_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+  return n.daysShort[d.getDay()] + ' ' + d.getDate() + ' ' + n.monthsShort[d.getMonth()];
 }
 
 // "Venerdi 15 Gennaio 2026"
-export function formatDateFull(dateStr) {
+export function formatDateFull(dateStr, lang = 'it') {
   if (!dateStr) return '';
+  const n = DATE_NAMES[lang] || DATE_NAMES.it;
   const d = parseLocalDate(dateStr);
-  return DAYS_FULL[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_FULL[d.getMonth()] + ' ' + d.getFullYear();
+  return n.daysFull[d.getDay()] + ' ' + d.getDate() + ' ' + n.monthsFull[d.getMonth()] + ' ' + d.getFullYear();
 }
 
 // "23:00"
@@ -31,9 +29,9 @@ export function formatTime(timeStr) {
 }
 
 // "15 €" oppure "Gratuito" oppure "—" se prezzo non impostato
-export function getPriceLabel(price) {
+export function getPriceLabel(price, lang = 'it') {
   if (price == null) return '—';
-  return price > 0 ? price + ' €' : 'Gratuito';
+  return price > 0 ? price + ' €' : (FREE_LABELS[lang] || FREE_LABELS.it);
 }
 
 export function isPastDate(dateStr) {

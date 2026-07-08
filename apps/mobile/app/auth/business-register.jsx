@@ -4,8 +4,10 @@ import { Link, router, Stack } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { CATS_NO_TUTTI, CITIES, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
 
 export default function BusinessRegisterScreen() {
+  const { t, tLabel } = useI18n();
   const [form, setForm] = useState({
     venueName: '',
     category: 'Discoteca',
@@ -30,11 +32,11 @@ export default function BusinessRegisterScreen() {
     if (loading) return;
     setError('');
     if (!form.venueName || !form.zona || !form.phone || !form.ownerName || !form.email || !form.password) {
-      setError('Compila tutti i campi obbligatori.');
+      setError(t('authBiz.errorRequired'));
       return;
     }
     if (form.password.length < 6) {
-      setError('La password deve essere di almeno 6 caratteri.');
+      setError(t('auth.errorPasswordShort'));
       return;
     }
     setLoading(true);
@@ -42,7 +44,7 @@ export default function BusinessRegisterScreen() {
     // Pre-check: telefono già usato (RPC bypassa RLS profiles per utenti non autenticati)
     const { data: phoneAvailable } = await supabase.rpc('check_phone_available', { p_phone: form.phone });
     if (phoneAvailable === false) {
-      setError('Questo numero di telefono è già associato a un account. Usane un altro.');
+      setError(t('auth.errorPhoneTaken'));
       setLoading(false);
       return;
     }
@@ -75,7 +77,7 @@ export default function BusinessRegisterScreen() {
 
     // Detection email già esistente: Supabase ritorna user con identities vuoto
     if (authData?.user && (!authData.user.identities || authData.user.identities.length === 0)) {
-      setError('Questa email è già registrata. Accedi oppure usa un\'altra email.');
+      setError(t('auth.errorEmailTaken'));
       setLoading(false);
       return;
     }
@@ -101,17 +103,17 @@ export default function BusinessRegisterScreen() {
           <Ionicons name="checkmark" size={28} color={COLORS.brand} />
         </View>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, letterSpacing: -0.4, textAlign: 'center', marginBottom: 12 }}>
-          Richiesta inviata
+          {t('authBiz.sentTitle')}
         </Text>
         <Text style={{ color: '#9CA3AF', textAlign: 'center', lineHeight: 22, marginBottom: 8 }}>
-          Controlla la tua email{'\n'}
+          {t('authBiz.sentCheckEmail')}{'\n'}
           <Text style={{ color: '#fff', fontWeight: '700' }}>{form.email}</Text>
         </Text>
         <Text style={{ color: '#64748B', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 32 }}>
-          Clicca il link di conferma. Il team Let&apos;s Night verificherà il tuo locale entro <Text style={{ color: '#fff' }}>24-48 ore</Text>.
+          {t('authBiz.sentHint')}
         </Text>
         <Pressable onPress={() => router.replace('/auth/login')}>
-          <Text style={{ color: '#A855F7', fontWeight: '700' }}>Vai al login</Text>
+          <Text style={{ color: '#A855F7', fontWeight: '700' }}>{t('auth.goToLogin')}</Text>
         </Pressable>
       </View>
     );
@@ -122,10 +124,10 @@ export default function BusinessRegisterScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         <View style={{ paddingHorizontal: 24, paddingTop: 40 }}>
 
-          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Business</Text>
-          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 27, letterSpacing: -0.6, marginBottom: 6 }}>Registra il tuo locale</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>{t('authBiz.eyebrow')}</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 27, letterSpacing: -0.6, marginBottom: 6 }}>{t('authBiz.title')}</Text>
           <Text style={{ color: '#64748B', fontSize: 14, lineHeight: 20, marginBottom: 28 }}>
-            Compila i dati. Ti contatteremo entro 24 ore per attivare il tuo account.
+            {t('authBiz.subtitle')}
           </Text>
 
           {error ? (
@@ -135,17 +137,17 @@ export default function BusinessRegisterScreen() {
           ) : null}
 
           {/* Sezione locale */}
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>Dati del locale</Text>
+          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>{t('authBiz.sectionVenue')}</Text>
 
-          <Field label="Nome del locale *" value={form.venueName} onChange={update('venueName')} placeholder="Es. Amnesia Club" />
+          <Field label={t('authBiz.venueName')} value={form.venueName} onChange={update('venueName')} placeholder={t('authBiz.venueNamePlaceholder')} />
 
-          <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8, marginTop: 6 }}>Categoria</Text>
+          <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8, marginTop: 6 }}>{t('authBiz.category')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {CATS_NO_TUTTI.map(c => (
                 <Pressable key={c} onPress={() => update('category')(c)}
                   style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: form.category === c ? '#FAFAFA' : COLORS.bgElev3 }}>
-                  <Text style={{ color: form.category === c ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: form.category === c ? '700' : '500' }}>{c}</Text>
+                  <Text style={{ color: form.category === c ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: form.category === c ? '700' : '500' }}>{tLabel(c)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -153,42 +155,42 @@ export default function BusinessRegisterScreen() {
 
           {CITIES.length > 1 && (
             <>
-              <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8 }}>Città</Text>
+              <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 8 }}>{t('auth.city')}</Text>
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                 {CITIES.map(c => (
                   <Pressable key={c} onPress={() => update('city')(c)}
                     style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: form.city === c ? '#7C3AED' : '#18181f', borderWidth: 1, borderColor: form.city === c ? '#7C3AED' : 'rgba(168,85,247,0.2)' }}>
-                    <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{c}</Text>
+                    <Text style={{ color: form.city === c ? '#fff' : '#9CA3AF', fontWeight: form.city === c ? '700' : '500' }}>{tLabel(c)}</Text>
                   </Pressable>
                 ))}
               </View>
             </>
           )}
 
-          <Field label="Zona *" value={form.zona} onChange={update('zona')} placeholder="Es. Navigli, Brera" />
-          <Field label="Indirizzo" value={form.address} onChange={update('address')} placeholder="Via, numero civico" />
-          <Field label="Telefono locale *" value={form.phone} onChange={update('phone')} placeholder="+39 02..." keyboardType="phone-pad" />
-          <Field label="Descrizione breve" value={form.description} onChange={update('description')} placeholder="Cosa rende speciale il tuo locale?" multiline />
+          <Field label={t('authBiz.zona')} value={form.zona} onChange={update('zona')} placeholder={t('authBiz.zonaPlaceholder')} />
+          <Field label={t('authBiz.address')} value={form.address} onChange={update('address')} placeholder={t('authBiz.addressPlaceholder')} />
+          <Field label={t('authBiz.venuePhone')} value={form.phone} onChange={update('phone')} placeholder="+39 02..." keyboardType="phone-pad" />
+          <Field label={t('authBiz.description')} value={form.description} onChange={update('description')} placeholder={t('authBiz.descriptionPlaceholder')} multiline />
 
           {/* Sezione account */}
-          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 16 }}>Account di accesso</Text>
+          <Text style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, marginTop: 16 }}>{t('authBiz.sectionAccount')}</Text>
 
-          <Field label="Nome e cognome titolare *" value={form.ownerName} onChange={update('ownerName')} placeholder="Mario Rossi" />
-          <Field label="Email *" value={form.email} onChange={update('email')} placeholder="info@tuolocale.it" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="Password *" value={form.password} onChange={update('password')} placeholder="Almeno 6 caratteri" secureTextEntry />
+          <Field label={t('authBiz.ownerName')} value={form.ownerName} onChange={update('ownerName')} placeholder={t('auth.fullNamePlaceholder')} />
+          <Field label={t('authBiz.emailRequired')} value={form.email} onChange={update('email')} placeholder="info@tuolocale.it" keyboardType="email-address" autoCapitalize="none" />
+          <Field label={t('authBiz.passwordRequired')} value={form.password} onChange={update('password')} placeholder={t('auth.passwordMinPlaceholder')} secureTextEntry />
 
           <Pressable onPress={handleSubmit} disabled={loading}
             style={({ pressed }) => ({ backgroundColor: '#7C3AED', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 12, opacity: loading || pressed ? 0.7 : 1 })}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Invia richiesta</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>{t('authBiz.submit')}</Text>}
           </Pressable>
 
           <Text style={{ color: '#64748B', fontSize: 12, textAlign: 'center', marginTop: 16, lineHeight: 18 }}>
-            La tua richiesta verrà verificata manualmente entro 24 ore.
+            {t('authBiz.reviewNote')}
           </Text>
 
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24, gap: 4 }}>
-            <Text style={{ color: '#64748B' }}>Hai già un account?</Text>
-            <Link href="/auth/login"><Text style={{ color: '#A855F7', fontWeight: '600' }}> Accedi</Text></Link>
+            <Text style={{ color: '#64748B' }}>{t('auth.haveAccount')}</Text>
+            <Link href="/auth/login"><Text style={{ color: '#A855F7', fontWeight: '600' }}> {t('auth.login')}</Text></Link>
           </View>
 
         </View>

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 function calcAge(birthDate) {
@@ -27,6 +28,7 @@ function Section({ title, children }) {
 }
 
 export default function BusinessDashboard() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [venue, setVenue] = useState(null);
@@ -137,19 +139,19 @@ export default function BusinessDashboard() {
 
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 18 }}>
-        <Text style={{ color: C.accent, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Dashboard</Text>
+        <Text style={{ color: C.accent, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{t('bizDash.eyebrow')}</Text>
         <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 24 }}>{venue?.name}</Text>
         <Text style={{ color: C.muted, fontSize: 13, marginTop: 2 }}>{[venue?.zona, venue?.city].filter(Boolean).join(', ')}</Text>
         {venue && !venue.is_verified && (
           <View style={{ marginTop: 12, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)', borderRadius: 8, padding: 12 }}>
-            <Text style={{ color: C.amber, fontWeight: '600', fontSize: 12 }}>In attesa di approvazione</Text>
-            <Text style={{ color: C.sub, fontSize: 11, marginTop: 4, lineHeight: 16 }}>Il tuo locale verrà verificato entro 24-48 ore.</Text>
+            <Text style={{ color: C.amber, fontWeight: '600', fontSize: 12 }}>{t('bizDash.pending')}</Text>
+            <Text style={{ color: C.sub, fontSize: 11, marginTop: 4, lineHeight: 16 }}>{t('bizDash.pendingSub')}</Text>
           </View>
         )}
       </View>
 
       {/* STASERA */}
-      <Section title="Stasera">
+      <Section title={t('bizDash.tonight')}>
         {d?.todayEvents?.length ? d.todayEvents.map(e => {
           const pct = e.prenotati ? Math.round((e.entrati / e.prenotati) * 100) : 0;
           return (
@@ -157,9 +159,9 @@ export default function BusinessDashboard() {
               <Text style={{ color: C.white, fontWeight: '700', fontSize: 16 }}>{e.title}</Text>
               <Text style={{ color: C.sub, fontSize: 12, marginTop: 2, marginBottom: 14 }}>{formatTime(e.time)}</Text>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{e.entrati}<Text style={{ color: C.muted, fontSize: 14, fontWeight: '600' }}>/{e.prenotati}</Text></Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>entrati</Text></View>
-                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{e.tavoli}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>tavoli</Text></View>
-                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{euro(e.vendite)}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>vendite</Text></View>
+                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{e.entrati}<Text style={{ color: C.muted, fontSize: 14, fontWeight: '600' }}>/{e.prenotati}</Text></Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.entered')}</Text></View>
+                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{e.tavoli}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.tablesLow')}</Text></View>
+                <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{euro(e.vendite)}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.salesLow')}</Text></View>
               </View>
               <View style={{ height: 6, backgroundColor: C.card2, borderRadius: 3, marginTop: 14, overflow: 'hidden' }}>
                 <View style={{ width: `${pct}%`, height: 6, backgroundColor: C.green }} />
@@ -168,55 +170,55 @@ export default function BusinessDashboard() {
           );
         }) : (
           <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: C.line }}>
-            <Text style={{ color: C.sub, fontSize: 14 }}>Nessun evento in programma per oggi</Text>
+            <Text style={{ color: C.sub, fontSize: 14 }}>{t('bizDash.noEventToday')}</Text>
           </View>
         )}
       </Section>
 
       {/* VENDITE */}
-      <Section title="Vendite via app">
+      <Section title={t('bizDash.salesSection')}>
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
             <View>
               <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 30, letterSpacing: -0.6 }}>{euro(d?.venditeTotali)}</Text>
-              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>totale generato</Text>
+              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.totalGenerated')}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ color: C.white, fontSize: 18, fontWeight: '700' }}>{euro(d?.venditeMese)}</Text>
-              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>questo mese</Text>
+              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.thisMonth')}</Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
             <View style={{ flex: 1, backgroundColor: C.card2, borderRadius: 10, padding: 12 }}>
-              <Text style={{ color: C.sub, fontSize: 11, marginBottom: 4 }}>Biglietti</Text>
+              <Text style={{ color: C.sub, fontSize: 11, marginBottom: 4 }}>{t('bizDash.tickets')}</Text>
               <Text style={{ color: C.white, fontSize: 16, fontWeight: '700' }}>{euro(d?.venditeBiglietti)}</Text>
             </View>
             <View style={{ flex: 1, backgroundColor: C.card2, borderRadius: 10, padding: 12 }}>
-              <Text style={{ color: C.sub, fontSize: 11, marginBottom: 4 }}>Tavoli</Text>
+              <Text style={{ color: C.sub, fontSize: 11, marginBottom: 4 }}>{t('bizDash.tablesCap')}</Text>
               <Text style={{ color: C.white, fontSize: 16, fontWeight: '700' }}>{euro(d?.venditeTavoli)}</Text>
             </View>
           </View>
           <Text style={{ color: C.muted, fontSize: 11, lineHeight: 16 }}>
-            È il lordo generato tramite l&apos;app (informativo). L&apos;accredito diretto sul tuo conto arriverà con il collegamento dei pagamenti.
+            {t('bizDash.grossNote')}
           </Text>
         </View>
       </Section>
 
       {/* INGRESSI */}
-      <Section title="Ingressi">
+      <Section title={t('bizDash.entriesSection')}>
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
             <View>
               <Text style={{ fontFamily: C.heavy, color: C.white, fontSize: 30, letterSpacing: -0.6 }}>{d?.ingressi?.venduti ?? 0}</Text>
-              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>biglietti venduti (eventi conclusi)</Text>
+              <Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.soldConcluded')}</Text>
             </View>
-            <Text style={{ color: C.muted, fontSize: 11 }}>entrati + rifiutati + no-show</Text>
+            <Text style={{ color: C.muted, fontSize: 11 }}>{t('bizDash.entriesFormula')}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {[
-              { lab: 'Entrati', n: d?.ingressi?.entrati || 0, col: C.green },
-              { lab: 'Rifiutati', n: d?.ingressi?.rifiutati || 0, col: C.danger },
-              { lab: 'No-show', n: d?.ingressi?.noShow || 0, col: C.amber },
+              { lab: t('bizDash.lEntered'), n: d?.ingressi?.entrati || 0, col: C.green },
+              { lab: t('bizDash.lRejected'), n: d?.ingressi?.rifiutati || 0, col: C.danger },
+              { lab: t('bizDash.lNoShow'), n: d?.ingressi?.noShow || 0, col: C.amber },
             ].map(s => (
               <View key={s.lab} style={{ flex: 1, backgroundColor: C.card2, borderRadius: 10, padding: 12, alignItems: 'center' }}>
                 <Text style={{ fontFamily: C.display, color: s.col, fontSize: 20 }}>{s.n}</Text>
@@ -233,10 +235,10 @@ export default function BusinessDashboard() {
       {/* KPI */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, marginBottom: 24 }}>
         {[
-          { label: 'Prenotazioni totali', value: d?.prenotazioni ?? 0 },
-          { label: 'Tasso d\'ingresso', value: `${d?.tassoIngresso ?? 0}%` },
-          { label: 'Clienti unici', value: d?.clientiUnici ?? 0 },
-          { label: 'Eventi in programma', value: d?.eventiInProgramma ?? 0 },
+          { label: t('bizDash.kTotalBookings'), value: d?.prenotazioni ?? 0 },
+          { label: t('bizDash.kEntryRate'), value: `${d?.tassoIngresso ?? 0}%` },
+          { label: t('bizDash.kUniqueClients'), value: d?.clientiUnici ?? 0 },
+          { label: t('bizDash.kUpcoming'), value: d?.eventiInProgramma ?? 0 },
         ].map(s => (
           <View key={s.label} style={{ width: '47%', backgroundColor: C.card, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.line }}>
             <Text style={{ fontFamily: C.display, color: C.white, fontSize: 24, letterSpacing: -0.3, marginBottom: 4 }}>{s.value}</Text>
@@ -246,12 +248,12 @@ export default function BusinessDashboard() {
       </View>
 
       {/* PUBBLICO */}
-      <Section title="Il tuo pubblico">
+      <Section title={t('bizDash.audience')}>
         {d?.agesCount || d?.clientiUnici ? (
           <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-              <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{d?.etaMedia ?? '—'}{d?.etaMedia ? ' anni' : ''}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>età media</Text></View>
-              <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{d?.pctRitornano ?? 0}%</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>clienti che tornano</Text></View>
+              <View><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{d?.etaMedia ?? '—'}{d?.etaMedia ? ' ' + t('bizDash.years') : ''}</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.avgAge')}</Text></View>
+              <View style={{ alignItems: 'flex-end' }}><Text style={{ color: C.white, fontSize: 22, fontWeight: '800' }}>{d?.pctRitornano ?? 0}%</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 2 }}>{t('bizDash.returning')}</Text></View>
             </View>
             {/* Fasce d'età */}
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
@@ -264,14 +266,14 @@ export default function BusinessDashboard() {
             </View>
             {/* Genere */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: C.sub, fontSize: 12 }}>Uomini <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.u || 0}</Text></Text>
-              <Text style={{ color: C.sub, fontSize: 12 }}>Donne <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.d || 0}</Text></Text>
-              <Text style={{ color: C.sub, fontSize: 12 }}>Altro <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.a || 0}</Text></Text>
+              <Text style={{ color: C.sub, fontSize: 12 }}>{t('bizDash.men')} <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.u || 0}</Text></Text>
+              <Text style={{ color: C.sub, fontSize: 12 }}>{t('bizDash.women')} <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.d || 0}</Text></Text>
+              <Text style={{ color: C.sub, fontSize: 12 }}>{t('bizDash.other')} <Text style={{ color: C.white, fontWeight: '700' }}>{d?.gen?.a || 0}</Text></Text>
             </View>
           </View>
         ) : (
           <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: C.line }}>
-            <Text style={{ color: C.sub, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>Ancora pochi dati.{'\n'}Le statistiche sul pubblico compaiono con le prime prenotazioni.</Text>
+            <Text style={{ color: C.sub, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>{t('bizDash.fewData')}{'\n'}{t('bizDash.fewDataSub')}</Text>
           </View>
         )}
       </Section>

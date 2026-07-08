@@ -4,28 +4,29 @@ import {
   COLORS, FONT_FAMILY,
   CITIES, CATS_NO_TUTTI, MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, TIME_SLOTS,
 } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 const DATE_RANGES = [
-  { id: 'all',   label: 'Tutte' },
-  { id: 'today', label: 'Oggi' },
-  { id: 'week',  label: 'Settimana' },
-  { id: 'month', label: 'Mese' },
+  { id: 'all',   labelKey: 'filters.allF' },
+  { id: 'today', labelKey: 'filters.dToday' },
+  { id: 'week',  labelKey: 'filters.dWeek' },
+  { id: 'month', labelKey: 'filters.dMonth' },
 ];
 
 const SORT_OPTIONS = [
-  { id: 'date_asc',    label: 'Prossimi prima' },
-  { id: 'date_desc',   label: 'Lontani prima' },
-  { id: 'popular',     label: 'Più popolari' },
-  { id: 'price_asc',   label: 'Prezzo ↑' },
-  { id: 'price_desc',  label: 'Prezzo ↓' },
+  { id: 'date_asc',    labelKey: 'filters.sortDateAsc' },
+  { id: 'date_desc',   labelKey: 'filters.sortDateDesc' },
+  { id: 'popular',     labelKey: 'filters.sortPopular' },
+  { id: 'price_asc',   labelKey: 'filters.sortPriceAsc' },
+  { id: 'price_desc',  labelKey: 'filters.sortPriceDesc' },
 ];
 
 const ENTRY_OPTIONS = [
-  { id: 'any',       label: 'Tutti' },
-  { id: 'free',      label: 'Gratis' },
-  { id: 'paid',      label: 'A pagamento' },
-  { id: 'guestlist', label: 'Lista' },
-  { id: 'table',     label: 'Tavolo' },
+  { id: 'any',       labelKey: 'filters.entryAny' },
+  { id: 'free',      labelKey: 'filters.entryFree' },
+  { id: 'paid',      labelKey: 'filters.entryPaid' },
+  { id: 'guestlist', labelKey: 'filters.entryGuestlist' },
+  { id: 'table',     labelKey: 'filters.entryTable' },
 ];
 
 const EMPTY = {
@@ -91,6 +92,7 @@ export default function AdvancedFiltersModal({
   onApply,
   onClose,
 }) {
+  const { t, tLabel } = useI18n();
   const [state, setState] = useState({ ...EMPTY, ...initial });
 
   useEffect(() => {
@@ -137,9 +139,9 @@ export default function AdvancedFiltersModal({
             paddingHorizontal: 20, paddingVertical: 14,
             borderBottomWidth: 1, borderColor: COLORS.borderSubtle,
           }}>
-            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, letterSpacing: -0.2 }}>Filtri</Text>
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, letterSpacing: -0.2 }}>{t('filters.title')}</Text>
             <Pressable onPress={resetAll} hitSlop={8}>
-              <Text style={{ color: COLORS.brand, fontWeight: '600', fontSize: 12 }}>Reset</Text>
+              <Text style={{ color: COLORS.brand, fontWeight: '600', fontSize: 12 }}>{t('filters.reset')}</Text>
             </Pressable>
           </View>
 
@@ -147,9 +149,9 @@ export default function AdvancedFiltersModal({
 
             {/* Città — nascosta in modalità single-city (CITIES.length === 1) */}
             {CITIES.length > 1 && (
-              <Section title="Città">
+              <Section title={t('filters.city')}>
                 {CITIES.map(c => (
-                  <Chip key={c} label={c} active={state.cities.includes(c)}
+                  <Chip key={c} label={tLabel(c)} active={state.cities.includes(c)}
                     onPress={() => toggle('cities', c)} />
                 ))}
               </Section>
@@ -157,43 +159,43 @@ export default function AdvancedFiltersModal({
 
             {/* Zona */}
             {zones.length > 1 && (
-              <Section title="Zona / Quartiere">
+              <Section title={t('filters.zone')}>
                 {zones.map(z => (
-                  <Chip key={z} label={z === 'all' ? 'Tutte' : z} active={state.zone === z}
+                  <Chip key={z} label={z === 'all' ? t('filters.allF') : z} active={state.zone === z}
                     onPress={() => set('zone', z)} />
                 ))}
               </Section>
             )}
 
             {/* Data */}
-            <Section title="Data">
+            <Section title={t('filters.date')}>
               {DATE_RANGES.map(d => (
-                <Chip key={d.id} label={d.label} active={state.dateRange === d.id}
+                <Chip key={d.id} label={t(d.labelKey)} active={state.dateRange === d.id}
                   onPress={() => set('dateRange', d.id)} />
               ))}
             </Section>
 
             {/* Fascia oraria */}
-            <Section title="Fascia oraria">
-              <Chip label="Qualsiasi" active={!state.timeSlot} onPress={() => set('timeSlot', null)} />
-              {TIME_SLOTS.map(t => (
-                <Chip key={t.id} label={t.label} active={state.timeSlot === t.id}
-                  onPress={() => set('timeSlot', t.id)} />
+            <Section title={t('filters.timeSlot')}>
+              <Chip label={t('filters.any')} active={!state.timeSlot} onPress={() => set('timeSlot', null)} />
+              {TIME_SLOTS.map(ts => (
+                <Chip key={ts.id} label={t('filters.slot' + ts.id.charAt(0).toUpperCase() + ts.id.slice(1))} active={state.timeSlot === ts.id}
+                  onPress={() => set('timeSlot', ts.id)} />
               ))}
             </Section>
 
             {/* Tipo evento */}
-            <Section title="Tipo evento">
+            <Section title={t('filters.eventType')}>
               {CATS_NO_TUTTI.map(c => (
-                <Chip key={c} label={c} active={state.cats.includes(c)}
+                <Chip key={c} label={tLabel(c)} active={state.cats.includes(c)}
                   onPress={() => toggle('cats', c)} />
               ))}
             </Section>
 
             {/* Ingresso */}
-            <Section title="Ingresso">
+            <Section title={t('filters.entry')}>
               {ENTRY_OPTIONS.map(e => (
-                <Chip key={e.id} label={e.label} active={state.entryType === e.id}
+                <Chip key={e.id} label={t(e.labelKey)} active={state.entryType === e.id}
                   onPress={() => set('entryType', e.id)} />
               ))}
             </Section>
@@ -203,7 +205,7 @@ export default function AdvancedFiltersModal({
               <Text style={{ color: COLORS.textMuted, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: '600', marginBottom: 8 }}>Prezzo (EUR)</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TextInput
-                  placeholder="Min" value={state.priceMin ? String(state.priceMin) : ''}
+                  placeholder={t('filters.priceMin')} value={state.priceMin ? String(state.priceMin) : ''}
                   onChangeText={v => set('priceMin', parseInt(v.replace(/\D/g, '') || '0', 10))}
                   keyboardType="numeric" placeholderTextColor={COLORS.textDisabled}
                   style={{
@@ -213,7 +215,7 @@ export default function AdvancedFiltersModal({
                     color: COLORS.textPrimary, fontSize: 13,
                   }} />
                 <TextInput
-                  placeholder="Max" value={state.priceMax ? String(state.priceMax) : ''}
+                  placeholder={t('filters.priceMax')} value={state.priceMax ? String(state.priceMax) : ''}
                   onChangeText={v => set('priceMax', parseInt(v.replace(/\D/g, '') || '0', 10))}
                   keyboardType="numeric" placeholderTextColor={COLORS.textDisabled}
                   style={{
@@ -226,35 +228,35 @@ export default function AdvancedFiltersModal({
             </View>
 
             {/* Musica */}
-            <Section title="Musica">
+            <Section title={t('filters.music')}>
               {MUSIC_TYPES.map(m => (
-                <Chip key={m} label={m} active={state.musicTypes.includes(m)}
+                <Chip key={m} label={tLabel(m)} active={state.musicTypes.includes(m)}
                   onPress={() => toggle('musicTypes', m)} />
               ))}
             </Section>
 
             {/* Dress code */}
-            <Section title="Dress code">
-              <Chip label="Qualsiasi" active={!state.dressCode} onPress={() => set('dressCode', null)} />
+            <Section title={t('filters.dressCode')}>
+              <Chip label={t('filters.any')} active={!state.dressCode} onPress={() => set('dressCode', null)} />
               {DRESS_CODES.map(d => (
-                <Chip key={d} label={d} active={state.dressCode === d}
+                <Chip key={d} label={tLabel(d)} active={state.dressCode === d}
                   onPress={() => set('dressCode', d)} />
               ))}
             </Section>
 
             {/* Età */}
-            <Section title="Età target">
-              <Chip label="Qualsiasi" active={!state.ageTarget} onPress={() => set('ageTarget', null)} />
+            <Section title={t('filters.ageTarget')}>
+              <Chip label={t('filters.any')} active={!state.ageTarget} onPress={() => set('ageTarget', null)} />
               {AGE_TARGETS.map(a => (
-                <Chip key={a} label={a} active={state.ageTarget === a}
+                <Chip key={a} label={tLabel(a)} active={state.ageTarget === a}
                   onPress={() => set('ageTarget', a)} />
               ))}
             </Section>
 
             {/* Ordinamento */}
-            <Section title="Ordina per">
+            <Section title={t('filters.sortBy')}>
               {SORT_OPTIONS.map(s => (
-                <Chip key={s.id} label={s.label} active={state.sortBy === s.id}
+                <Chip key={s.id} label={t(s.labelKey)} active={state.sortBy === s.id}
                   onPress={() => set('sortBy', s.id)} />
               ))}
             </Section>
@@ -283,7 +285,7 @@ export default function AdvancedFiltersModal({
                 alignItems: 'center', backgroundColor: COLORS.brandStrong,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Applica filtri</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{t('filters.apply')}</Text>
             </Pressable>
           </View>
         </View>

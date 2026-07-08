@@ -1,31 +1,34 @@
 import { View, Text, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useI18n } from '../lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONT_FAMILY, formatDate } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY } from '@lets-night/shared';
 
 const ACTIVITY_META = {
-  booking_made:    { icon: 'ticket-outline', label: 'ha prenotato' },
-  going_to:        { icon: 'calendar-outline', label: 'andrà a' },
-  was_at:          { icon: 'checkmark-circle-outline', label: 'è stato a' },
-  photo_uploaded:  { icon: 'camera-outline', label: 'ha caricato una foto da' },
-  badge_unlocked:  { icon: 'trophy-outline', label: 'ha sbloccato' },
-  venue_favorited: { icon: 'heart-outline', label: 'ha aggiunto ai preferiti' },
-  table_organized: { icon: 'wine-outline', label: 'ha organizzato un tavolo a' },
+  booking_made:    { icon: 'ticket-outline', labelKey: 'activity.bookingMade' },
+  going_to:        { icon: 'calendar-outline', labelKey: 'activity.goingTo' },
+  was_at:          { icon: 'checkmark-circle-outline', labelKey: 'activity.wasAt' },
+  photo_uploaded:  { icon: 'camera-outline', labelKey: 'activity.photoUploaded' },
+  badge_unlocked:  { icon: 'trophy-outline', labelKey: 'activity.badgeUnlocked' },
+  venue_favorited: { icon: 'heart-outline', labelKey: 'activity.venueFavorited' },
+  table_organized: { icon: 'wine-outline', labelKey: 'activity.tableOrganized' },
 };
 
-function ago(iso) {
+function ago(iso, t, fmtDate) {
   if (!iso) return '';
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return 'adesso';
+  if (diff < 60) return t('activity.now');
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}g`;
-  return formatDate(iso.split('T')[0]);
+  return fmtDate(iso.split('T')[0]);
 }
 
 export default function ActivityCard({ activity, hideAuthor }) {
+  const { t, fmtDate } = useI18n();
   const router = useRouter();
-  const meta = ACTIVITY_META[activity.type] || { icon: 'ellipse-outline', label: activity.type };
+  const meta = ACTIVITY_META[activity.type] || { icon: 'ellipse-outline' };
+  const metaLabel = meta.labelKey ? t(meta.labelKey) : activity.type;
   const target = activity.events?.title
     || activity.venues?.name
     || activity.milestone_title
@@ -37,7 +40,7 @@ export default function ActivityCard({ activity, hideAuthor }) {
   const author = activity.profiles?.display_name
     || activity.profiles?.full_name
     || activity.profiles?.username
-    || 'Utente';
+    || t('common.user');
 
   return (
     <Pressable
@@ -70,7 +73,7 @@ export default function ActivityCard({ activity, hideAuthor }) {
                 {author}{' '}
               </Text>
             )}
-            <Text style={{ color: COLORS.textSecondary }}>{meta.label} </Text>
+            <Text style={{ color: COLORS.textSecondary }}>{metaLabel} </Text>
             <Text style={{ color: COLORS.brand, fontWeight: '700' }}>{target}</Text>
           </Text>
           {activity.caption && (
@@ -85,7 +88,7 @@ export default function ActivityCard({ activity, hideAuthor }) {
               resizeMode="cover"
             />
           )}
-          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>{ago(activity.created_at)}</Text>
+          <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 8 }}>{ago(activity.created_at, t, fmtDate)}</Text>
         </View>
       </View>
     </Pressable>

@@ -1,19 +1,19 @@
 import { Pressable, View, Text, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatTime, getPriceLabel } from '@lets-night/shared';
-
-const MONTHS = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+import { COLORS_BY_CAT, COLORS, FONT_FAMILY, formatTime, DATE_NAMES } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 
 // Card evento a colonna singola, copertina protagonista (per gli eventi sponsorizzati
 // che avranno cover_image). Senza foto: poster tipografico (categoria gigante ritagliata +
 // tint di categoria) → mai un box vuoto. Stile/colori dell'app, niente gradienti arcobaleno.
 export default function EventCard({ event, onPress }) {
+  const { t, tLabel, lang, fmtPrice } = useI18n();
   const accent = (COLORS_BY_CAT[event.category] || [])[2] || COLORS.brand;
   const photo = event.cover_image || null;
 
   const [, m, d] = (event.event_date || '').split('-').map(Number);
   const dayNum = d || '';
-  const monthAbbr = m ? MONTHS[m - 1] : '';
+  const monthAbbr = m ? (DATE_NAMES[lang] || DATE_NAMES.it).monthsShort[m - 1].toUpperCase() : '';
   const timeStr = event.end_time
     ? `${formatTime(event.event_time)} – ${formatTime(event.end_time)}`
     : formatTime(event.event_time);
@@ -35,7 +35,7 @@ export default function EventCard({ event, onPress }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 }}>
         <View style={{ flex: 1, marginRight: 12 }}>
           <Text numberOfLines={1} style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '700', letterSpacing: 0.2 }}>
-            {event.venues?.name || 'Locale'}
+            {event.venues?.name || t('common.venue')}
           </Text>
           {!!timeStr && (
             <Text numberOfLines={1} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
@@ -61,7 +61,7 @@ export default function EventCard({ event, onPress }) {
             {/* tint di categoria sottile + parola categoria ritagliata */}
             <View style={{ position: 'absolute', top: -50, right: -40, width: 220, height: 220, borderRadius: 110, backgroundColor: accent, opacity: 0.1 }} />
             <Text numberOfLines={1} style={{ position: 'absolute', bottom: -12, left: -2, fontFamily: FONT_FAMILY.displayHeavy, fontSize: 92, letterSpacing: -3, color: accent, opacity: 0.18 }}>
-              {(event.category || 'NIGHT').toUpperCase()}
+              {(tLabel(event.category) || 'NIGHT').toUpperCase()}
             </Text>
           </>
         )}
@@ -82,7 +82,7 @@ export default function EventCard({ event, onPress }) {
             {[event.venues?.zona, event.venues?.city || 'Milano'].filter(Boolean).join(', ')}
           </Text>
           <View style={{ backgroundColor: COLORS.bgElev3, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '800' }}>{getPriceLabel(event.price)}</Text>
+            <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '800' }}>{fmtPrice(event.price)}</Text>
           </View>
         </View>
       </View>

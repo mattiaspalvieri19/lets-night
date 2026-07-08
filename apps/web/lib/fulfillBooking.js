@@ -19,18 +19,18 @@ function livemodeMismatch(stripeSession) {
 // Chiamabile sia da /api/stripe/webhook (source of truth) sia da /api/stripe/confirm-booking (fallback sincrono).
 export async function fulfillBookingFromSession(stripeSession) {
   if (!stripeSession || stripeSession.payment_status !== 'paid') {
-    return { error: 'Pagamento non completato', status: 402 };
+    return { error: 'Pagamento non completato', code: 'PAYMENT_NOT_COMPLETED', status: 402 };
   }
   if (stripeSession.mode !== 'payment') {
-    return { error: 'Modalità sessione non valida', status: 400 };
+    return { error: 'Modalità sessione non valida', code: 'SESSION_INVALID', status: 400 };
   }
   if (livemodeMismatch(stripeSession)) {
-    return { error: 'Chiave Stripe e sessione non coerenti (test/live)', status: 400 };
+    return { error: 'Chiave Stripe e sessione non coerenti (test/live)', code: 'SESSION_INVALID', status: 400 };
   }
 
   const md = stripeSession.metadata || {};
   if (!md.eventId || !md.userId) {
-    return { error: 'Metadata mancante', status: 400 };
+    return { error: 'Metadata mancante', code: 'SESSION_INVALID', status: 400 };
   }
 
   const supabase = createClient(
@@ -66,7 +66,7 @@ export async function fulfillBookingFromSession(stripeSession) {
     .maybeSingle();
 
   if (!event) {
-    return { error: 'Evento non trovato', status: 404 };
+    return { error: 'Evento non trovato', code: 'EVENT_NOT_FOUND', status: 404 };
   }
 
   const pricing = computeBookingPrice(event, requestedType, requestedQty);
@@ -77,13 +77,13 @@ export async function fulfillBookingFromSession(stripeSession) {
   const expectedCents = Math.round((pricing.lineTotal + pricing.fee) * 100);
   if (stripeSession.amount_total !== expectedCents) {
     await refundAndAlert(stripeSession, 'price_changed', { expectedCents, actualCents: stripeSession.amount_total });
-    return { error: 'Prezzo dell\'evento cambiato dopo il pagamento. Rimborso elaborato automaticamente.', status: 409, refunded: true };
+    return { error: 'Prezzo dell\'evento cambiato dopo il pagamento. Rimborso elaborato automaticamente.', code: 'PRICE_CHANGED_REFUNDED', status: 409, refunded: true };
   }
 
   // Capacity check: rigetta se l'evento si è riempito tra checkout e payment.
   if (event.capacity != null && (event.booked_count || 0) + pricing.safeQty > event.capacity) {
     await refundAndAlert(stripeSession, 'oversold', { eventId, qty: pricing.safeQty });
-    return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', status: 409, oversold: true, refunded: true };
+    return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', code: 'OVERSOLD_REFUNDED', status: 409, oversold: true, refunded: true };
   }
 
   // Snapshot del nome per resistere a rename post-checkin
@@ -125,16 +125,16 @@ export async function fulfillBookingFromSession(stripeSession) {
       // Caso diverso: 23505 ma niente booking per questa session → violazione UNIQUE (user_id, event_id).
       // L'utente ha pagato per qualcosa che possedeva già. Refund automatico + segnala.
       await refundAndAlert(stripeSession, 'duplicate_booking', { userId, eventId });
-      return { error: 'Avevi già una prenotazione attiva per questo evento. Il pagamento è stato rimborsato automaticamente.', status: 409, refunded: true, duplicate: true };
+      return { error: 'Avevi già una prenotazione attiva per questo evento. Il pagamento è stato rimborsato automaticamente.', code: 'ALREADY_BOOKED', status: 409, refunded: true, duplicate: true };
     }
     // Trigger capacity guard (enforce_event_capacity): l'evento si è riempito durante
     // una race oltre il check applicativo sopra. Rimborso automatico come oversold.
     if (bookErr.code === '23514' || /CAPACITY_FULL/.test(bookErr.message || '')) {
       await refundAndAlert(stripeSession, 'oversold', { eventId, qty: pricing.safeQty });
-      return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', status: 409, oversold: true, refunded: true };
+      return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', code: 'OVERSOLD_REFUNDED', status: 409, oversold: true, refunded: true };
     }
     console.error('Insert booking fallita:', bookErr);
-    return { error: 'Errore creazione prenotazione', status: 500 };
+    return { error: 'Errore creazione prenotazione', code: 'BOOKING_CREATE_FAILED', status: 500 };
   }
 
   return { ok: true, bookingId: booking.id, qrCode: booking.qr_code };
@@ -148,7 +148,7 @@ async function fulfillTableShare(supabase, stripeSession, md) {
   const expectedCents = Math.round((share + BOOKING_FEE) * 100);
   if (stripeSession.amount_total !== expectedCents) {
     await refundAndAlert(stripeSession, 'table_amount_mismatch', { expectedCents, actualCents: stripeSession.amount_total });
-    return { error: 'Importo non coerente. Rimborso elaborato automaticamente.', status: 409, refunded: true };
+    return { error: 'Importo non coerente. Rimborso elaborato automaticamente.', code: 'AMOUNT_MISMATCH_REFUNDED', status: 409, refunded: true };
   }
 
   let tableId = md.tableId || null;

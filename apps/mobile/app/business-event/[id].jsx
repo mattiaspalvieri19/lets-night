@@ -3,13 +3,14 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, A
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS, FONT_FAMILY, formatDateFull, formatTime } from '@lets-night/shared';
+import { useI18n } from '../../lib/i18n';
+import { COLORS, FONT_FAMILY, formatTime } from '@lets-night/shared';
 import EventFormModal from '../../components/EventFormModal';
 
 const FILTERS = [
-  { id: 'all',     label: 'Tutti' },
-  { id: 'checked', label: 'Entrati' },
-  { id: 'pending', label: 'Da entrare' },
+  { id: 'all',     labelKey: 'bizEvent.fAll' },
+  { id: 'checked', labelKey: 'bizEvent.fChecked' },
+  { id: 'pending', labelKey: 'bizEvent.fPending' },
 ];
 
 const GENDER_LABEL = { M: 'M', F: 'F', X: 'X' };
@@ -36,6 +37,7 @@ function euro(v) {
 }
 
 export default function BusinessEventDetailScreen() {
+  const { t, tLabel, fmtDateFull } = useI18n();
   const { id } = useLocalSearchParams();
   const [event, setEvent] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -53,27 +55,27 @@ export default function BusinessEventDetailScreen() {
 
   function deleteEvent() {
     Alert.alert(
-      'Eliminare l\'evento?',
-      'Operazione definitiva. Possibile solo se l\'evento non ha prenotazioni attive.',
+      t('bizEvent.delTitle'),
+      t('bizEvent.delBody'),
       [
-        { text: 'Annulla', style: 'cancel' },
-        { text: 'Elimina', style: 'destructive', onPress: async () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: async () => {
           const { count, error: countErr } = await supabase
             .from('bookings')
             .select('id', { count: 'exact', head: true })
             .eq('event_id', id)
             .not('status', 'in', '("cancelled","denied")');
           if (countErr) {
-            Alert.alert('Errore', 'Impossibile verificare le prenotazioni. Riprova.');
+            Alert.alert(t('common.error'), t('bizEvent.delCheckFail'));
             return;
           }
           if (count && count > 0) {
-            Alert.alert('Non eliminabile', 'Questo evento ha prenotazioni attive. Nascondilo dalla lista eventi (toggle Attivo) invece di eliminarlo.');
+            Alert.alert(t('bizEvent.notDeletable'), t('bizEvent.delHasBookings'));
             return;
           }
           const { error } = await supabase.from('events').delete().eq('id', id);
           if (error) {
-            Alert.alert('Non eliminabile', 'Ci sono dati collegati (tavoli/prenotazioni). Nascondi l\'evento invece di eliminarlo.');
+            Alert.alert(t('bizEvent.notDeletable'), t('bizEvent.delHasData'));
             return;
           }
           if (router.canGoBack()) router.back(); else router.replace('/(business)');
@@ -94,7 +96,7 @@ export default function BusinessEventDetailScreen() {
       .maybeSingle();
 
     if (!ev || ev.venues.owner_id !== session.user.id) {
-      Alert.alert('Accesso negato', 'Questo evento non appartiene al tuo locale.');
+      Alert.alert(t('bizEvent.accessDeniedT'), t('bizEvent.accessDeniedB'));
       router.back();
       return;
     }
@@ -143,7 +145,7 @@ export default function BusinessEventDetailScreen() {
       : { checked_in: true, checked_in_at: new Date().toISOString() };
     const { error } = await supabase.from('bookings').update(patch).eq('id', bookingId);
     setCheckingIn(null);
-    if (error) { Alert.alert('Errore', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: !alreadyIn } : b));
   }
 
@@ -168,10 +170,10 @@ export default function BusinessEventDetailScreen() {
     const price = parseNum(typeForm.total_price);
     const maxP = parseInt(typeForm.max_people, 10);
     const count = parseInt(typeForm.tables_count, 10);
-    if (!typeForm.name.trim()) { Alert.alert('Manca il nome', 'Es. Standard, Premium, Privé.'); return; }
-    if (!Number.isFinite(price) || price <= 0) { Alert.alert('Prezzo non valido', 'Inserisci il prezzo totale del tavolo.'); return; }
-    if (!Number.isInteger(maxP) || maxP < 1 || maxP > 30) { Alert.alert('Persone non valide', 'Da 1 a 30.'); return; }
-    if (!Number.isInteger(count) || count < 0) { Alert.alert('Disponibilità non valida', 'Quanti tavoli di questo tipo hai per la serata?'); return; }
+    if (!typeForm.name.trim()) { Alert.alert(t('bizEvent.typeNameMissingT'), t('bizEvent.typeNameMissingB')); return; }
+    if (!Number.isFinite(price) || price <= 0) { Alert.alert(t('bizEvent.typePriceT'), t('bizEvent.typePriceB')); return; }
+    if (!Number.isInteger(maxP) || maxP < 1 || maxP > 30) { Alert.alert(t('bizEvent.typePeopleT'), t('bizEvent.typePeopleB')); return; }
+    if (!Number.isInteger(count) || count < 0) { Alert.alert(t('bizEvent.typeCountT'), t('bizEvent.typeCountB')); return; }
 
     setSavingType(true);
     const payload = {
@@ -185,24 +187,24 @@ export default function BusinessEventDetailScreen() {
       ? await supabase.from('event_table_types').update(payload).eq('id', typeModal.id)
       : await supabase.from('event_table_types').insert({ ...payload, event_id: id });
     setSavingType(false);
-    if (error) { Alert.alert('Errore', error.message); return; }
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
     setTypeModal(null);
     loadData();
   }
 
   function confirmDeleteType(type) {
     Alert.alert(
-      'Eliminare la tipologia?',
+      t('bizEvent.typeDelTitle'),
       `"${type.name}" non sarà più prenotabile.`,
       [
-        { text: 'Annulla', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Elimina', style: 'destructive',
+          text: t('common.delete'), style: 'destructive',
           onPress: async () => {
             const { error } = await supabase.from('event_table_types').delete().eq('id', type.id);
             if (error) {
               // FK restrict: esistono tavoli già aperti su questa tipologia.
-              Alert.alert('Non eliminabile', 'Ci sono tavoli già prenotati con questa tipologia. Puoi azzerarne la disponibilità modificandola.');
+              Alert.alert(t('bizEvent.notDeletable'), t('bizEvent.typeDelHasTables'));
               return;
             }
             loadData();
@@ -265,7 +267,7 @@ export default function BusinessEventDetailScreen() {
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </View>
         </Pressable>
-        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 17, marginLeft: 12 }}>Dettaglio evento</Text>
+        <Text style={{ flex: 1, fontFamily: FONT_FAMILY.display, color: '#fff', fontSize: 17, marginLeft: 12 }}>{t('bizEvent.headerTitle')}</Text>
         <Pressable onPress={() => setEditModal(true)} hitSlop={10}>
           <Ionicons name="create-outline" size={22} color={COLORS.textPrimary} />
         </Pressable>
@@ -280,11 +282,11 @@ export default function BusinessEventDetailScreen() {
       {/* Header evento */}
       <View style={{ padding: 20, paddingTop: 16 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
-          {event.category}
+          {tLabel(event.category)}
         </Text>
         <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 23, lineHeight: 28, letterSpacing: -0.4 }}>{event.title}</Text>
         <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 6 }}>
-          {formatDateFull(event.event_date)} · {formatTime(event.event_time)}
+          {fmtDateFull(event.event_date)} · {formatTime(event.event_time)}
         </Text>
         <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 4 }}>
           {event.venues?.name} · {event.venues?.zona}, {event.venues?.city}
@@ -293,57 +295,57 @@ export default function BusinessEventDetailScreen() {
 
       {/* Stats */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 8, marginBottom: 18 }}>
-        <StatCard label="Ingressi" value={entries.length} />
-        <StatCard label="Tavoli" value={eventTables.length} />
-        <StatCard label="Check-in" value={`${stats.checkedIn}/${bookings.length}`} />
-        <StatCard label="Incassi" value={`€${stats.revenue.toFixed(0)}`} />
-        <StatCard label="Ospiti" value={stats.totalGuests} />
+        <StatCard label={t('bizEvent.stEntries')} value={entries.length} />
+        <StatCard label={t('bizEvent.stTables')} value={eventTables.length} />
+        <StatCard label={t('bizEvent.stCheckIn')} value={`${stats.checkedIn}/${bookings.length}`} />
+        <StatCard label={t('bizEvent.stRevenue')} value={`€${stats.revenue.toFixed(0)}`} />
+        <StatCard label={t('bizEvent.stGuests')} value={stats.totalGuests} />
         {event.capacity && (
-          <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} />
+          <StatCard label={t('bizEvent.stCapacity')} value={`${event.booked_count || 0}/${event.capacity}`} />
         )}
       </View>
 
       {/* ============================ TAVOLI ============================ */}
       <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>Tavoli</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>{t('bizEvent.tablesSection')}</Text>
           <Pressable
             onPress={() => openTypeModal(null)}
             style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandStrong, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, opacity: pressed ? 0.85 : 1 })}
           >
             <Ionicons name="add" size={14} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Tipologia</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{t('bizEvent.typeBtn')}</Text>
           </Pressable>
         </View>
 
         {tableTypes.length === 0 ? (
           <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 18 }}>
-            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13, marginBottom: 4 }}>Nessuna tipologia di tavolo</Text>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13, marginBottom: 4 }}>{t('bizEvent.noTypes')}</Text>
             <Text style={{ color: COLORS.textMuted, fontSize: 12, lineHeight: 17 }}>
-              Crea le tipologie (es. Standard 300 €, Premium 400 €...) per permettere agli utenti di prenotare i tavoli per questa serata.
+              {t('bizEvent.noTypesSub')}
             </Text>
           </View>
         ) : (
-          tableTypes.map(t => {
-            const used = eventTables.filter(x => x.type_id === t.id).length;
+          tableTypes.map(tt => {
+            const used = eventTables.filter(x => x.type_id === tt.id).length;
             return (
-              <View key={t.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 8 }}>
+              <View key={tt.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
-                      {t.name} · {euro(t.total_price)}
+                      {tt.name} · {euro(tt.total_price)}
                     </Text>
                     <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
-                      max {t.max_people} persone · {used}/{t.tables_count} prenotati
+                      {t('bizEvent.typeMeta', { max: tt.max_people, used, count: tt.tables_count })}
                     </Text>
-                    {t.includes ? (
-                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }} numberOfLines={2}>{t.includes}</Text>
+                    {tt.includes ? (
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }} numberOfLines={2}>{tt.includes}</Text>
                     ) : null}
                   </View>
-                  <Pressable onPress={() => openTypeModal(t)} hitSlop={8} style={{ padding: 6 }}>
+                  <Pressable onPress={() => openTypeModal(tt)} hitSlop={8} style={{ padding: 6 }}>
                     <Ionicons name="create-outline" size={17} color={COLORS.textSecondary} />
                   </Pressable>
-                  <Pressable onPress={() => confirmDeleteType(t)} hitSlop={8} style={{ padding: 6 }}>
+                  <Pressable onPress={() => confirmDeleteType(tt)} hitSlop={8} style={{ padding: 6 }}>
                     <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
                   </Pressable>
                 </View>
@@ -353,23 +355,23 @@ export default function BusinessEventDetailScreen() {
         )}
 
         {/* Tavoli prenotati con membri */}
-        {eventTables.map(t => {
-          const members = sharesByTable[t.id] || [];
-          const covered = t.status === 'covered';
+        {eventTables.map(tb => {
+          const members = sharesByTable[tb.id] || [];
+          const covered = tb.status === 'covered';
           return (
-            <View key={t.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 14, marginTop: 10 }}>
+            <View key={tb.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 14, marginTop: 10 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <Text style={{ color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 }}>
-                  {t.event_table_types?.name || 'Tavolo'} · {t.visibility === 'private' ? 'Privato' : 'Pubblico'}
+                  {tb.event_table_types?.name || t('booking.table')} · {tb.visibility === 'private' ? t('bizEvent.privateL') : t('bizEvent.publicL')}
                 </Text>
                 <View style={{ backgroundColor: covered ? 'rgba(74,222,128,0.12)' : 'rgba(245,158,11,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 }}>
                   <Text style={{ color: covered ? COLORS.success : COLORS.warning, fontSize: 11, fontWeight: '700' }}>
-                    {covered ? 'Coperto' : 'In raccolta'}
+                    {covered ? t('bizEvent.covered') : t('bizEvent.collecting')}
                   </Text>
                 </View>
               </View>
               <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 10 }}>
-                {t.people_count}/{t.max_people} persone · raccolti {euro(t.collected)} su {euro(t.total_price)}
+                {t('bizEvent.tableMeta', { count: tb.people_count, max: tb.max_people, collected: euro(tb.collected), total: euro(tb.total_price) })}
               </Text>
 
               {members.map(m => {
@@ -378,10 +380,10 @@ export default function BusinessEventDetailScreen() {
                   <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
                     <View style={{ flex: 1, marginRight: 10 }}>
                       <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>
-                        {m.snapshot_full_name || m.profiles?.full_name || 'Utente'}
+                        {m.snapshot_full_name || m.profiles?.full_name || t('common.user')}
                       </Text>
                       <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                        {m.profiles?.gender ? `${GENDER_LABEL[m.profiles.gender]} · ` : ''}{age != null ? `${age} anni · ` : ''}quota {euro(m.total_price)}
+                        {m.profiles?.gender ? `${GENDER_LABEL[m.profiles.gender]} · ` : ''}{age != null ? t('bizEvent.yearsShort', { age }) + ' · ' : ''}{t('bizEvent.memberMeta', { amount: euro(m.total_price) })}
                       </Text>
                     </View>
                     <Pressable
@@ -397,7 +399,7 @@ export default function BusinessEventDetailScreen() {
                       })}>
                       {checkingIn === m.id ? <ActivityIndicator color="#fff" size="small" /> : (
                         <Text style={{ color: m.checked_in ? COLORS.textSecondary : '#fff', fontSize: 11, fontWeight: '600' }}>
-                          {m.checked_in ? 'Entrato' : 'Check-in'}
+                          {m.checked_in ? t('biz.checkedIn') : t('biz.checkIn')}
                         </Text>
                       )}
                     </Pressable>
@@ -421,7 +423,7 @@ export default function BusinessEventDetailScreen() {
                 backgroundColor: active ? '#FAFAFA' : COLORS.bgElev2,
               }}>
               <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>
-                {f.label}
+                {t(f.labelKey)}
               </Text>
             </Pressable>
           );
@@ -430,18 +432,18 @@ export default function BusinessEventDetailScreen() {
 
       <View style={{ paddingHorizontal: 20, paddingBottom: 60 }}>
         <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
-          Lista ingressi ({filtered.length})
+          {t('bizEvent.guestList', { count: filtered.length })}
         </Text>
 
         {filtered.length === 0 ? (
           <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 28, alignItems: 'center' }}>
             <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
-              Nessun ospite
+              {t('bizEvent.noGuests')}
             </Text>
             <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center' }}>
               {entries.length === 0
-                ? 'Nessuna prenotazione ingresso per questo evento.'
-                : 'Cambia filtro per vedere altri ospiti.'}
+                ? t('bizEvent.noGuestsSub')
+                : t('bizEvent.noGuestsFilter')}
             </Text>
           </View>
         ) : filtered.map(b => {
@@ -454,7 +456,7 @@ export default function BusinessEventDetailScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
-                    {b.snapshot_full_name || b.profiles?.full_name || 'Utente'}
+                    {b.snapshot_full_name || b.profiles?.full_name || t('common.user')}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                     {b.profiles?.gender && (
@@ -489,7 +491,7 @@ export default function BusinessEventDetailScreen() {
                       color: b.checked_in ? COLORS.textSecondary : '#fff',
                       fontSize: 11, fontWeight: '600',
                     }}>
-                      {b.checked_in ? 'Entrato' : 'Check-in'}
+                      {b.checked_in ? t('biz.checkedIn') : t('biz.checkIn')}
                     </Text>
                   )}
                 </Pressable>
@@ -518,26 +520,26 @@ export default function BusinessEventDetailScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <Pressable onPress={saveType} disabled={savingType} hitSlop={8}
                 style={({ pressed }) => ({ opacity: savingType || pressed ? 0.5 : 1 })}>
-                {savingType ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15 }}>{typeModal?.id ? 'Salva modifiche' : 'Crea tipologia'}</Text>}
+                {savingType ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15 }}>{typeModal?.id ? t('bizEvent.saveType') : t('bizEvent.createType')}</Text>}
               </Pressable>
               <Pressable onPress={() => setTypeModal(null)} hitSlop={8}>
                 <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-              <TypeField label="Nome" value={typeForm.name} onChange={v => setTypeForm(f => ({ ...f, name: v }))} placeholder="Es. Standard, Premium, Privé" />
+              <TypeField label={t('bizEvent.tfName')} value={typeForm.name} onChange={v => setTypeForm(f => ({ ...f, name: v }))} placeholder={t('bizEvent.tfNamePh')} />
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <TypeField label="Prezzo totale (€)" value={typeForm.total_price} onChange={v => setTypeForm(f => ({ ...f, total_price: v }))} placeholder="300" keyboardType="decimal-pad" />
+                  <TypeField label={t('bizEvent.tfPrice')} value={typeForm.total_price} onChange={v => setTypeForm(f => ({ ...f, total_price: v }))} placeholder="300" keyboardType="decimal-pad" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <TypeField label="Max persone" value={typeForm.max_people} onChange={v => setTypeForm(f => ({ ...f, max_people: v }))} placeholder="8" keyboardType="number-pad" />
+                  <TypeField label={t('bizEvent.tfMaxPeople')} value={typeForm.max_people} onChange={v => setTypeForm(f => ({ ...f, max_people: v }))} placeholder="8" keyboardType="number-pad" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <TypeField label="Disponibili" value={typeForm.tables_count} onChange={v => setTypeForm(f => ({ ...f, tables_count: v }))} placeholder="1" keyboardType="number-pad" />
+                  <TypeField label={t('bizEvent.tfCount')} value={typeForm.tables_count} onChange={v => setTypeForm(f => ({ ...f, tables_count: v }))} placeholder="1" keyboardType="number-pad" />
                 </View>
               </View>
-              <TypeField label="Cosa include" value={typeForm.includes} onChange={v => setTypeForm(f => ({ ...f, includes: v }))} placeholder="Es. 3 bottiglie champagne, 2 gin, area riservata..." multiline />
+              <TypeField label={t('bizEvent.tfIncludes')} value={typeForm.includes} onChange={v => setTypeForm(f => ({ ...f, includes: v }))} placeholder={t('bizEvent.tfIncludesPh')} multiline />
             </ScrollView>
           </View>
         </KeyboardAvoidingView>

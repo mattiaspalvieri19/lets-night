@@ -53,7 +53,7 @@ export default function AdminLayout() {
         <Tabs.Screen name="venues" options={{ title: 'Locali', tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} /> }} />
         <Tabs.Screen name="users" options={{ title: 'Utenti', tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
         {/* Route del gruppo ma non tab */}
-        <Tabs.Screen name="event/[id]" options={{ href: null }} />
+        <Tabs.Screen name="manage-event/[id]" options={{ href: null }} />
       </Tabs>
       {checking && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}>

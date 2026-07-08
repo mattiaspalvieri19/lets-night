@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, LANGS } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/useSession';
+import { useI18n } from '../../lib/i18n';
 
 function Row({ icon, label, sub, onPress, danger }) {
   return (
@@ -46,6 +47,7 @@ function Section({ title, children }) {
 }
 
 export default function SettingsScreen() {
+  const { t, lang } = useI18n();
   const { session, loading } = useSession();
 
   useEffect(() => {
@@ -60,28 +62,29 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: COLORS.bg }} contentContainerStyle={{ paddingTop: 24, paddingBottom: 48 }}>
       <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4, paddingHorizontal: 20 }}>
-        Account
+        {t('settings.eyebrow')}
       </Text>
       <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 26, marginBottom: 24, paddingHorizontal: 20 }}>
-        Impostazioni
+        {t('settings.title')}
       </Text>
 
-      <Section title="Profilo">
-        <Row icon="person-outline" label="Modifica profilo" sub="Nome, foto, bio, interessi" onPress={() => router.push('/profile/edit')} />
+      <Section title={t('settings.sectionProfile')}>
+        <Row icon="person-outline" label={t('settings.editProfile')} sub={t('settings.editProfileSub')} onPress={() => router.push('/profile/edit')} />
       </Section>
 
-      <Section title="Preferenze">
-        <Row icon="shield-outline" label="Privacy" sub="Visibilità profilo e attività" onPress={() => router.push('/profile/privacy')} />
-        <Row icon="notifications-outline" label="Notifiche" sub="Prossimamente" onPress={null} />
+      <Section title={t('settings.sectionPreferences')}>
+        <Row icon="shield-outline" label={t('settings.privacy')} sub={t('settings.privacySub')} onPress={() => router.push('/profile/privacy')} />
+        <Row icon="language-outline" label={t('settings.language')} sub={LANGS.find(l => l.code === lang)?.label} onPress={() => router.push('/settings/language')} />
+        <Row icon="notifications-outline" label={t('settings.notifications')} sub={t('settings.notificationsSub')} onPress={null} />
       </Section>
 
-      <Section title="Sicurezza">
-        <Row icon="lock-closed-outline" label="Cambia password" sub="Aggiorna la tua password" onPress={() => router.push('/settings/password')} />
+      <Section title={t('settings.sectionSecurity')}>
+        <Row icon="lock-closed-outline" label={t('settings.changePassword')} sub={t('settings.changePasswordSub')} onPress={() => router.push('/settings/password')} />
       </Section>
 
-      <Section title="Account">
-        <Row icon="log-out-outline" label="Esci" sub={session?.user?.email} onPress={handleLogout} />
-        <Row icon="trash-outline" label="Elimina account" sub="Rimozione definitiva dei dati" onPress={() => router.push('/settings/account')} danger />
+      <Section title={t('settings.sectionAccount')}>
+        <Row icon="log-out-outline" label={t('settings.logout')} sub={session?.user?.email} onPress={handleLogout} />
+        <Row icon="trash-outline" label={t('settings.deleteAccount')} sub={t('settings.deleteAccountSub')} onPress={() => router.push('/settings/account')} danger />
       </Section>
     </ScrollView>
   );

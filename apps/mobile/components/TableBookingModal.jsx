@@ -5,7 +5,8 @@ import * as ScreenCapture from 'expo-screen-capture';
 import QRCode from 'react-native-qrcode-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-import { COLORS, FONT_FAMILY, BOOKING_FEE, TABLE_MIN_SHARE, formatDateFull } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, BOOKING_FEE, TABLE_MIN_SHARE } from '@lets-night/shared';
+import { useI18n } from '../lib/i18n';
 import { sendLocalNotification } from '../lib/notifications';
 import { API_URL } from '../lib/apiUrl';
 
@@ -32,6 +33,7 @@ function parseShare(text) {
 
 // mode: { action: 'open', type } | { action: 'join', table }
 export default function TableBookingModal({ visible, onClose, event, session, mode, onSuccess }) {
+  const { t, fmtDateFull } = useI18n();
   const [share, setShare] = useState('');
   const [visibility, setVisibility] = useState('public');
   const [loading, setLoading] = useState(false);
@@ -92,8 +94,8 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
     setSuccess(true);
     try {
       sendLocalNotification({
-        title: 'Sei al tavolo!',
-        body: `${event.title} — ${formatDateFull(event.event_date)}`,
+        title: t('tableModal.notifTitle'),
+        body: `${event.title} — ${fmtDateFull(event.event_date)}`,
         data: { type: 'booking', event_id: event.id },
       });
     } catch {}
@@ -106,7 +108,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
 
   async function handleConfirm() {
     if (submitting.current) return;
-    if (!session) { setError('Sessione scaduta. Rieffettua il login.'); return; }
+    if (!session) { setError(t('booking.sessionExpired')); return; }
 
     const shareNum = parseShare(share);
     if (!Number.isFinite(shareNum) || shareNum < TABLE_MIN_SHARE) {
@@ -136,7 +138,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
       if (!res.ok || !json.url) {
         setLoading(false);
         submitting.current = false;
-        setError(json.error || 'Errore creazione pagamento');
+        setError((json.code && t('serverErrors.' + json.code) !== 'serverErrors.' + json.code) ? t('serverErrors.' + json.code) : (json.error || t('booking.payCreateError')));
         return;
       }
 
@@ -177,12 +179,12 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
       // 402 = pagamento non completato → vero annullamento: chiudi in silenzio.
       if (confirmRes.status === 402) return;
       // Altri esiti (refund automatici inclusi): il server manda già il messaggio giusto.
-      setError(confirmJson.error || 'Pagamento riuscito ma quota non confermata. Contatta supporto.');
+      setError((confirmJson.code && t('serverErrors.' + confirmJson.code) !== 'serverErrors.' + confirmJson.code) ? t('serverErrors.' + confirmJson.code) : (confirmJson.error || t('tableModal.confirmFailed')));
     } catch (e) {
       console.error('Errore checkout tavolo:', e);
       setLoading(false);
       submitting.current = false;
-      setError('Errore di connessione. Riprova.');
+      setError(t('booking.connError'));
     }
   }
 
@@ -190,7 +192,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
 
   const shareNum = parseShare(share);
   const validShare = Number.isFinite(shareNum) && shareNum >= TABLE_MIN_SHARE && shareNum <= maxShare;
-  const typeName = isOpen ? type?.name : (table?.event_table_types?.name || 'Tavolo');
+  const typeName = isOpen ? type?.name : (table?.event_table_types?.name || t('booking.table'));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -208,10 +210,10 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                 <Ionicons name="checkmark" size={28} color={COLORS.success} />
               </View>
               <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 22, letterSpacing: -0.4, marginBottom: 6 }}>
-                Sei al tavolo!
+                {t('tableModal.joined')}
               </Text>
               <Text style={{ color: COLORS.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 20 }}>
-                Mostra questo QR all'ingresso.{'\n'}Lo ritrovi sempre nella tab Biglietti.
+                {t('booking.showQr')}{'\n'}{t('booking.findInTickets')}
               </Text>
               {lastQR && (
                 <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 16, marginBottom: 22 }}>
@@ -222,7 +224,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                 onPress={handleClose}
                 style={({ pressed }) => ({ backgroundColor: COLORS.brandStrong, paddingVertical: 15, borderRadius: 12, width: '100%', alignItems: 'center', opacity: pressed ? 0.85 : 1 })}
               >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Chiudi</Text>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('common.close')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -231,7 +233,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, lineHeight: 24, letterSpacing: -0.3 }}>
-                    {isOpen ? `Apri tavolo ${typeName}` : `Unisciti — ${typeName}`}
+                    {isOpen ? t('tableModal.openTitle', { name: typeName }) : t('tableModal.joinTitle', { name: typeName })}
                   </Text>
                   <Text style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 4 }}>
                     {event.title} · totale tavolo {euro(total)}
@@ -248,12 +250,12 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               {isOpen && (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
-                    Chi può unirsi
+                    {t('tableModal.whoCanJoin')}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     {[
-                      { id: 'public',  label: 'Pubblico', sub: 'Chiunque entra con la sua quota' },
-                      { id: 'private', label: 'Privato',  sub: 'Solo il tuo gruppo' },
+                      { id: 'public',  label: t('tableModal.visPublic'), sub: t('tableModal.visPublicSub') },
+                      { id: 'private', label: t('tableModal.visPrivate'),  sub: t('tableModal.visPrivateSub') },
                     ].map(opt => {
                       const active = visibility === opt.id;
                       return (
@@ -274,7 +276,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                   </View>
                   {visibility === 'private' && (
                     <Text style={{ color: COLORS.textDisabled, fontSize: 11, marginTop: 8, lineHeight: 15 }}>
-                      Gli inviti agli amici arrivano a breve: per ora su un tavolo privato conviene coprire l'intero importo.
+                      {t('tableModal.privateHint')}
                     </Text>
                   )}
                 </View>
@@ -284,15 +286,15 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               {!isOpen && (
                 <View style={{ flexDirection: 'row', gap: 18, marginBottom: 16 }}>
                   <View>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Persone</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>{t('tableModal.people')}</Text>
                     <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>{table.people_count}/{table.max_people}</Text>
                   </View>
                   <View>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Raccolti</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>{t('tableModal.collected')}</Text>
                     <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>{euro(Number(table.collected || 0))}</Text>
                   </View>
                   <View>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>Mancano</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginBottom: 2 }}>{t('tableModal.remaining')}</Text>
                     <Text style={{ color: COLORS.warning, fontWeight: '700', fontSize: 14 }}>{euro(remaining)}</Text>
                   </View>
                 </View>
@@ -300,13 +302,13 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
 
               {/* Quota */}
               <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
-                La tua quota
+                {t('tableModal.yourShare')}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgElev3, borderRadius: 12, paddingHorizontal: 14 }}>
                   <TextInput
                     value={share}
-                    onChangeText={t => { setShare(t); setError(''); }}
+                    onChangeText={v => { setShare(v); setError(''); }}
                     keyboardType="decimal-pad"
                     placeholder={String(fairShare)}
                     placeholderTextColor={COLORS.textDisabled}
@@ -320,14 +322,14 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                   onPress={() => { setError(''); setShare(String(fairShare).replace('.', ',')); }}
                   style={{ backgroundColor: COLORS.bgElev3, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}
                 >
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' }}>Quota equa · {euro(fairShare)}</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' }}>{t('tableModal.fairShare', { amount: euro(fairShare) })}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => { setError(''); setShare(String(remaining).replace('.', ',')); }}
                   style={{ backgroundColor: COLORS.bgElev3, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}
                 >
                   <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' }}>
-                    {isOpen ? `Pago tutto · ${euro(total)}` : `Copro il resto · ${euro(remaining)}`}
+                    {isOpen ? t('tableModal.payAll', { amount: euro(total) }) : t('tableModal.coverRest', { amount: euro(remaining) })}
                   </Text>
                 </Pressable>
               </View>
@@ -335,15 +337,15 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               {/* Riepilogo */}
               <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, marginBottom: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Quota</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('tableModal.share')}</Text>
                   <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{validShare ? euro(shareNum) : '—'}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>Commissione</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('booking.fee')}</Text>
                   <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{euro(BOOKING_FEE)}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>Totale</Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('booking.total')}</Text>
                   <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: COLORS.textPrimary, fontSize: 24, letterSpacing: -0.4 }}>
                     {validShare ? euro(shareNum + BOOKING_FEE) : '—'}
                   </Text>
@@ -351,7 +353,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
               </View>
 
               <Text style={{ color: COLORS.textDisabled, fontSize: 11, textAlign: 'center', marginBottom: 14, lineHeight: 15 }}>
-                Rimborso solo se il locale ti nega l'ingresso. Nessun rimborso per mancata presentazione.
+                {t('booking.policy')}
               </Text>
 
               {error ? (
@@ -374,7 +376,7 @@ export default function TableBookingModal({ visible, onClose, event, session, mo
                 {loading
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={{ color: validShare ? '#fff' : COLORS.textMuted, fontWeight: '800', fontSize: 16 }}>
-                      {validShare ? `Paga ${euro(shareNum + BOOKING_FEE)}` : 'Inserisci la quota'}
+                      {validShare ? t('booking.pay', { amount: euro(shareNum + BOOKING_FEE) }) : t('tableModal.enterShare')}
                     </Text>
                 }
               </Pressable>

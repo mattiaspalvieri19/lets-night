@@ -14,6 +14,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { isOnboarded, getGuestPrefs, clearGuestPrefs } from '../lib/onboarding';
+import { LanguageProvider, useI18n } from '../lib/i18n';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -42,6 +43,15 @@ async function handlePaymentReturnUrl(url) {
 }
 
 export default function RootLayout() {
+  return (
+    <LanguageProvider>
+      <RootLayoutInner />
+    </LanguageProvider>
+  );
+}
+
+function RootLayoutInner() {
+  const { t, ready: langReady } = useI18n();
   const responseListener = useRef(null);
   // Font display (Bricolage Grotesque). Lo Stack resta SEMPRE montato (vedi nota sotto):
   // finché i font non sono pronti copriamo con un overlay — RN fa fallback al font di
@@ -140,20 +150,21 @@ export default function RootLayout() {
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding/index" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
-        <Stack.Screen name="event/[id]" options={{ title: 'Evento' }} />
-        <Stack.Screen name="ticket/[id]" options={{ title: 'Il tuo biglietto' }} />
-        <Stack.Screen name="notifications" options={{ title: 'Notifiche' }} />
-        <Stack.Screen name="venue/[id]" options={{ title: 'Locale' }} />
+        <Stack.Screen name="event/[id]" options={{ title: t('stackTitles.event') }} />
+        <Stack.Screen name="ticket/[id]" options={{ title: t('stackTitles.ticket') }} />
+        <Stack.Screen name="notifications" options={{ title: t('stackTitles.notifications') }} />
+        <Stack.Screen name="venue/[id]" options={{ title: t('stackTitles.venue') }} />
         <Stack.Screen name="user/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="loyalty" options={{ title: 'Carta fedeltà' }} />
+        <Stack.Screen name="loyalty" options={{ title: t('stackTitles.loyalty') }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/privacy" options={{ title: 'Privacy' }} />
-        <Stack.Screen name="settings/index" options={{ title: 'Impostazioni' }} />
+        <Stack.Screen name="profile/privacy" options={{ title: t('stackTitles.privacy') }} />
+        <Stack.Screen name="settings/index" options={{ title: t('stackTitles.settings') }} />
         <Stack.Screen name="settings/password" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/account" options={{ title: 'Elimina account' }} />
+        <Stack.Screen name="settings/account" options={{ title: t('stackTitles.deleteAccount') }} />
+        <Stack.Screen name="settings/language" options={{ title: t('stackTitles.language') }} />
         <Stack.Screen name="business-event/[id]" options={{ headerShown: false }} />
       </Stack>
-      {!fontsLoaded && (
+      {(!fontsLoaded || !langReady) && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0A0A0C' }} />
       )}
     </>

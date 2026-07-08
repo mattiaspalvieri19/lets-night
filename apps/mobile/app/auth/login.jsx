@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Keyboard } from 'react-native';
 import { Link, router } from 'expo-router';
+import { LANGS } from '@lets-night/shared';
 import { supabase } from '../../lib/supabase';
+import { useI18n } from '../../lib/i18n';
 
 // Risolve quando la tastiera è DAVVERO scomparsa (o dopo 600ms di sicurezza).
 // Navigare durante l'animazione di chiusura lascia alla schermata di destinazione
@@ -17,6 +19,7 @@ function waitKeyboardHidden() {
 }
 
 export default function LoginScreen() {
+  const { t, lang, setLang } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,9 +38,9 @@ export default function LoginScreen() {
 
     if (authError) {
       if (authError.message.includes('Email not confirmed')) {
-        setError('Conferma la tua email prima di accedere.');
+        setError(t('auth.errorEmailNotConfirmed'));
       } else {
-        setError('Email o password non corretti.');
+        setError(t('auth.errorBadCredentials'));
       }
       setLoading(false);
       return;
@@ -64,7 +67,20 @@ export default function LoginScreen() {
             <Text className="text-white" style={{ fontFamily: 'BricolageGrotesque_800ExtraBold', fontSize: 30, letterSpacing: -0.6 }}>
               Let&apos;s<Text className="text-brand-light">Night</Text>
             </Text>
-            <Text className="text-gray-400 mt-2 text-base">Accedi al tuo account</Text>
+            <Text className="text-gray-400 mt-2 text-base">{t('auth.loginSubtitle')}</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginTop: 14 }}>
+              {LANGS.map(l => {
+                const active = lang === l.code;
+                return (
+                  <Pressable key={l.code} onPress={() => setLang(l.code)}
+                    style={{ paddingHorizontal: 11, paddingVertical: 6, borderRadius: 14, backgroundColor: active ? '#FAFAFA' : 'transparent', borderWidth: 1, borderColor: active ? '#FAFAFA' : 'rgba(255,255,255,0.14)' }}>
+                    <Text style={{ color: active ? '#0A0A0C' : '#9CA3AF', fontSize: 11, fontWeight: active ? '700' : '500' }}>
+                      {l.code.toUpperCase()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           {error ? (
@@ -75,10 +91,10 @@ export default function LoginScreen() {
 
           <View className="gap-4">
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Email</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.email')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
-                placeholder="la@tua.email"
+                placeholder={t('auth.emailPlaceholder')}
                 placeholderTextColor="#555577"
                 value={email}
                 onChangeText={setEmail}
@@ -89,7 +105,7 @@ export default function LoginScreen() {
             </View>
 
             <View>
-              <Text className="text-gray-400 text-sm mb-2">Password</Text>
+              <Text className="text-gray-400 text-sm mb-2">{t('auth.password')}</Text>
               <TextInput
                 className="bg-card border border-white/10 text-white rounded-xl px-4 py-4"
                 placeholder="••••••••"
@@ -109,21 +125,21 @@ export default function LoginScreen() {
           >
             {loading
               ? <ActivityIndicator color="#ffffff" />
-              : <Text className="text-white font-bold text-base">Accedi</Text>
+              : <Text className="text-white font-bold text-base">{t('auth.login')}</Text>
             }
           </Pressable>
 
           <View className="flex-row justify-center items-center mt-6 gap-1">
-            <Text className="text-gray-400">Non hai un account?</Text>
+            <Text className="text-gray-400">{t('auth.noAccount')}</Text>
             <Link href="/auth/register">
-              <Text className="text-brand font-semibold"> Registrati</Text>
+              <Text className="text-brand font-semibold"> {t('auth.register')}</Text>
             </Link>
           </View>
 
           <View className="mt-8 pt-6 border-t border-gray-800 items-center">
-            <Text className="text-gray-500 text-sm mb-2">Sei un locale?</Text>
+            <Text className="text-gray-500 text-sm mb-2">{t('auth.areYouVenue')}</Text>
             <Link href="/auth/business-register">
-              <Text className="text-brand font-semibold text-sm">Registra il tuo locale →</Text>
+              <Text className="text-brand font-semibold text-sm">{t('auth.registerVenue')}</Text>
             </Link>
           </View>
 
