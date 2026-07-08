@@ -113,6 +113,8 @@ function RootLayoutInner() {
         router.push(`/ticket/${data.booking_id}`);
       } else if ((t === 'booking' || t === 'friend_booking' || t === 'reminder') && UUID_RE.test(ev)) {
         router.push(`/event/${ev}`);
+      } else if (t === 'support' && UUID_RE.test(data.support_ticket_id)) {
+        router.push(`/support/${data.support_ticket_id}`);
       }
     });
 
@@ -162,6 +164,9 @@ function RootLayoutInner() {
         <Stack.Screen name="settings/password" options={{ headerShown: false }} />
         <Stack.Screen name="settings/account" options={{ title: t('stackTitles.deleteAccount') }} />
         <Stack.Screen name="settings/language" options={{ title: t('stackTitles.language') }} />
+        <Stack.Screen name="support/index" options={{ title: t('stackTitles.support') }} />
+        <Stack.Screen name="support/new" options={{ title: t('stackTitles.supportNew') }} />
+        <Stack.Screen name="support/[id]" options={{ title: t('stackTitles.supportTicket') }} />
         <Stack.Screen name="business-event/[id]" options={{ headerShown: false }} />
       </Stack>
       {(!fontsLoaded || !langReady) && (

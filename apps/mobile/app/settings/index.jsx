@@ -82,6 +82,10 @@ export default function SettingsScreen() {
         <Row icon="lock-closed-outline" label={t('settings.changePassword')} sub={t('settings.changePasswordSub')} onPress={() => router.push('/settings/password')} />
       </Section>
 
+      <Section title={t('support.entry')}>
+        <Row icon="help-buoy-outline" label={t('support.entry')} sub={t('support.entrySub')} onPress={() => router.push('/support')} />
+      </Section>
+
       <Section title={t('settings.sectionAccount')}>
         <Row icon="log-out-outline" label={t('settings.logout')} sub={session?.user?.email} onPress={handleLogout} />
         <Row icon="trash-outline" label={t('settings.deleteAccount')} sub={t('settings.deleteAccountSub')} onPress={() => router.push('/settings/account')} danger />

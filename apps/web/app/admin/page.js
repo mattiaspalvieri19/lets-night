@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
   const [events, setEvents] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [venues, setVenues] = useState([]);
-  const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0 });
+  const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0, openTickets: 0 });
   const [fVenue, setFVenue] = useState('');
   const [fDays, setFDays] = useState('30');
 
@@ -36,6 +36,7 @@ export default function AdminDashboardPage() {
         newUsersRes,
         { count: pendingVenues },
         { count: pendingRefunds },
+        openTicketsRes,
       ] = await Promise.all([
         supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
         supabase.from('bookings')
@@ -49,6 +50,8 @@ export default function AdminDashboardPage() {
         supabase.from('bookings').select('id', { count: 'exact', head: true })
           .not('refund_requested_at', 'is', null)
           .not('status', 'in', '("cancelled","denied")'),
+        // support_tickets potrebbe non esistere finché la migration non è applicata: in errore il KPI sparisce.
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).in('status', ['open', 'in_progress']),
       ]);
       if (evErr) console.error('Errore dashboard admin:', evErr);
       setEvents(evs || []);
@@ -59,6 +62,7 @@ export default function AdminDashboardPage() {
         newUsers: newUsersRes.error ? null : (newUsersRes.count ?? null),
         pendingVenues: pendingVenues || 0,
         pendingRefunds: pendingRefunds || 0,
+        openTickets: openTicketsRes.error ? 0 : (openTicketsRes.count || 0),
       });
       setLoading(false);
     })();
@@ -111,7 +115,7 @@ export default function AdminDashboardPage() {
 
   if (loading) return <div className="dash-loading">Caricamento dashboard...</div>;
 
-  const daGestire = counts.pendingVenues + counts.pendingRefunds;
+  const daGestire = counts.pendingVenues + counts.pendingRefunds + counts.openTickets;
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
@@ -127,6 +131,11 @@ export default function AdminDashboardPage() {
             {counts.pendingRefunds > 0 && (
               <Link href="/admin/bookings" style={{ color: '#fff', fontSize: 14 }}>
                 {counts.pendingRefunds} {counts.pendingRefunds === 1 ? 'richiesta di rimborso' : 'richieste di rimborso'} →
+              </Link>
+            )}
+            {counts.openTickets > 0 && (
+              <Link href="/admin/support" style={{ color: '#fff', fontSize: 14 }}>
+                {counts.openTickets} ticket da gestire →
               </Link>
             )}
           </div>
@@ -160,6 +169,7 @@ export default function AdminDashboardPage() {
           ...(counts.newUsers != null ? [['Nuovi utenti (periodo)', counts.newUsers]] : []),
           ['Locali verificati', venues.filter(v => v.is_verified).length],
           ['Locali in attesa', counts.pendingVenues],
+          ['Ticket aperti', counts.openTickets],
         ].map(([lab, val]) => (
           <div key={lab} style={{ background: 'rgba(255,255,255,.03)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem' }}>
             <div style={{ color: '#fff', fontSize: 22, fontWeight: 800 }}>{val}</div>

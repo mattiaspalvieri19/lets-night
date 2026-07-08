@@ -12,6 +12,7 @@ const META = {
   follow:            { icon: 'person-add-outline', color: COLORS.brand },
   friend_booking:    { icon: 'people-outline',    color: COLORS.warning },
   reminder:          { icon: 'alarm-outline',     color: COLORS.brand },
+  support:           { icon: 'help-buoy-outline', color: COLORS.brand },
   generic:           { icon: 'notifications-outline', color: COLORS.textSecondary },
 };
 
@@ -67,6 +68,7 @@ export default function NotificationsScreen() {
     // (QR); amico-prenota/promemoria → pagina evento (per prenotare anche tu).
     if (n.type === 'follow' && n.actor_id) router.push(`/user/${n.actor_id}`);
     else if (n.type === 'booking_confirmed' && n.booking_id) router.push(`/ticket/${n.booking_id}`);
+    else if (n.type === 'support' && n.support_ticket_id) router.push(`/support/${n.support_ticket_id}`);
     else if (n.event_id) router.push(`/event/${n.event_id}`);
     else if (n.actor_id) router.push(`/user/${n.actor_id}`);
   }

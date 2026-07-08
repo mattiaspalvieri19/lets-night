@@ -11,6 +11,7 @@ const SECTIONS = [
   { href: '/admin/bookings', label: 'Prenotazioni' },
   { href: '/admin/venues', label: 'Locali' },
   { href: '/admin/users', label: 'Utenti' },
+  { href: '/admin/support', label: 'Assistenza' },
 ];
 
 export default function AdminLayout({ children }) {
