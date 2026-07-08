@@ -47,6 +47,7 @@ export default function AdminDashboard() {
         newUsersRes,
         { count: pendingVenues },
         { count: pendingRefunds },
+        openTicketsRes,
       ] = await Promise.all([
         supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
         supabase.from('bookings')
@@ -60,6 +61,8 @@ export default function AdminDashboard() {
         supabase.from('bookings').select('id', { count: 'exact', head: true })
           .not('refund_requested_at', 'is', null)
           .not('status', 'in', '("cancelled","denied")'),
+        // support_tickets può non esistere finché la migration non è applicata: in errore il badge sparisce.
+        supabase.from('support_tickets').select('id', { count: 'exact', head: true }).in('status', ['open', 'in_progress']),
       ]);
       setRaw({
         events: events || [],
@@ -69,6 +72,7 @@ export default function AdminDashboard() {
         newUsers: newUsersRes.error ? null : (newUsersRes.count ?? null),
         pendingVenues: pendingVenues || 0,
         pendingRefunds: pendingRefunds || 0,
+        openTickets: openTicketsRes.error ? 0 : (openTicketsRes.count || 0),
       });
     } catch (e) {
       console.error('Errore dashboard admin:', e);
@@ -132,7 +136,7 @@ export default function AdminDashboard() {
     return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
   }
 
-  const daGestire = raw.pendingVenues + raw.pendingRefunds;
+  const daGestire = raw.pendingVenues + raw.pendingRefunds + raw.openTickets;
 
   function confirmLogout() {
     Alert.alert("Uscire dall'account?", 'Potrai accedere con un altro account.', [
@@ -149,11 +153,20 @@ export default function AdminDashboard() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
 
       <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Pressable onPress={confirmLogout} hitSlop={8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle }}>
             <Ionicons name="log-out-outline" size={15} color={COLORS.textSecondary} />
             <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' }}>Esci</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push('/(admin)/manage-support')} hitSlop={8}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="chatbubbles-outline" size={19} color={COLORS.textSecondary} />
+            {raw.openTickets > 0 && (
+              <View style={{ position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: COLORS.danger, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: COLORS.bg }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>{raw.openTickets > 99 ? '99' : raw.openTickets}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
         <Text style={{ color: COLORS.danger, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>Admin</Text>
@@ -175,6 +188,13 @@ export default function AdminDashboard() {
               <Pressable onPress={() => router.push('/(admin)/bookings')}>
                 <Text style={{ color: COLORS.warning, fontWeight: '600', fontSize: 13 }}>
                   {raw.pendingRefunds} {raw.pendingRefunds === 1 ? 'richiesta di rimborso' : 'richieste di rimborso'} →
+                </Text>
+              </Pressable>
+            )}
+            {raw.openTickets > 0 && (
+              <Pressable onPress={() => router.push('/(admin)/manage-support')}>
+                <Text style={{ color: COLORS.warning, fontWeight: '600', fontSize: 13 }}>
+                  {raw.openTickets} ticket da gestire →
                 </Text>
               </Pressable>
             )}
