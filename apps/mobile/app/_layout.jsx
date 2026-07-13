@@ -15,8 +15,7 @@ import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { isOnboarded, getGuestPrefs, clearGuestPrefs } from '../lib/onboarding';
 import { LanguageProvider, useI18n } from '../lib/i18n';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+import { API_URL } from '../lib/apiUrl';
 
 // Recovery: se il deep link letsnight://payment-return arriva DOPO che la BookingModal è chiusa
 // (utente che ha backgroundato l'app durante checkout), questo handler globale completa il flusso
