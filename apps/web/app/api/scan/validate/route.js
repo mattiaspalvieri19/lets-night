@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { logAudit } from '../../../../lib/auditLog';
 
 // Validazione scanner lato server (service role). A differenza del client (vincolato dalla
 // RLS, che NON gli fa leggere prenotazioni di altri locali), qui possiamo risolvere QUALSIASI
@@ -81,18 +82,44 @@ export async function POST(request) {
     .maybeSingle();
 
   if (!booking) {
+    await logAudit('scan_rejected', {
+      severity: 'warn', actorId: user.id,
+      message: 'Scan rifiutato: QR inesistente',
+      details: { reason: 'not_found', qr: qrCode },
+    });
     return NextResponse.json({ status: 'not_found' });
   }
 
   // Locale sbagliato → niente dati personali, solo l'esito.
   if (!myVenueIds.includes(booking.events?.venue_id)) {
+    await logAudit('scan_rejected', {
+      severity: 'warn', actorId: user.id, userId: booking.user_id,
+      bookingId: booking.id, venueId: booking.events?.venue_id || null,
+      message: 'Scan rifiutato: QR di un ALTRO locale (possibile tentativo di frode se ripetuto)',
+      details: { reason: 'wrong_venue', scannerVenueIds: myVenueIds },
+    });
     return NextResponse.json({ status: 'wrong_venue' });
   }
 
   if (booking.status === 'cancelled') {
-    return NextResponse.json({ status: booking.checked_in ? 'refunded_after_entry' : 'cancelled' });
+    const reason = booking.checked_in ? 'refunded_after_entry' : 'cancelled';
+    await logAudit('scan_rejected', {
+      severity: 'warn', actorId: user.id, userId: booking.user_id,
+      bookingId: booking.id, venueId: booking.events?.venue_id || null,
+      message: reason === 'refunded_after_entry'
+        ? 'Scan rifiutato: prenotazione annullata DOPO l\'ingresso (negare il rientro)'
+        : 'Scan rifiutato: prenotazione annullata',
+      details: { reason },
+    });
+    return NextResponse.json({ status: reason });
   }
   if (booking.status === 'denied') {
+    await logAudit('scan_rejected', {
+      severity: 'warn', actorId: user.id, userId: booking.user_id,
+      bookingId: booking.id, venueId: booking.events?.venue_id || null,
+      message: 'Scan rifiutato: ingresso già negato/rimborsato',
+      details: { reason: 'refunded' },
+    });
     return NextResponse.json({ status: 'refunded' });
   }
 
@@ -135,6 +162,26 @@ export async function POST(request) {
       tableTotal: booking.event_tables.total_price,
     } : null,
   };
+
+  if (night === 'wrong_night') {
+    await logAudit('scan_rejected', {
+      severity: 'warn', actorId: user.id, userId: booking.user_id,
+      bookingId: booking.id, venueId: booking.events?.venue_id || null,
+      message: 'Scan rifiutato: locale giusto ma ALTRA serata',
+      details: { reason: 'wrong_night', eventDate: ed },
+    });
+  } else if (booking.checked_in) {
+    // QR valido ripresentato dopo il check-in: rientro legittimo o QR copiato —
+    // il registro rende visibili i pattern (stesso QR, orari, frequenza).
+    await logAudit('scan_duplicate', {
+      actorId: user.id, userId: booking.user_id,
+      bookingId: booking.id, venueId: booking.events?.venue_id || null,
+      message: 'QR già scannerizzato ripresentato (rientro o possibile copia)',
+      details: { checkedInAt: booking.checked_in_at },
+    });
+  }
+  // Scan valido "fresco": non si logga qui — il check-in che segue viene
+  // registrato dal trigger (checkin_set), con l'attore giusto.
 
   return NextResponse.json({ status: night === 'wrong_night' ? 'wrong_night' : 'ok', booking: payload });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { fulfillBookingFromSession, cancelBookingByPaymentIntent } from '../../../../lib/fulfillBooking';
+import { logAudit } from '../../../../lib/auditLog';
 
 let _stripe;
 function stripe() {
@@ -32,7 +33,7 @@ export async function POST(request) {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object;
-        const result = await fulfillBookingFromSession(session);
+        const result = await fulfillBookingFromSession(session, 'webhook');
         // 2xx evita retry per anomalie applicative (oversold, price mismatch — già rimborsate dentro fulfill).
         // Solo errori transient (500) forzano retry Stripe.
         if (result.error && result.status === 500) {
@@ -45,7 +46,16 @@ export async function POST(request) {
         // Un refund parziale o totale è arrivato. Cancella il booking corrispondente per invalidare il QR.
         const charge = event.data.object;
         if (charge.payment_intent) {
-          await cancelBookingByPaymentIntent(charge.payment_intent, `refund:${charge.id}`);
+          const res = await cancelBookingByPaymentIntent(charge.payment_intent, `refund:${charge.id}`);
+          // Registra solo se ha davvero toccato una prenotazione (i rimborsi che
+          // partono da noi arrivano qui come eco: la booking è già cancelled/denied).
+          if (res?.bookingId) {
+            await logAudit('webhook_event', {
+              bookingId: res.bookingId,
+              message: 'Refund da Stripe → prenotazione annullata e QR invalidato',
+              details: { stripeType: event.type, stripeEventId: event.id, chargeId: charge.id },
+            });
+          }
         }
         break;
       }
@@ -54,7 +64,17 @@ export async function POST(request) {
         // Chargeback aperto: invalida QR per impedire ingresso post-dispute.
         const dispute = event.data.object;
         if (dispute.payment_intent) {
-          await cancelBookingByPaymentIntent(dispute.payment_intent, `dispute:${dispute.id}`);
+          const res = await cancelBookingByPaymentIntent(dispute.payment_intent, `dispute:${dispute.id}`);
+          await logAudit('chargeback', {
+            severity: 'error',
+            bookingId: res?.bookingId || null,
+            message: 'CHARGEBACK aperto dal titolare carta → QR invalidato',
+            details: {
+              stripeEventId: event.id, disputeId: dispute.id,
+              amountCents: dispute.amount, reason: dispute.reason,
+              bookingFound: !!res?.bookingId,
+            },
+          });
         }
         break;
       }

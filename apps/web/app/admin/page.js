@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
   const [events, setEvents] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [venues, setVenues] = useState([]);
-  const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0, openTickets: 0 });
+  const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0, openTickets: 0, anomalies: 0 });
   const [fVenue, setFVenue] = useState('');
   const [fDays, setFDays] = useState('30');
 
@@ -37,6 +37,7 @@ export default function AdminDashboardPage() {
         { count: pendingVenues },
         { count: pendingRefunds },
         openTicketsRes,
+        anomaliesRes,
       ] = await Promise.all([
         supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
         supabase.from('bookings')
@@ -52,6 +53,8 @@ export default function AdminDashboardPage() {
           .not('status', 'in', '("cancelled","denied")'),
         // support_tickets potrebbe non esistere finché la migration non è applicata: in errore il KPI sparisce.
         supabase.from('support_tickets').select('id', { count: 'exact', head: true }).in('status', ['open', 'in_progress']),
+        // audit_logs idem: problemi (warn+error) degli ultimi 7 giorni.
+        supabase.from('audit_logs').select('id', { count: 'exact', head: true }).neq('severity', 'info').gte('created_at', daysAgoIso(7)),
       ]);
       if (evErr) console.error('Errore dashboard admin:', evErr);
       setEvents(evs || []);
@@ -63,6 +66,7 @@ export default function AdminDashboardPage() {
         pendingVenues: pendingVenues || 0,
         pendingRefunds: pendingRefunds || 0,
         openTickets: openTicketsRes.error ? 0 : (openTicketsRes.count || 0),
+        anomalies: anomaliesRes.error ? 0 : (anomaliesRes.count || 0),
       });
       setLoading(false);
     })();
@@ -115,7 +119,7 @@ export default function AdminDashboardPage() {
 
   if (loading) return <div className="dash-loading">Caricamento dashboard...</div>;
 
-  const daGestire = counts.pendingVenues + counts.pendingRefunds + counts.openTickets;
+  const daGestire = counts.pendingVenues + counts.pendingRefunds + counts.openTickets + counts.anomalies;
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem' }}>
@@ -136,6 +140,11 @@ export default function AdminDashboardPage() {
             {counts.openTickets > 0 && (
               <Link href="/admin/support" style={{ color: '#fff', fontSize: 14 }}>
                 {counts.openTickets} ticket da gestire →
+              </Link>
+            )}
+            {counts.anomalies > 0 && (
+              <Link href="/admin/registro" style={{ color: '#f87171', fontSize: 14 }}>
+                {counts.anomalies} {counts.anomalies === 1 ? 'anomalia nel registro' : 'anomalie nel registro'} (7gg) →
               </Link>
             )}
           </div>

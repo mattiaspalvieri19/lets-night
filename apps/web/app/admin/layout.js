@@ -12,6 +12,7 @@ const SECTIONS = [
   { href: '/admin/venues', label: 'Locali' },
   { href: '/admin/users', label: 'Utenti' },
   { href: '/admin/support', label: 'Assistenza' },
+  { href: '/admin/registro', label: 'Registro' },
 ];
 
 export default function AdminLayout({ children }) {

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { generateBookingQR, computeBookingPrice, BOOKING_FEE } from '@lets-night/shared';
+import { logAudit } from './auditLog';
 
 let _stripe;
 function stripe() {
@@ -17,7 +18,8 @@ function livemodeMismatch(stripeSession) {
 
 // Idempotente: dato uno Stripe session paid, crea (o ritorna) la booking.
 // Chiamabile sia da /api/stripe/webhook (source of truth) sia da /api/stripe/confirm-booking (fallback sincrono).
-export async function fulfillBookingFromSession(stripeSession) {
+// `source` finisce nel registro: dice DA QUALE strada è arrivata la conferma.
+export async function fulfillBookingFromSession(stripeSession, source = 'unknown') {
   if (!stripeSession || stripeSession.payment_status !== 'paid') {
     return { error: 'Pagamento non completato', code: 'PAYMENT_NOT_COMPLETED', status: 402 };
   }
@@ -51,7 +53,7 @@ export async function fulfillBookingFromSession(stripeSession) {
 
   // Quote tavolo: flusso dedicato (apertura/join con trigger di guardia + auto-refund).
   if (md.kind === 'table') {
-    return fulfillTableShare(supabase, stripeSession, md);
+    return fulfillTableShare(supabase, stripeSession, md, source);
   }
 
   const eventId = md.eventId;
@@ -134,16 +136,31 @@ export async function fulfillBookingFromSession(stripeSession) {
       return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', code: 'OVERSOLD_REFUNDED', status: 409, oversold: true, refunded: true };
     }
     console.error('Insert booking fallita:', bookErr);
+    // Caso peggiore: soldi incassati ma prenotazione NON creata e nessun refund
+    // partito (il 500 fa ritentare Stripe; se persiste, va gestito a mano).
+    await logAudit('payment_orphan', {
+      severity: 'error', userId, eventId,
+      message: 'Pagamento incassato ma prenotazione NON creata (retry Stripe attesi)',
+      details: { sessionId: stripeSession.id, amountCents: stripeSession.amount_total, dbError: bookErr.message, via: source },
+    });
     return { error: 'Errore creazione prenotazione', code: 'BOOKING_CREATE_FAILED', status: 500 };
   }
 
+  await logAudit('payment_fulfilled', {
+    userId, eventId, bookingId: booking.id,
+    message: `Pagamento completato → prenotazione emessa (${pricing.bookingType}, ${pricing.safeQty}x)`,
+    details: {
+      sessionId: stripeSession.id, amountCents: stripeSession.amount_total,
+      lineTotal: pricing.lineTotal, fee: pricing.fee, via: source,
+    },
+  });
   return { ok: true, bookingId: booking.id, qrCode: booking.qr_code };
 }
 
 // Fulfillment quota tavolo (open/join). I trigger DB sono la verità atomica:
 // TABLES_FULL / TABLE_SEATS_FULL / SHARE_EXCEEDS_REMAINING / TABLE_NOT_OPEN
 // → qui li catturiamo e rimborsiamo automaticamente.
-async function fulfillTableShare(supabase, stripeSession, md) {
+async function fulfillTableShare(supabase, stripeSession, md, source = 'unknown') {
   const share = Math.max(0, Number(md.share) || 0);
   const expectedCents = Math.round((share + BOOKING_FEE) * 100);
   if (stripeSession.amount_total !== expectedCents) {
@@ -204,6 +221,11 @@ async function fulfillTableShare(supabase, stripeSession, md) {
         }
         if (!tableId) {
           console.error('Insert event_tables fallita:', tErr);
+          await logAudit('payment_orphan', {
+            severity: 'error', userId: md.userId, eventId: md.eventId,
+            message: 'Pagamento tavolo incassato ma creazione tavolo fallita (retry Stripe attesi)',
+            details: { sessionId: stripeSession.id, dbError: tErr.message, via: source },
+          });
           return { error: 'Errore creazione tavolo', status: 500 };
         }
       } else {
@@ -273,15 +295,30 @@ async function fulfillTableShare(supabase, stripeSession, md) {
     }
     await rollbackCreatedTable();
     console.error('Insert quota tavolo fallita:', bookErr);
+    await logAudit('payment_orphan', {
+      severity: 'error', userId: md.userId, eventId: md.eventId,
+      message: 'Pagamento quota tavolo incassato ma prenotazione NON creata (retry Stripe attesi)',
+      details: { sessionId: stripeSession.id, tableId, dbError: bookErr.message, via: source },
+    });
     return { error: 'Errore creazione quota', status: 500 };
   }
 
+  await logAudit('payment_fulfilled', {
+    userId: md.userId, eventId: md.eventId, bookingId: booking.id,
+    message: `Pagamento completato → quota tavolo emessa (${md.tableAction === 'open' ? 'apertura' : 'join'})`,
+    details: {
+      sessionId: stripeSession.id, amountCents: stripeSession.amount_total,
+      tableId, share, via: source,
+    },
+  });
   return { ok: true, bookingId: booking.id, qrCode: booking.qr_code, tableId };
 }
 
 // Refund automatico + log anomalia. Best-effort: se Stripe è down, logghiamo e procediamo.
 async function refundAndAlert(stripeSession, reason, details = {}) {
   console.error('[PAYMENT_ANOMALY]', { reason, sessionId: stripeSession.id, ...details });
+  let refunded = false;
+  let refundError = null;
   try {
     if (stripeSession.payment_intent) {
       await stripe().refunds.create({
@@ -294,10 +331,27 @@ async function refundAndAlert(stripeSession, reason, details = {}) {
           session_id: stripeSession.id,
         },
       }, { idempotencyKey: `auto_refund_${stripeSession.id}` });
+      refunded = true;
     }
   } catch (e) {
+    refundError = e.message;
     console.error('[REFUND_FAILED]', { sessionId: stripeSession.id, reason, error: e.message });
   }
+  const md = stripeSession.metadata || {};
+  await logAudit('payment_anomaly_refund', {
+    // error = incassato e auto-rimborso NON riuscito → servono le tue mani.
+    severity: refundError ? 'error' : 'warn',
+    userId: md.userId || null,
+    eventId: md.eventId || null,
+    message: `Pagamento anomalo (${reason}) → auto-rimborso ${refunded ? 'eseguito' : refundError ? 'FALLITO' : 'non applicabile'}`,
+    details: {
+      ...details, reason,
+      sessionId: stripeSession.id,
+      amountCents: stripeSession.amount_total,
+      refunded,
+      refundError,
+    },
+  });
 }
 
 // Cancella un booking dato un payment_intent (per refund/dispute manuali via Stripe dashboard).

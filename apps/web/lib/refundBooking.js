@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import { logAudit } from './auditLog';
 
 let _stripe;
 function stripe() {
@@ -32,7 +33,7 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
 
   const { data: booking, error } = await supabase
     .from('bookings')
-    .select('id, status, stripe_session_id, events(venue_id, venues(owner_id))')
+    .select('id, status, user_id, event_id, total_price, stripe_session_id, events(venue_id, venues(owner_id))')
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -78,6 +79,12 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
       }
     } catch (e) {
       console.error('[DENY_REFUND_STRIPE_FAILED]', e.message);
+      await logAudit('refund_failed', {
+        severity: 'error', actorId: callerUserId, userId: booking.user_id,
+        bookingId, eventId: booking.event_id,
+        message: 'Rimborso (ingresso negato) FALLITO su Stripe',
+        details: { origin: 'venue_reject', reason: reason || 'denied_entry', error: e.message },
+      });
       return { error: 'Rimborso non riuscito. Riprova o gestiscilo da Stripe.', status: 502 };
     }
   }
@@ -110,6 +117,14 @@ export async function denyAndRefundBooking({ bookingId, callerUserId, reason }) 
     .eq('id', bookingId)
     .then(({ error: e }) => { if (e) console.warn('[DENY_AUDIT_SKIP]', e.message); });
 
+  await logAudit('refund_done', {
+    actorId: callerUserId, userId: booking.user_id,
+    bookingId, eventId: booking.event_id,
+    message: refunded
+      ? 'Ingresso negato → rimborso pieno eseguito'
+      : 'Ingresso negato (prenotazione gratuita, nessun rimborso)',
+    details: { origin: 'venue_reject', reason: reason || 'denied_entry', refunded, totalPrice: booking.total_price },
+  });
   return { ok: true, refunded };
 }
 
@@ -167,6 +182,11 @@ export async function requestNoShowRefund({ bookingId, callerUserId }) {
     .update({ refund_requested_at: new Date().toISOString(), refund_request_reason: 'No-show: richiesta dopo la fine serata' })
     .eq('id', bookingId);
   if (upd) { console.error('[REFUND_REQUEST_FAILED]', upd); return { error: 'Richiesta non salvata, riprova', status: 500 }; }
+  await logAudit('refund_requested', {
+    actorId: callerUserId, userId: callerUserId, bookingId,
+    message: 'Richiesta rimborso no-show (in attesa di approvazione admin)',
+    details: { origin: 'no_show' },
+  });
   return { ok: true };
 }
 
@@ -196,6 +216,11 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       .eq('id', bookingId);
     if (upd) return { error: 'Aggiornamento non riuscito', status: 500 };
     await notifyRefundOutcome(supabase, b, false);
+    await logAudit('refund_resolved', {
+      actorId: callerUserId, userId: b.user_id, bookingId, eventId: b.event_id,
+      message: 'Richiesta rimborso no-show RESPINTA dall\'admin',
+      details: { action: 'reject', origin: 'no_show' },
+    });
     return { ok: true, rejected: true };
   }
 
@@ -231,6 +256,12 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
       }
     } catch (e) {
       console.error('[NOSHOW_REFUND_STRIPE_FAILED]', e.message);
+      await logAudit('refund_failed', {
+        severity: 'error', actorId: callerUserId, userId: b.user_id,
+        bookingId, eventId: b.event_id,
+        message: 'Rimborso no-show approvato ma FALLITO su Stripe',
+        details: { origin: 'no_show', error: e.message },
+      });
       return { error: 'Rimborso Stripe non riuscito. Riprova o gestiscilo da Stripe.', status: 502 };
     }
   }
@@ -248,6 +279,11 @@ export async function resolveRefundRequest({ bookingId, callerUserId, action }) 
     .eq('id', bookingId);
   if (upd) { console.error('[NOSHOW_REFUND_UPDATE_FAILED]', upd); return { error: 'Rimborso avviato ma stato non aggiornato. Contatta il supporto.', status: 500 }; }
   await notifyRefundOutcome(supabase, b, true, amount);
+  await logAudit('refund_done', {
+    actorId: callerUserId, userId: b.user_id, bookingId, eventId: b.event_id,
+    message: `Rimborso no-show approvato: ${amount.toFixed(2)} € (netto commissioni)`,
+    details: { origin: 'no_show', action: 'approve', refunded, amount, totalPrice: b.total_price },
+  });
   return { ok: true, refunded, amount };
 }
 

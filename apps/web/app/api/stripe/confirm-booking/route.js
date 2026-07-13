@@ -53,7 +53,7 @@ export async function POST(request) {
     }
   }
 
-  const result = await fulfillBookingFromSession(session);
+  const result = await fulfillBookingFromSession(session, 'confirm_booking');
   if (!result.ok) {
     return NextResponse.json({
       error: result.error || 'Errore',
