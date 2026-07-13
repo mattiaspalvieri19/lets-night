@@ -186,7 +186,9 @@ export default function PublicProfileScreen() {
       if (!error) {
         setIsFollowing(true);
         setStats(s => ({ ...s, followers: s.followers + 1 }));
+        const { data: { session } } = await supabase.auth.getSession();
         supabase.functions.invoke('notify-follower', {
+          headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
           body: { follower_id: myId, following_id: id },
         }).catch(() => {});
       } else {

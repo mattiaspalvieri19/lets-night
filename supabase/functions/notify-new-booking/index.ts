@@ -23,6 +23,35 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // SICUREZZA: non ci si fida di user_id preso dal body. Ricaviamo il chiamante
+    // dal suo JWT e pretendiamo che sia proprio lui il prenotante. Senza questo,
+    // chiunque potrebbe spedire push "X ha prenotato Y" a qualsiasi locale (M2).
+    const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+    }
+    const { data: { user: caller }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !caller) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+    }
+    if (caller.id !== user_id) {
+      return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
+    }
+
+    // Difesa in profondità: la push riflette una prenotazione REALE e attiva.
+    const { data: bk } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('event_id', event_id)
+      .neq('status', 'cancelled')
+      .neq('status', 'denied')
+      .limit(1)
+      .maybeSingle();
+    if (!bk) {
+      return new Response(JSON.stringify({ sent: false, reason: 'no_booking' }), { status: 200 });
+    }
+
     // Dati evento + venue owner
     const { data: ev } = await supabase
       .from('events')
