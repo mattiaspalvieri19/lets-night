@@ -23,10 +23,11 @@ export default function EventDetailScreen() {
   const [bookingVisible, setBookingVisible] = useState(false);
   const [tableTypes, setTableTypes] = useState([]);
   const [tables, setTables] = useState([]);
+  const [ticketTypes, setTicketTypes] = useState([]);
   const [tableModal, setTableModal] = useState(null); // { action:'open', type } | { action:'join', table }
 
   async function loadTables() {
-    const [{ data: tt }, { data: ts }] = await Promise.all([
+    const [{ data: tt }, { data: ts }, { data: tk }] = await Promise.all([
       supabase
         .from('event_table_types')
         .select('*')
@@ -38,9 +39,17 @@ export default function EventDetailScreen() {
         .eq('event_id', id)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: true }),
+      supabase
+        .from('event_ticket_types')
+        .select('*')
+        .eq('event_id', id)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('price', { ascending: true }),
     ]);
     setTableTypes(tt || []);
     setTables(ts || []);
+    setTicketTypes(tk || []);
   }
 
   useEffect(() => {
@@ -206,7 +215,9 @@ export default function EventDetailScreen() {
               </View>
               <View className="items-end">
                 <Text className="text-gray-400 text-xs mb-1">{t('eventDetail.price')}</Text>
-                <Text className="text-brand font-bold text-lg">{fmtPrice(event.price)}</Text>
+                <Text className="text-brand font-bold text-lg">
+                  {ticketTypes.length > 1 ? t('eventDetail.fromPrice', { price: fmtPrice(event.price) }) : fmtPrice(event.price)}
+                </Text>
               </View>
             </View>
             {event.capacity != null && event.capacity > 0 && (() => {
@@ -416,6 +427,7 @@ export default function EventDetailScreen() {
         // biglietti viene nascosto: i tavoli passano dal nuovo flusso quote.
         event={tableTypes.length > 0 ? { ...event, has_tables: false } : event}
         session={session}
+        ticketTypes={ticketTypes}
       />
 
       <TableBookingModal

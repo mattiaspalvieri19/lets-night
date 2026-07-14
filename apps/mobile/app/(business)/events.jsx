@@ -210,7 +210,7 @@ export default function BusinessEvents() {
                 )}
               </View>
               <Text style={{ color: COLORS.brand, fontSize: 11, marginTop: 10, textAlign: 'right' }}>
-                Tocca per statistiche →
+                {t('bizEvents.manageCta')} →
               </Text>
             </Pressable>
           );

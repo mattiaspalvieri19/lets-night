@@ -110,9 +110,14 @@ const MAX_QUANTITY_TICKETS = 10;
 // Single source of truth per il calcolo prezzo prenotazione.
 // Restituisce { effectivePrice, safeQty, lineTotal, fee, total, isFree, bookingType }.
 // `quantity` viene clampata a [1, 10] per i biglietti, forzata a 1 per i tavoli.
-export function computeBookingPrice(event, bookingType, quantity) {
+// `ticketType` (opzionale): tipologia di ingresso scelta — il suo prezzo
+// sostituisce events.price per i biglietti. I call-site esistenti (3 argomenti)
+// restano invariati.
+export function computeBookingPrice(event, bookingType, quantity, ticketType = null) {
   const type = normalizeBookingType(event, bookingType);
-  const safePrice = Math.max(0, Number(event?.price) || 0);
+  const safePrice = type === 'ticket' && ticketType
+    ? Math.max(0, Number(ticketType.price) || 0)
+    : Math.max(0, Number(event?.price) || 0);
   const rawTable = event?.table_price;
   // Distingui null/undefined (= "usa fallback price*4") da 0 esplicito (= tavolo gratis)
   const tableHasPrice = rawTable !== null && rawTable !== undefined && rawTable !== '';

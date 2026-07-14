@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
@@ -7,6 +7,7 @@ import { COLORS, FONT_FAMILY, formatDateFull, formatTime } from '@lets-night/sha
 import EventFormModal from '../../../components/EventFormModal';
 
 const EMPTY_TYPE = { name: '', total_price: '', max_people: '8', includes: '', tables_count: '1' };
+const EMPTY_TICKET = { name: '', description: '', price: '', drinks_included: '0', quantity: '', is_active: true };
 
 function parseNum(str) {
   const n = parseFloat(String(str).replace(',', '.'));
@@ -36,6 +37,9 @@ export default function AdminEventDetailScreen() {
   const [editModal, setEditModal] = useState(false);
   const [typeForm, setTypeForm] = useState(EMPTY_TYPE);
   const [savingType, setSavingType] = useState(false);
+  const [ticketTypes, setTicketTypes] = useState([]);
+  const [ticketModal, setTicketModal] = useState(null); // null | {} | { id }
+  const [ticketForm, setTicketForm] = useState(EMPTY_TICKET);
   const [combineSel, setCombineSel] = useState([]);
   const [combineCount, setCombineCount] = useState('1');
   const [combineName, setCombineName] = useState('');
@@ -58,7 +62,7 @@ export default function AdminEventDetailScreen() {
     }
     setEvent(ev);
 
-    const [{ data: bks }, { data: tt }, { data: ts }] = await Promise.all([
+    const [{ data: bks }, { data: tt }, { data: ts }, { data: tks }] = await Promise.all([
       supabase
         .from('bookings')
         .select('*, profiles(full_name, phone)')
@@ -76,10 +80,17 @@ export default function AdminEventDetailScreen() {
         .eq('event_id', id)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: true }),
+      supabase
+        .from('event_ticket_types')
+        .select('*')
+        .eq('event_id', id)
+        .order('sort_order', { ascending: true })
+        .order('price', { ascending: true }),
     ]);
     setBookings(bks || []);
     setTableTypes(tt || []);
     setEventTables(ts || []);
+    setTicketTypes(tks || []);
   }
 
   useFocusEffect(useCallback(() => {
@@ -139,6 +150,83 @@ export default function AdminEventDetailScreen() {
     setCheckingIn(null);
     if (error) { Alert.alert('Errore', error.message); return; }
     setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: !alreadyIn } : b));
+  }
+
+  // ====================== TIPOLOGIE DI INGRESSO ======================
+  function openTicketModal(tk) {
+    if (tk) {
+      setTicketForm({
+        name: tk.name,
+        description: tk.description || '',
+        price: String(tk.price),
+        drinks_included: String(tk.drinks_included ?? 0),
+        quantity: tk.quantity == null ? '' : String(tk.quantity),
+        is_active: !!tk.is_active,
+      });
+      setTicketModal({ id: tk.id });
+    } else {
+      setTicketForm(EMPTY_TICKET);
+      setTicketModal({});
+    }
+  }
+
+  async function saveTicketType() {
+    const price = parseFloat(String(ticketForm.price).replace(',', '.'));
+    const drinks = ticketForm.drinks_included === '' ? 0 : parseInt(ticketForm.drinks_included, 10);
+    const qty = ticketForm.quantity.trim() === '' ? null : parseInt(ticketForm.quantity, 10);
+    if (!ticketForm.name.trim()) { Alert.alert('Manca il nome', 'Es. Base, Premium, Lista.'); return; }
+    if (!Number.isFinite(price) || price < 0) { Alert.alert('Prezzo non valido', 'Inserisci il prezzo (0 = gratuita).'); return; }
+    if (!Number.isInteger(drinks) || drinks < 0) { Alert.alert('Drink non validi', 'Numero di drink inclusi (0 se nessuno).'); return; }
+    if (qty !== null && (!Number.isInteger(qty) || qty < 1)) { Alert.alert('Disponibilità non valida', 'Numero positivo o vuota (illimitata).'); return; }
+
+    setSavingType(true);
+    const payload = {
+      name: ticketForm.name.trim(),
+      description: ticketForm.description.trim() || null,
+      price,
+      drinks_included: drinks,
+      quantity: qty,
+      is_active: ticketForm.is_active,
+    };
+    const { error } = ticketModal?.id
+      ? await supabase.from('event_ticket_types').update(payload).eq('id', ticketModal.id)
+      : await supabase.from('event_ticket_types').insert({ ...payload, event_id: id });
+    setSavingType(false);
+    if (error) { Alert.alert('Errore', error.message); return; }
+    setTicketModal(null);
+    loadData();
+  }
+
+  function confirmDeleteTicketType(tk) {
+    Alert.alert(
+      'Eliminare la tipologia di ingresso?',
+      `"${tk.name}" — operazione definitiva.`,
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina', style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('event_ticket_types').delete().eq('id', tk.id);
+            if (error) {
+              Alert.alert(
+                'Non eliminabile',
+                'Ci sono prenotazioni con questa tipologia. Puoi disattivarla per fermare la vendita.',
+                [
+                  { text: 'Annulla', style: 'cancel' },
+                  { text: 'Disattiva', onPress: async () => {
+                    const { error: e2 } = await supabase.from('event_ticket_types').update({ is_active: false }).eq('id', tk.id);
+                    if (e2) { Alert.alert('Errore', e2.message); return; }
+                    loadData();
+                  } },
+                ]
+              );
+              return;
+            }
+            loadData();
+          },
+        },
+      ]
+    );
   }
 
   // ====================== TIPOLOGIE TAVOLO ======================
@@ -340,6 +428,67 @@ export default function AdminEventDetailScreen() {
         <StatCard label="Incassi" value={`€${stats.revenue.toFixed(0)}`} />
         {event.capacity && (
           <StatCard label="Capienza" value={`${event.booked_count || 0}/${event.capacity}`} />
+        )}
+      </View>
+
+      {/* ====================== TIPOLOGIE DI INGRESSO ====================== */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>Tipologie di ingresso</Text>
+          <Pressable
+            onPress={() => openTicketModal(null)}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandStrong, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, opacity: pressed ? 0.85 : 1 })}
+          >
+            <Ionicons name="add" size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Tipologia</Text>
+          </Pressable>
+        </View>
+
+        {ticketTypes.length === 0 ? (
+          <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 18 }}>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13, marginBottom: 4 }}>Nessuna tipologia di ingresso</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 12, lineHeight: 17 }}>
+              Senza tipologie vale il prezzo base dell&apos;evento. Con almeno una attiva, il prezzo in app è il minimo attivo (automatico).
+            </Text>
+          </View>
+        ) : (
+          ticketTypes.map(tk => {
+            const sold = bookings
+              .filter(b => b.ticket_type_id === tk.id)
+              .reduce((s, b) => s + (Number(b.quantity) || 1), 0);
+            const drinks = Number(tk.drinks_included) || 0;
+            return (
+              <View key={tk.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 8, opacity: tk.is_active ? 1 : 0.55 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
+                        {tk.name} · {euro(tk.price)}
+                      </Text>
+                      {!tk.is_active && (
+                        <View style={{ backgroundColor: 'rgba(245,158,11,0.12)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 }}>
+                          <Text style={{ color: COLORS.warning, fontSize: 10, fontWeight: '700' }}>Disattivata</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                      {tk.quantity != null ? `${sold}/${tk.quantity} venduti` : `${sold} venduti · illimitata`}
+                      {drinks > 0 ? ` · ${drinks} drink` : ''}
+                    </Text>
+                    {tk.description ? (
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }} numberOfLines={2}>{tk.description}</Text>
+                    ) : null}
+                  </View>
+                  <Pressable onPress={() => openTicketModal(tk)} hitSlop={8} style={{ padding: 6 }}>
+                    <Ionicons name="create-outline" size={17} color={COLORS.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => confirmDeleteTicketType(tk)} hitSlop={8} style={{ padding: 6 }}>
+                    <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })
         )}
       </View>
 
@@ -555,6 +704,49 @@ export default function AdminEventDetailScreen() {
           onSaved={loadData}
         />
       )}
+
+      {/* ================== MODAL TIPOLOGIA DI INGRESSO ================== */}
+      <Modal visible={!!ticketModal} transparent animationType="slide" onRequestClose={() => setTicketModal(null)}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setTicketModal(null)} />
+          <View style={{ backgroundColor: COLORS.bgElev2, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 30, maxHeight: '88%' }}>
+            <View style={{ width: 36, height: 4, backgroundColor: COLORS.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <Pressable onPress={saveTicketType} disabled={savingType} hitSlop={8}
+                style={({ pressed }) => ({ opacity: savingType || pressed ? 0.5 : 1 })}>
+                {savingType ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15 }}>{ticketModal?.id ? 'Salva modifiche' : 'Crea tipologia'}</Text>}
+              </Pressable>
+              <Pressable onPress={() => setTicketModal(null)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+              <TypeField label="Nome" value={ticketForm.name} onChange={v => setTicketForm(f => ({ ...f, name: v }))} placeholder="Es. Base, Premium, Lista" />
+              <TypeField label="Descrizione" value={ticketForm.description} onChange={v => setTicketForm(f => ({ ...f, description: v }))} placeholder="Es. Ingresso con 2 drink inclusi entro mezzanotte" multiline />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <TypeField label="Prezzo (€)" value={ticketForm.price} onChange={v => setTicketForm(f => ({ ...f, price: v }))} placeholder="15" keyboardType="decimal-pad" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TypeField label="Drink inclusi" value={ticketForm.drinks_included} onChange={v => setTicketForm(f => ({ ...f, drinks_included: v }))} placeholder="0" keyboardType="number-pad" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TypeField label="Disponibilità" value={ticketForm.quantity} onChange={v => setTicketForm(f => ({ ...f, quantity: v }))} placeholder="Vuota = illimitata" keyboardType="number-pad" />
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingVertical: 4 }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>In vendita</Text>
+                <Switch
+                  value={ticketForm.is_active}
+                  onValueChange={v => setTicketForm(f => ({ ...f, is_active: v }))}
+                  trackColor={{ false: COLORS.bgElev3, true: COLORS.brandStrong }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ====================== MODAL TIPOLOGIA ====================== */}
       <Modal visible={!!typeModal} transparent animationType="slide" onRequestClose={() => setTypeModal(null)}>

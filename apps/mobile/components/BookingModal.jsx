@@ -27,17 +27,72 @@ function euro(v) {
   return v.toFixed(2).replace('.', ',') + ' €';
 }
 
-export default function BookingModal({ visible, onClose, event, session }) {
+// Selettore tipologia di ingresso (radio-card). Componente figlio → proprio useI18n.
+function TicketTypeSelector({ types, selectedId, onSelect }) {
+  const { t, fmtPrice } = useI18n();
+  return (
+    <View style={{ marginBottom: 18 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 }}>
+        {t('booking.typeSelect')}
+      </Text>
+      <View style={{ gap: 8 }}>
+        {types.map(tt => {
+          const active = selectedId === tt.id;
+          const drinks = Number(tt.drinks_included) || 0;
+          return (
+            <Pressable
+              key={tt.id}
+              onPress={() => onSelect(tt.id)}
+              style={{ padding: 14, borderRadius: 12, backgroundColor: active ? '#FAFAFA' : COLORS.bgElev3 }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text numberOfLines={1} style={{ color: active ? COLORS.bg : COLORS.textPrimary, fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 }}>
+                  {tt.name}
+                </Text>
+                <Text style={{ color: active ? COLORS.bg : COLORS.textPrimary, fontSize: 14, fontWeight: '800' }}>
+                  {fmtPrice(Math.max(0, Number(tt.price) || 0))}
+                </Text>
+              </View>
+              {!!tt.description && (
+                <Text numberOfLines={2} style={{ color: active ? '#52525B' : COLORS.textMuted, fontSize: 12, marginTop: 3 }}>
+                  {tt.description}
+                </Text>
+              )}
+              {drinks > 0 && (
+                <Text style={{ color: active ? '#52525B' : COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {drinks === 1 ? t('booking.drinkOne') : t('booking.drinkMany', { count: drinks })}
+                </Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+export default function BookingModal({ visible, onClose, event, session, ticketTypes = [] }) {
   const { t, fmtDateFull, fmtPrice } = useI18n();
   const [quantity, setQuantity] = useState(1);
   const [bookingType, setBookingType] = useState('ticket');
+  const [selectedTypeId, setSelectedTypeId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [lastQR, setLastQR] = useState(null);
   const submitting = useRef(false);
 
-  const pricing = event ? computeBookingPrice(event, bookingType, quantity) : null;
+  // Tipologia scelta (default: la prima). Vale solo per gli ingressi, mai per i tavoli.
+  const selectedType = ticketTypes.find(tt => tt.id === selectedTypeId) || null;
+  useEffect(() => {
+    if (visible && ticketTypes.length > 0) {
+      setSelectedTypeId(prev => (ticketTypes.some(tt => tt.id === prev) ? prev : ticketTypes[0].id));
+    }
+  }, [visible, ticketTypes]);
+
+  const pricing = event
+    ? computeBookingPrice(event, bookingType, quantity, bookingType === 'ticket' ? selectedType : null)
+    : null;
   const hasTables = !!event?.has_tables;
 
   // Anti-screenshot quando il QR è visibile.
@@ -52,6 +107,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
     if (!visible) {
       setQuantity(1);
       setBookingType('ticket');
+      setSelectedTypeId(null);
       setSuccess(false);
       setError('');
       setLastQR(null);
@@ -63,6 +119,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
   function handleClose() {
     setQuantity(1);
     setBookingType('ticket');
+    setSelectedTypeId(null);
     setSuccess(false);
     setError('');
     setLastQR(null);
@@ -114,12 +171,15 @@ export default function BookingModal({ visible, onClose, event, session }) {
         fee: 0,
         qr_code: qrCode,
         booking_type: pricing.bookingType,
+        ticket_type_id: pricing.bookingType === 'ticket' ? (selectedType?.id || null) : null,
         snapshot_full_name: prof?.full_name || null,
       });
       setLoading(false);
       submitting.current = false;
       if (err) {
         if (err.code === '23505') setError(t('booking.already'));
+        else if (/TICKET_TYPE_FULL/.test(err.message || '')) setError(t('serverErrors.TICKET_TYPE_FULL'));
+        else if (/BOOKING_TICKET_TYPE/.test(err.message || '')) setError(t('serverErrors.TICKET_TYPE_INACTIVE'));
         else if (err.code === '23514' || /CAPACITY_FULL/.test(err.message || '')) setError(t('booking.soldOut'));
         else { setError(t('booking.genericFail')); console.error('Errore booking:', err); }
         return;
@@ -136,6 +196,7 @@ export default function BookingModal({ visible, onClose, event, session }) {
           eventId: event.id,
           quantity: pricing.safeQty,
           bookingType: pricing.bookingType,
+          ...(pricing.bookingType === 'ticket' && selectedType ? { ticketTypeId: selectedType.id } : {}),
           accessToken: session.access_token,
           returnBase: API_URL,
         }),
@@ -293,6 +354,15 @@ export default function BookingModal({ visible, onClose, event, session }) {
                     })}
                   </View>
                 </View>
+              )}
+
+              {/* Tipologia di ingresso (se il locale ne ha definite) */}
+              {pricing.bookingType !== 'table' && ticketTypes.length > 0 && (
+                <TicketTypeSelector
+                  types={ticketTypes}
+                  selectedId={selectedTypeId}
+                  onSelect={id => { setError(''); setSelectedTypeId(id); }}
+                />
               )}
 
               {/* Quantità */}

@@ -55,7 +55,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Body non valido', code: 'BAD_BODY' }, { status: 400 });
   }
 
-  const { eventId, quantity, bookingType, accessToken, tableAction, typeId, tableId, visibility, share, returnBase } = body || {};
+  const { eventId, quantity, bookingType, ticketTypeId, accessToken, tableAction, typeId, tableId, visibility, share, returnBase } = body || {};
 
   if (!accessToken || typeof accessToken !== 'string') {
     return NextResponse.json({ error: 'Non autenticato', code: 'UNAUTHENTICATED' }, { status: 401 });
@@ -234,7 +234,35 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Hai già una prenotazione per questo evento (ingresso o tavolo).', code: 'ALREADY_BOOKED', duplicate: true }, { status: 409 });
   }
 
-  const pricing = computeBookingPrice(event, bookingType, quantity);
+  // Tipologie di ingresso: se l'evento ne ha di ATTIVE, la scelta è obbligatoria.
+  // Con ticketTypeId il booking è per definizione un biglietto (mai tavolo flat).
+  let ticketType = null;
+  if (ticketTypeId && typeof ticketTypeId === 'string') {
+    const { data: tt } = await supabase
+      .from('event_ticket_types')
+      .select('id, event_id, name, price, drinks_included, quantity, is_active')
+      .eq('id', ticketTypeId)
+      .eq('event_id', eventId)
+      .maybeSingle();
+    if (!tt) {
+      return NextResponse.json({ error: 'Tipologia di ingresso non trovata', code: 'TICKET_TYPE_NOT_FOUND' }, { status: 404 });
+    }
+    if (!tt.is_active) {
+      return NextResponse.json({ error: 'Tipologia di ingresso non più disponibile', code: 'TICKET_TYPE_INACTIVE' }, { status: 409 });
+    }
+    ticketType = tt;
+  } else {
+    const { count: activeTypes } = await supabase
+      .from('event_ticket_types')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('is_active', true);
+    if ((activeTypes || 0) > 0) {
+      return NextResponse.json({ error: 'Seleziona una tipologia di ingresso', code: 'TICKET_TYPE_REQUIRED' }, { status: 400 });
+    }
+  }
+
+  const pricing = computeBookingPrice(event, ticketType ? 'ticket' : bookingType, quantity, ticketType);
 
   if (pricing.isFree) {
     return NextResponse.json({ error: 'Evento gratuito: usa il flusso diretto', code: 'FREE_EVENT_DIRECT' }, { status: 400 });
@@ -242,6 +270,20 @@ export async function POST(request) {
 
   if (event.capacity != null && (event.booked_count || 0) + pricing.safeQty > event.capacity) {
     return NextResponse.json({ error: 'Capienza esaurita', code: 'CAPACITY_FULL' }, { status: 409 });
+  }
+
+  // Disponibilità per-tipologia (somma delle QUANTITÀ, non conteggio righe).
+  // Pre-check UX: la verità atomica è il trigger enforce_ticket_type_capacity.
+  if (ticketType && ticketType.quantity != null) {
+    const { data: sold } = await supabase
+      .from('bookings')
+      .select('quantity')
+      .eq('ticket_type_id', ticketType.id)
+      .not('status', 'in', '("cancelled","denied")');
+    const taken = (sold || []).reduce((s, b) => s + (Number(b.quantity) || 1), 0);
+    if (taken + pricing.safeQty > ticketType.quantity) {
+      return NextResponse.json({ error: 'Tipologia di ingresso esaurita', code: 'TICKET_TYPE_FULL' }, { status: 409 });
+    }
   }
 
   let session;
@@ -253,7 +295,7 @@ export async function POST(request) {
         {
           price_data: {
             currency: 'eur',
-            product_data: { name: `${event.title} — ${pricing.bookingType === 'table' ? 'Tavolo' : 'Ingresso'}` },
+            product_data: { name: `${event.title} — ${ticketType ? ticketType.name : (pricing.bookingType === 'table' ? 'Tavolo' : 'Ingresso')}` },
             unit_amount: Math.round(pricing.effectivePrice * 100),
           },
           quantity: pricing.safeQty,
@@ -274,6 +316,7 @@ export async function POST(request) {
         userId: user.id,
         quantity: String(pricing.safeQty),
         bookingType: pricing.bookingType,
+        ...(ticketType ? { ticketTypeId: ticketType.id } : {}),
       },
     });
   } catch (e) {

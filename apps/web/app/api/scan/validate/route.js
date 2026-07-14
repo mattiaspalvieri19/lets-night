@@ -77,7 +77,7 @@ export async function POST(request) {
 
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, status, checked_in, checked_in_at, quantity, total_price, booking_type, snapshot_full_name, user_id, events(title, event_date, event_time, venue_id, venues(name)), event_tables(people_count, max_people, collected, total_price, event_table_types(name))')
+    .select('id, status, checked_in, checked_in_at, quantity, total_price, booking_type, snapshot_full_name, user_id, events(title, event_date, event_time, venue_id, venues(name)), event_tables(people_count, max_people, collected, total_price, event_table_types(name)), event_ticket_types(name, drinks_included)')
     .eq('qr_code', qrCode)
     .maybeSingle();
 
@@ -160,6 +160,11 @@ export async function POST(request) {
       maxPeople: booking.event_tables.max_people,
       collected: booking.event_tables.collected,
       tableTotal: booking.event_tables.total_price,
+    } : null,
+    // Tipologia di ingresso: il buttafuori deve sapere COSA include (drink).
+    ticketType: booking.event_ticket_types ? {
+      name: booking.event_ticket_types.name,
+      drinks: booking.event_ticket_types.drinks_included || 0,
     } : null,
   };
 

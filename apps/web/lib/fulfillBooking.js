@@ -71,7 +71,29 @@ export async function fulfillBookingFromSession(stripeSession, source = 'unknown
     return { error: 'Evento non trovato', code: 'EVENT_NOT_FOUND', status: 404 };
   }
 
-  const pricing = computeBookingPrice(event, requestedType, requestedQty);
+  // Tipologia di ingresso scelta al checkout: il suo prezzo alimenta il ricalcolo.
+  // Sparita (eliminabile solo senza prenotazioni) o disattivata nel frattempo
+  // (anche molto dopo, es. async payment) → auto-refund, pattern table_type_missing.
+  let ticketType = null;
+  if (md.ticketTypeId) {
+    const { data: tt } = await supabase
+      .from('event_ticket_types')
+      .select('id, event_id, name, price, is_active')
+      .eq('id', md.ticketTypeId)
+      .eq('event_id', eventId)
+      .maybeSingle();
+    if (!tt) {
+      await refundAndAlert(stripeSession, 'ticket_type_missing', { ticketTypeId: md.ticketTypeId });
+      return { error: 'Tipologia di ingresso non più disponibile. Rimborso elaborato automaticamente.', code: 'TICKET_TYPE_INACTIVE', status: 409, refunded: true };
+    }
+    if (!tt.is_active) {
+      await refundAndAlert(stripeSession, 'ticket_type_inactive', { ticketTypeId: tt.id });
+      return { error: 'Tipologia di ingresso non più disponibile. Rimborso elaborato automaticamente.', code: 'TICKET_TYPE_INACTIVE', status: 409, refunded: true };
+    }
+    ticketType = tt;
+  }
+
+  const pricing = computeBookingPrice(event, ticketType ? 'ticket' : requestedType, requestedQty, ticketType);
 
   // Critical: l'importo addebitato da Stripe deve combaciare col prezzo ricalcolato.
   // Se il venue ha cambiato prezzo tra checkout-session e fulfillment, Stripe ha incassato
@@ -108,6 +130,7 @@ export async function fulfillBookingFromSession(stripeSession, source = 'unknown
       fee: pricing.fee,
       qr_code: qrCode,
       booking_type: pricing.bookingType,
+      ticket_type_id: ticketType?.id || null,
       stripe_session_id: stripeSession.id,
       snapshot_full_name: prof?.full_name || null,
     })
@@ -129,11 +152,19 @@ export async function fulfillBookingFromSession(stripeSession, source = 'unknown
       await refundAndAlert(stripeSession, 'duplicate_booking', { userId, eventId });
       return { error: 'Avevi già una prenotazione attiva per questo evento. Il pagamento è stato rimborsato automaticamente.', code: 'ALREADY_BOOKED', status: 409, refunded: true, duplicate: true };
     }
-    // Trigger capacity guard (enforce_event_capacity): l'evento si è riempito durante
-    // una race oltre il check applicativo sopra. Rimborso automatico come oversold.
-    if (bookErr.code === '23514' || /CAPACITY_FULL/.test(bookErr.message || '')) {
-      await refundAndAlert(stripeSession, 'oversold', { eventId, qty: pricing.safeQty });
-      return { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', code: 'OVERSOLD_REFUNDED', status: 409, oversold: true, refunded: true };
+    // Trigger di capienza (evento o tipologia): riempiti durante una race oltre i
+    // check applicativi sopra. Rimborso automatico; la reason distingue i due casi
+    // così il Registro non attribuisce male l'anomalia.
+    if (bookErr.code === '23514' || /CAPACITY_FULL|TICKET_TYPE_/.test(bookErr.message || '')) {
+      const isTypeFull = /TICKET_TYPE_/.test(bookErr.message || '');
+      await refundAndAlert(stripeSession, isTypeFull ? 'ticket_type_full' : 'oversold', {
+        eventId, qty: pricing.safeQty,
+        ...(ticketType ? { ticketTypeId: ticketType.id } : {}),
+        detail: bookErr.message,
+      });
+      return isTypeFull
+        ? { error: 'Tipologia di ingresso esaurita dopo il pagamento. Rimborso elaborato automaticamente.', code: 'TICKET_TYPE_FULL', status: 409, refunded: true }
+        : { error: 'Posti esauriti dopo il pagamento. Rimborso elaborato automaticamente.', code: 'OVERSOLD_REFUNDED', status: 409, oversold: true, refunded: true };
     }
     console.error('Insert booking fallita:', bookErr);
     // Caso peggiore: soldi incassati ma prenotazione NON creata e nessun refund
@@ -148,10 +179,11 @@ export async function fulfillBookingFromSession(stripeSession, source = 'unknown
 
   await logAudit('payment_fulfilled', {
     userId, eventId, bookingId: booking.id,
-    message: `Pagamento completato → prenotazione emessa (${pricing.bookingType}, ${pricing.safeQty}x)`,
+    message: `Pagamento completato → prenotazione emessa (${ticketType ? ticketType.name : pricing.bookingType}, ${pricing.safeQty}x)`,
     details: {
       sessionId: stripeSession.id, amountCents: stripeSession.amount_total,
       lineTotal: pricing.lineTotal, fee: pricing.fee, via: source,
+      ticketTypeId: ticketType?.id || null, ticketType: ticketType?.name || null,
     },
   });
   return { ok: true, bookingId: booking.id, qrCode: booking.qr_code };

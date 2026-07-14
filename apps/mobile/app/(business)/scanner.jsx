@@ -298,10 +298,23 @@ export default function ScannerScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{b.quantity} {b.quantity > 1 ? 'posti' : 'posto'}</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{Number(b.totalPrice).toFixed(2).replace('.', ',')} €</Text>
-              </View>
+              <>
+                {/* Tipologia di ingresso: la porta deve sapere COSA include (drink). */}
+                {b.ticketType && (
+                  <View style={{ marginTop: 10, backgroundColor: COLORS.brandSubtle, borderRadius: 8, padding: 10 }}>
+                    <Text style={{ color: COLORS.brand, fontWeight: '800', fontSize: 13 }}>{b.ticketType.name.toUpperCase()}</Text>
+                    {Number(b.ticketType.drinks) > 0 && (
+                      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 3 }}>
+                        {Number(b.ticketType.drinks) === 1 ? t('booking.drinkOne') : t('booking.drinkMany', { count: Number(b.ticketType.drinks) })}
+                      </Text>
+                    )}
+                  </View>
+                )}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{b.quantity} {b.quantity > 1 ? 'posti' : 'posto'}</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{Number(b.totalPrice).toFixed(2).replace('.', ',')} €</Text>
+                </View>
+              </>
             )}
           </View>
 

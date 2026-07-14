@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -7,25 +7,12 @@ import { useI18n } from '../../lib/i18n';
 import { COLORS, FONT_FAMILY, formatTime } from '@lets-night/shared';
 import EventFormModal from '../../components/EventFormModal';
 
-const FILTERS = [
-  { id: 'all',     labelKey: 'bizEvent.fAll' },
-  { id: 'checked', labelKey: 'bizEvent.fChecked' },
-  { id: 'pending', labelKey: 'bizEvent.fPending' },
-];
-
-const GENDER_LABEL = { M: 'M', F: 'F', X: 'X' };
+// Sezione EVENTI = solo configurazione: dati evento, tipologie di ingresso,
+// tipologie tavolo. L'operatività (nominativi, check-in, tavoli prenotati)
+// vive nella tab Prenotazioni — qui c'è solo il bottone che ci porta.
 
 const EMPTY_TYPE = { name: '', total_price: '', max_people: '8', includes: '', tables_count: '1' };
-
-function calcAge(birthDate) {
-  if (!birthDate) return null;
-  const today = new Date();
-  const birth = new Date(birthDate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age < 0 ? null : age;
-}
+const EMPTY_TICKET = { name: '', description: '', price: '', drinks_included: '0', quantity: '', is_active: true };
 
 function parseNum(str) {
   const n = parseFloat(String(str).replace(',', '.'));
@@ -37,21 +24,21 @@ function euro(v) {
 }
 
 export default function BusinessEventDetailScreen() {
-  const { t, tLabel, fmtDateFull } = useI18n();
+  const { t, tLabel, fmtDateFull, fmtPrice } = useI18n();
   const { id } = useLocalSearchParams();
   const [event, setEvent] = useState(null);
-  const [bookings, setBookings] = useState([]);
+  const [bookingsLite, setBookingsLite] = useState([]);
+  const [ticketTypes, setTicketTypes] = useState([]);
   const [tableTypes, setTableTypes] = useState([]);
   const [eventTables, setEventTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all');
-  const [checkingIn, setCheckingIn] = useState(null);
-  const [typeModal, setTypeModal] = useState(null); // null | {} (nuova) | { id } (modifica)
+  const [typeModal, setTypeModal] = useState(null);     // tipologia TAVOLO: null | {} | { id }
+  const [ticketModal, setTicketModal] = useState(null); // tipologia INGRESSO: null | {} | { id }
   const [editModal, setEditModal] = useState(false);
   const [typeForm, setTypeForm] = useState(EMPTY_TYPE);
+  const [ticketForm, setTicketForm] = useState(EMPTY_TICKET);
   const [savingType, setSavingType] = useState(false);
-
 
   function deleteEvent() {
     Alert.alert(
@@ -102,13 +89,20 @@ export default function BusinessEventDetailScreen() {
     }
     setEvent(ev);
 
-    const [{ data: bks }, { data: tt }, { data: ts }] = await Promise.all([
+    // Prenotazioni "light": servono solo per i contatori (venduti per tipologia,
+    // tavoli usati). I nominativi stanno nella tab Prenotazioni.
+    const [{ data: bks }, { data: tk }, { data: tt }, { data: ts }] = await Promise.all([
       supabase
         .from('bookings')
-        .select('*, profiles(full_name, phone, birth_date, gender)')
+        .select('id, quantity, ticket_type_id, table_id')
         .eq('event_id', id)
-        .not('status', 'in', '("cancelled","denied")')
-        .order('created_at', { ascending: false }),
+        .not('status', 'in', '("cancelled","denied")'),
+      supabase
+        .from('event_ticket_types')
+        .select('*')
+        .eq('event_id', id)
+        .order('sort_order', { ascending: true })
+        .order('price', { ascending: true }),
       supabase
         .from('event_table_types')
         .select('*')
@@ -116,12 +110,12 @@ export default function BusinessEventDetailScreen() {
         .order('total_price', { ascending: true }),
       supabase
         .from('event_tables')
-        .select('*, event_table_types(name)')
+        .select('id, type_id, status')
         .eq('event_id', id)
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: true }),
+        .neq('status', 'cancelled'),
     ]);
-    setBookings(bks || []);
+    setBookingsLite(bks || []);
+    setTicketTypes(tk || []);
     setTableTypes(tt || []);
     setEventTables(ts || []);
   }
@@ -137,16 +131,93 @@ export default function BusinessEventDetailScreen() {
     setRefreshing(false);
   }, [id]);
 
-  async function toggleCheckIn(bookingId, alreadyIn) {
-    setCheckingIn(bookingId);
-    // L'un-check NON azzera checked_in_at: preserva l'audit trail (parità col web).
-    const patch = alreadyIn
-      ? { checked_in: false }
-      : { checked_in: true, checked_in_at: new Date().toISOString() };
-    const { error } = await supabase.from('bookings').update(patch).eq('id', bookingId);
-    setCheckingIn(null);
+  // ================== TIPOLOGIE DI INGRESSO (CRUD locale) ==================
+  const soldByTicketType = useMemo(() => {
+    const map = {};
+    for (const b of bookingsLite) {
+      if (!b.ticket_type_id) continue;
+      map[b.ticket_type_id] = (map[b.ticket_type_id] || 0) + (Number(b.quantity) || 1);
+    }
+    return map;
+  }, [bookingsLite]);
+
+  function openTicketModal(tk) {
+    if (tk) {
+      setTicketForm({
+        name: tk.name,
+        description: tk.description || '',
+        price: String(tk.price),
+        drinks_included: String(tk.drinks_included ?? 0),
+        quantity: tk.quantity == null ? '' : String(tk.quantity),
+        is_active: !!tk.is_active,
+      });
+      setTicketModal({ id: tk.id });
+    } else {
+      setTicketForm(EMPTY_TICKET);
+      setTicketModal({});
+    }
+  }
+
+  async function saveTicketType() {
+    const price = parseNum(ticketForm.price);
+    const drinks = ticketForm.drinks_included === '' ? 0 : parseInt(ticketForm.drinks_included, 10);
+    const qty = ticketForm.quantity.trim() === '' ? null : parseInt(ticketForm.quantity, 10);
+    if (!ticketForm.name.trim()) { Alert.alert(t('bizEvent.typeNameMissingT'), t('bizEvent.ttNameMissingB')); return; }
+    if (!Number.isFinite(price) || price < 0) { Alert.alert(t('bizEvent.typePriceT'), t('bizEvent.ttPriceMissingB')); return; }
+    if (!Number.isInteger(drinks) || drinks < 0) { Alert.alert(t('common.error'), t('bizEvent.ttfDrinks')); return; }
+    if (qty !== null && (!Number.isInteger(qty) || qty < 1)) { Alert.alert(t('common.error'), t('bizEvent.ttQtyBadB')); return; }
+
+    setSavingType(true);
+    const payload = {
+      name: ticketForm.name.trim(),
+      description: ticketForm.description.trim() || null,
+      price,
+      drinks_included: drinks,
+      quantity: qty,
+      is_active: ticketForm.is_active,
+    };
+    const { error } = ticketModal?.id
+      ? await supabase.from('event_ticket_types').update(payload).eq('id', ticketModal.id)
+      : await supabase.from('event_ticket_types').insert({ ...payload, event_id: id });
+    setSavingType(false);
     if (error) { Alert.alert(t('common.error'), error.message); return; }
-    setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, checked_in: !alreadyIn } : b));
+    setTicketModal(null);
+    loadData();
+  }
+
+  async function deactivateTicketType(tk) {
+    const { error } = await supabase.from('event_ticket_types').update({ is_active: false }).eq('id', tk.id);
+    if (error) { Alert.alert(t('common.error'), error.message); return; }
+    loadData();
+  }
+
+  function confirmDeleteTicketType(tk) {
+    Alert.alert(
+      t('bizEvent.ttDelTitle'),
+      `"${tk.name}" — ${t('bizEvent.ttDelBody')}`,
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'), style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('event_ticket_types').delete().eq('id', tk.id);
+            if (error) {
+              // FK: esistono prenotazioni con questa tipologia → si può solo disattivare.
+              Alert.alert(
+                t('bizEvent.notDeletable'),
+                t('bizEvent.ttDelHasBookings'),
+                [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('bizEvent.ttDeactivate'), onPress: () => deactivateTicketType(tk) },
+                ]
+              );
+              return;
+            }
+            loadData();
+          },
+        },
+      ]
+    );
   }
 
   // ====================== TIPOLOGIE TAVOLO (CRUD locale) ======================
@@ -214,32 +285,6 @@ export default function BusinessEventDetailScreen() {
     );
   }
 
-  // ============================== DERIVATI ==============================
-  const entries = useMemo(() => bookings.filter(b => !b.table_id), [bookings]);
-  const sharesByTable = useMemo(() => {
-    const map = {};
-    for (const b of bookings) {
-      if (!b.table_id) continue;
-      (map[b.table_id] = map[b.table_id] || []).push(b);
-    }
-    return map;
-  }, [bookings]);
-
-  const filtered = useMemo(() => {
-    if (filter === 'checked') return entries.filter(b => b.checked_in);
-    if (filter === 'pending') return entries.filter(b => !b.checked_in);
-    return entries;
-  }, [entries, filter]);
-
-  const stats = useMemo(() => {
-    const checkedIn = bookings.filter(b => b.checked_in).length;
-    const totalGuests = bookings.reduce((s, b) => s + (b.quantity || 1), 0);
-    const revenue = bookings
-      .filter(b => b.status === 'confirmed')
-      .reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
-    return { checkedIn, totalGuests, revenue };
-  }, [bookings]);
-
   if (loading || !event) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -293,20 +338,93 @@ export default function BusinessEventDetailScreen() {
         </Text>
       </View>
 
-      {/* Stats */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 8, marginBottom: 18 }}>
-        <StatCard label={t('bizEvent.stEntries')} value={entries.length} />
-        <StatCard label={t('bizEvent.stTables')} value={eventTables.length} />
-        <StatCard label={t('bizEvent.stCheckIn')} value={`${stats.checkedIn}/${bookings.length}`} />
-        <StatCard label={t('bizEvent.stRevenue')} value={`€${stats.revenue.toFixed(0)}`} />
-        <StatCard label={t('bizEvent.stGuests')} value={stats.totalGuests} />
-        {event.capacity && (
-          <StatCard label={t('bizEvent.stCapacity')} value={`${event.booked_count || 0}/${event.capacity}`} />
+      {/* Vedi prenotazioni → tab Prenotazioni (filtro già su questo evento) */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
+        <Pressable
+          onPress={() => router.push({ pathname: '/(business)/bookings', params: { event: String(id) } })}
+          style={({ pressed }) => ({
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 16,
+            borderWidth: 1, borderColor: COLORS.borderSubtle,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name="list" size={18} color={COLORS.brand} />
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>{t('bizEvent.viewBookings')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </Pressable>
+      </View>
+
+      {/* ====================== TIPOLOGIE DI INGRESSO ====================== */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>{t('bizEvent.ttSection')}</Text>
+          <Pressable
+            onPress={() => openTicketModal(null)}
+            style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: COLORS.brandStrong, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, opacity: pressed ? 0.85 : 1 })}
+          >
+            <Ionicons name="add" size={14} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{t('bizEvent.ttAdd')}</Text>
+          </Pressable>
+        </View>
+
+        {ticketTypes.length === 0 ? (
+          <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 18 }}>
+            <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13, marginBottom: 4 }}>{t('bizEvent.noTt')}</Text>
+            <Text style={{ color: COLORS.textMuted, fontSize: 12, lineHeight: 17 }}>
+              {t('bizEvent.noTtSub')}
+            </Text>
+          </View>
+        ) : (
+          <>
+            {ticketTypes.map(tk => {
+              const sold = soldByTicketType[tk.id] || 0;
+              const drinks = Number(tk.drinks_included) || 0;
+              return (
+                <View key={tk.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 8, opacity: tk.is_active ? 1 : 0.55 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Text style={{ color: COLORS.textPrimary, fontWeight: '700', fontSize: 14 }}>
+                          {tk.name} · {fmtPrice(Math.max(0, Number(tk.price) || 0))}
+                        </Text>
+                        {!tk.is_active && (
+                          <View style={{ backgroundColor: 'rgba(245,158,11,0.12)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 }}>
+                            <Text style={{ color: COLORS.warning, fontSize: 10, fontWeight: '700' }}>{t('bizEvent.ttInactive')}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 2 }}>
+                        {tk.quantity != null
+                          ? t('bizEvent.ttSoldMeta', { sold, qty: tk.quantity })
+                          : t('bizEvent.ttSoldMetaUnl', { sold })}
+                        {drinks > 0 ? ` · ${drinks === 1 ? t('booking.drinkOne') : t('booking.drinkMany', { count: drinks })}` : ''}
+                      </Text>
+                      {tk.description ? (
+                        <Text style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }} numberOfLines={2}>{tk.description}</Text>
+                      ) : null}
+                    </View>
+                    <Pressable onPress={() => openTicketModal(tk)} hitSlop={8} style={{ padding: 6 }}>
+                      <Ionicons name="create-outline" size={17} color={COLORS.textSecondary} />
+                    </Pressable>
+                    <Pressable onPress={() => confirmDeleteTicketType(tk)} hitSlop={8} style={{ padding: 6 }}>
+                      <Ionicons name="trash-outline" size={17} color={COLORS.danger} />
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+            <Text style={{ color: COLORS.textDisabled, fontSize: 11, lineHeight: 15, marginTop: 2 }}>
+              {t('bizEvent.ttBaseNote')}
+            </Text>
+          </>
         )}
       </View>
 
-      {/* ============================ TAVOLI ============================ */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
+      {/* ====================== TIPOLOGIE TAVOLO ====================== */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 60 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, letterSpacing: -0.3 }}>{t('bizEvent.tablesSection')}</Text>
           <Pressable
@@ -353,152 +471,6 @@ export default function BusinessEventDetailScreen() {
             );
           })
         )}
-
-        {/* Tavoli prenotati con membri */}
-        {eventTables.map(tb => {
-          const members = sharesByTable[tb.id] || [];
-          const covered = tb.status === 'covered';
-          return (
-            <View key={tb.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 14, marginTop: 10 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <Text style={{ color: COLORS.textPrimary, fontWeight: '800', fontSize: 14 }}>
-                  {tb.event_table_types?.name || t('booking.table')} · {tb.visibility === 'private' ? t('bizEvent.privateL') : t('bizEvent.publicL')}
-                </Text>
-                <View style={{ backgroundColor: covered ? 'rgba(74,222,128,0.12)' : 'rgba(245,158,11,0.12)', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20 }}>
-                  <Text style={{ color: covered ? COLORS.success : COLORS.warning, fontSize: 11, fontWeight: '700' }}>
-                    {covered ? t('bizEvent.covered') : t('bizEvent.collecting')}
-                  </Text>
-                </View>
-              </View>
-              <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 10 }}>
-                {t('bizEvent.tableMeta', { count: tb.people_count, max: tb.max_people, collected: euro(tb.collected), total: euro(tb.total_price) })}
-              </Text>
-
-              {members.map(m => {
-                const age = calcAge(m.profiles?.birth_date);
-                return (
-                  <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 13 }} numberOfLines={1}>
-                        {m.snapshot_full_name || m.profiles?.full_name || t('common.user')}
-                      </Text>
-                      <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                        {m.profiles?.gender ? `${GENDER_LABEL[m.profiles.gender]} · ` : ''}{age != null ? t('bizEvent.yearsShort', { age }) + ' · ' : ''}{t('bizEvent.memberMeta', { amount: euro(m.total_price) })}
-                      </Text>
-                    </View>
-                    <Pressable
-                      onPress={() => toggleCheckIn(m.id, m.checked_in)}
-                      disabled={checkingIn === m.id}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
-                        backgroundColor: m.checked_in ? 'transparent' : COLORS.brandStrong,
-                        borderWidth: 1,
-                        borderColor: m.checked_in ? COLORS.borderStrong : COLORS.brandStrong,
-                        minWidth: 78, alignItems: 'center',
-                        opacity: pressed ? 0.7 : 1,
-                      })}>
-                      {checkingIn === m.id ? <ActivityIndicator color="#fff" size="small" /> : (
-                        <Text style={{ color: m.checked_in ? COLORS.textSecondary : '#fff', fontSize: 11, fontWeight: '600' }}>
-                          {m.checked_in ? t('biz.checkedIn') : t('biz.checkIn')}
-                        </Text>
-                      )}
-                    </Pressable>
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })}
-      </View>
-
-      {/* ============================ INGRESSI ============================ */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 12 }}>
-        {FILTERS.map(f => {
-          const active = filter === f.id;
-          return (
-            <Pressable key={f.id} onPress={() => setFilter(f.id)}
-              style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999,
-                backgroundColor: active ? '#FAFAFA' : COLORS.bgElev2,
-              }}>
-              <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>
-                {t(f.labelKey)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View style={{ paddingHorizontal: 20, paddingBottom: 60 }}>
-        <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
-          {t('bizEvent.guestList', { count: filtered.length })}
-        </Text>
-
-        {filtered.length === 0 ? (
-          <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 28, alignItems: 'center' }}>
-            <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
-              {t('bizEvent.noGuests')}
-            </Text>
-            <Text style={{ color: COLORS.textMuted, fontSize: 12, textAlign: 'center' }}>
-              {entries.length === 0
-                ? t('bizEvent.noGuestsSub')
-                : t('bizEvent.noGuestsFilter')}
-            </Text>
-          </View>
-        ) : filtered.map(b => {
-          const age = calcAge(b.profiles?.birth_date);
-          return (
-            <View key={b.id} style={{
-              backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14,
-              marginBottom: 8,
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: COLORS.textPrimary, fontWeight: '600', fontSize: 14 }} numberOfLines={1}>
-                    {b.snapshot_full_name || b.profiles?.full_name || t('common.user')}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    {b.profiles?.gender && (
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>{GENDER_LABEL[b.profiles.gender]}</Text>
-                    )}
-                    {age != null && (
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>· {age} anni</Text>
-                    )}
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>
-                      · {b.quantity} {b.quantity > 1 ? 'ingressi' : 'ingresso'}
-                    </Text>
-                  </View>
-                  {b.profiles?.phone && (
-                    <Text style={{ color: COLORS.textDisabled, fontSize: 11, marginTop: 3 }} selectable>
-                      {b.profiles.phone}
-                    </Text>
-                  )}
-                </View>
-                <Pressable
-                  onPress={() => toggleCheckIn(b.id, b.checked_in)}
-                  disabled={checkingIn === b.id}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
-                    backgroundColor: b.checked_in ? 'transparent' : COLORS.brandStrong,
-                    borderWidth: 1,
-                    borderColor: b.checked_in ? COLORS.borderStrong : COLORS.brandStrong,
-                    minWidth: 78, alignItems: 'center',
-                    opacity: pressed ? 0.7 : 1,
-                  })}>
-                  {checkingIn === b.id ? <ActivityIndicator color="#fff" size="small" /> : (
-                    <Text style={{
-                      color: b.checked_in ? COLORS.textSecondary : '#fff',
-                      fontSize: 11, fontWeight: '600',
-                    }}>
-                      {b.checked_in ? t('biz.checkedIn') : t('biz.checkIn')}
-                    </Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
       </View>
 
       {event && (
@@ -506,12 +478,56 @@ export default function BusinessEventDetailScreen() {
           visible={editModal}
           mode="edit"
           event={event}
+          hasActiveTicketTypes={ticketTypes.some(tk => tk.is_active)}
           onClose={() => setEditModal(false)}
           onSaved={loadData}
         />
       )}
 
-      {/* ====================== MODAL TIPOLOGIA ====================== */}
+      {/* ================== MODAL TIPOLOGIA DI INGRESSO ================== */}
+      <Modal visible={!!ticketModal} transparent animationType="slide" onRequestClose={() => setTicketModal(null)}>
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setTicketModal(null)} />
+          <View style={{ backgroundColor: COLORS.bgElev2, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 30, maxHeight: '88%' }}>
+            <View style={{ width: 36, height: 4, backgroundColor: COLORS.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <Pressable onPress={saveTicketType} disabled={savingType} hitSlop={8}
+                style={({ pressed }) => ({ opacity: savingType || pressed ? 0.5 : 1 })}>
+                {savingType ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 15 }}>{ticketModal?.id ? t('bizEvent.saveType') : t('bizEvent.createType')}</Text>}
+              </Pressable>
+              <Pressable onPress={() => setTicketModal(null)} hitSlop={8}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+              <TypeField label={t('bizEvent.ttfName')} value={ticketForm.name} onChange={v => setTicketForm(f => ({ ...f, name: v }))} placeholder={t('bizEvent.ttfNamePh')} />
+              <TypeField label={t('bizEvent.ttfDesc')} value={ticketForm.description} onChange={v => setTicketForm(f => ({ ...f, description: v }))} placeholder={t('bizEvent.ttfDescPh')} multiline />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <TypeField label={t('bizEvent.ttfPrice')} value={ticketForm.price} onChange={v => setTicketForm(f => ({ ...f, price: v }))} placeholder="15" keyboardType="decimal-pad" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TypeField label={t('bizEvent.ttfDrinks')} value={ticketForm.drinks_included} onChange={v => setTicketForm(f => ({ ...f, drinks_included: v }))} placeholder="0" keyboardType="number-pad" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <TypeField label={t('bizEvent.ttfQty')} value={ticketForm.quantity} onChange={v => setTicketForm(f => ({ ...f, quantity: v }))} placeholder={t('bizEvent.ttfQtyPh')} keyboardType="number-pad" />
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, paddingVertical: 4 }}>
+                <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' }}>{t('bizEvent.ttfActive')}</Text>
+                <Switch
+                  value={ticketForm.is_active}
+                  onValueChange={v => setTicketForm(f => ({ ...f, is_active: v }))}
+                  trackColor={{ false: COLORS.bgElev3, true: COLORS.brandStrong }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ====================== MODAL TIPOLOGIA TAVOLO ====================== */}
       <Modal visible={!!typeModal} transparent animationType="slide" onRequestClose={() => setTypeModal(null)}>
         <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setTypeModal(null)} />
@@ -569,18 +585,6 @@ function TypeField({ label, value, onChange, placeholder, keyboardType, multilin
           textAlignVertical: multiline ? 'top' : 'center',
         }}
       />
-    </View>
-  );
-}
-
-function StatCard({ label, value }) {
-  return (
-    <View style={{
-      width: '31.5%', backgroundColor: COLORS.bgElev2,
-      borderRadius: 12, padding: 14,
-    }}>
-      <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 20, letterSpacing: -0.3 }}>{value}</Text>
-      <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 4 }}>{label}</Text>
     </View>
   );
 }

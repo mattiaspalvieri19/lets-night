@@ -8,6 +8,7 @@ import { CATS_NO_TUTTI } from '@lets-night/shared';
 
 const MAX_COVER_MB = 5;
 const EMPTY_TYPE = { name: '', total_price: '', max_people: '8', includes: '', tables_count: '1' };
+const EMPTY_TICKET = { name: '', description: '', price: '', drinks_included: '0', quantity: '', is_active: true };
 
 function todayLocal() {
   const now = new Date();
@@ -33,17 +34,21 @@ export default function AdminEventDetailPage() {
 
   const [newType, setNewType] = useState(EMPTY_TYPE);
   const [editTypes, setEditTypes] = useState({});
+  const [ticketTypes, setTicketTypes] = useState([]);
+  const [newTicket, setNewTicket] = useState(EMPTY_TICKET);
+  const [editTickets, setEditTickets] = useState({});
   const [combineSel, setCombineSel] = useState([]);
   const [combineCount, setCombineCount] = useState('1');
   const [combineName, setCombineName] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [{ data: ev, error }, { data: bks }, { data: tts }, { data: tbs }] = await Promise.all([
+    const [{ data: ev, error }, { data: bks }, { data: tts }, { data: tbs }, { data: tks }] = await Promise.all([
       supabase.from('events').select('*, venues(id, name, zona, city)').eq('id', id).maybeSingle(),
-      supabase.from('bookings').select('status, checked_in, refund_reason, total_price, stripe_session_id').eq('event_id', id),
+      supabase.from('bookings').select('status, checked_in, refund_reason, total_price, stripe_session_id, ticket_type_id, quantity').eq('event_id', id),
       supabase.from('event_table_types').select('*').eq('event_id', id).order('created_at'),
       supabase.from('event_tables').select('*, event_table_types(name)').eq('event_id', id).order('created_at', { ascending: false }),
+      supabase.from('event_ticket_types').select('*').eq('event_id', id).order('sort_order').order('price'),
     ]);
     if (error) console.error('Errore evento admin:', error);
     setEvent(ev || null);
@@ -63,6 +68,7 @@ export default function AdminEventDetailPage() {
     setBookings(bks || []);
     setTypes(tts || []);
     setTables(tbs || []);
+    setTicketTypes(tks || []);
     setLoading(false);
   }, [id]);
 
@@ -147,6 +153,51 @@ export default function AdminEventDetailPage() {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }
+
+  // ── Tipologie di INGRESSO ──────────────────────────────────────────────
+  async function addTicketType(e) {
+    e.preventDefault();
+    if (!newTicket.name.trim() || newTicket.price === '') { alert('Nome e prezzo sono obbligatori.'); return; }
+    const { error } = await supabase.from('event_ticket_types').insert({
+      event_id: event.id,
+      name: newTicket.name.trim(),
+      description: newTicket.description.trim() || null,
+      price: Number(newTicket.price),
+      drinks_included: Number(newTicket.drinks_included) || 0,
+      quantity: newTicket.quantity === '' ? null : Number(newTicket.quantity),
+      is_active: newTicket.is_active,
+    });
+    if (error) { alert('Errore: ' + error.message); return; }
+    setNewTicket(EMPTY_TICKET);
+    load();
+  }
+
+  async function saveTicketType(tk) {
+    const edit = editTickets[tk.id];
+    if (!edit) return;
+    const { error } = await supabase.from('event_ticket_types').update({
+      name: edit.name.trim(),
+      description: edit.description.trim() || null,
+      price: Number(edit.price),
+      drinks_included: Number(edit.drinks_included) || 0,
+      quantity: edit.quantity === '' ? null : Number(edit.quantity),
+      is_active: edit.is_active,
+    }).eq('id', tk.id);
+    if (error) { alert('Errore: ' + error.message); return; }
+    setEditTickets(prev => { const n = { ...prev }; delete n[tk.id]; return n; });
+    load();
+  }
+
+  async function deleteTicketType(tk) {
+    if (!confirm(`Eliminare la tipologia di ingresso "${tk.name}"?`)) return;
+    const { error } = await supabase.from('event_ticket_types').delete().eq('id', tk.id);
+    if (error) {
+      if (error.code === '23503') alert('Impossibile eliminare: ci sono prenotazioni con questa tipologia. Disattivala per fermare la vendita.');
+      else alert('Errore: ' + error.message);
+      return;
+    }
+    load();
   }
 
   async function addType(e) {
@@ -334,7 +385,10 @@ export default function AdminEventDetailPage() {
           </div>
           <div>
             <label style={labelStyle}>Prezzo (€)</label>
-            <input type="number" min="0" step="0.5" style={inputStyle} value={form.price} onChange={e => setField('price', e.target.value)} />
+            <input type="number" min="0" step="0.5" style={{ ...inputStyle, opacity: ticketTypes.some(tk => tk.is_active) ? 0.5 : 1 }} value={form.price} onChange={e => setField('price', e.target.value)} disabled={ticketTypes.some(tk => tk.is_active)} />
+            {ticketTypes.some(tk => tk.is_active) && (
+              <p style={{ color: 'var(--text2)', fontSize: 11, marginTop: 4 }}>Gestito dalle tipologie di ingresso (minimo attivo).</p>
+            )}
           </div>
           <div>
             <label style={labelStyle}>Capienza</label>
@@ -347,6 +401,69 @@ export default function AdminEventDetailPage() {
           {msg && <p style={{ gridColumn: '1 / -1', color: msg.startsWith('Errore') || msg.includes('Riprova') || msg.includes('obbligator') || msg.includes('grande') ? '#f87171' : '#4ade80', fontSize: 13 }}>{msg}</p>}
           <div style={{ gridColumn: '1 / -1' }}>
             <button type="submit" className="biz-toggle active" disabled={saving}>{saving ? 'Salvataggio...' : 'Salva modifiche'}</button>
+          </div>
+        </form>
+      </div>
+
+      <div className="dash-section" style={{ marginBottom: '2rem' }}>
+        <h2 className="dash-section-title">Tipologie di ingresso ({ticketTypes.length})</h2>
+        <p style={{ color: 'var(--text2)', fontSize: 12, marginBottom: '1rem' }}>
+          Con almeno una tipologia attiva, il prezzo dell&apos;evento mostrato in app è il minimo attivo (sincronizzato in automatico); senza tipologie vale il prezzo base.
+        </p>
+        {ticketTypes.map(tk => {
+          const edit = editTickets[tk.id];
+          const sold = bookings
+            .filter(b => b.ticket_type_id === tk.id && b.status !== 'cancelled' && b.status !== 'denied')
+            .reduce((s, b) => s + (Number(b.quantity) || 1), 0);
+          return (
+            <div key={tk.id} className="biz-event-item" style={{ flexDirection: 'column', alignItems: 'stretch', opacity: tk.is_active ? 1 : 0.55 }}>
+              {edit ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '.6rem' }}>
+                  <input style={inputStyle} value={edit.name} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, name: e.target.value } }))} placeholder="Nome" />
+                  <input style={inputStyle} type="number" min="0" step="0.5" value={edit.price} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, price: e.target.value } }))} placeholder="Prezzo €" />
+                  <input style={inputStyle} type="number" min="0" value={edit.drinks_included} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, drinks_included: e.target.value } }))} placeholder="Drink inclusi" />
+                  <input style={inputStyle} type="number" min="1" value={edit.quantity} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, quantity: e.target.value } }))} placeholder="Disponibilità (vuota = illimitata)" />
+                  <input style={{ ...inputStyle, gridColumn: '1 / -1' }} value={edit.description} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, description: e.target.value } }))} placeholder="Descrizione (es. Ingresso con 2 drink entro mezzanotte)" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', gridColumn: '1 / -1' }}>
+                    <input type="checkbox" id={`tk-active-${tk.id}`} checked={edit.is_active} onChange={e => setEditTickets(p => ({ ...p, [tk.id]: { ...edit, is_active: e.target.checked } }))} />
+                    <label htmlFor={`tk-active-${tk.id}`} style={{ color: '#fff', fontSize: 13 }}>In vendita</label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '.5rem', gridColumn: '1 / -1' }}>
+                    <button onClick={() => saveTicketType(tk)} className="biz-toggle active">Salva</button>
+                    <button onClick={() => setEditTickets(p => { const n = { ...p }; delete n[tk.id]; return n; })} className="biz-toggle">Annulla</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div className="biz-event-info">
+                    <h3>
+                      {tk.name}
+                      {!tk.is_active && <span className="admin-badge" style={{ marginLeft: 6 }}>Disattivata</span>}
+                    </h3>
+                    <div className="biz-event-meta">
+                      <span>€ {Number(tk.price).toFixed(2)}</span>
+                      {Number(tk.drinks_included) > 0 && <span>{tk.drinks_included} drink</span>}
+                      <span>{tk.quantity != null ? `${sold}/${tk.quantity} venduti` : `${sold} venduti · illimitata`}</span>
+                      {tk.description && <span>{tk.description}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '.5rem' }}>
+                    <button onClick={() => setEditTickets(p => ({ ...p, [tk.id]: { name: tk.name, description: tk.description || '', price: String(tk.price), drinks_included: String(tk.drinks_included ?? 0), quantity: tk.quantity == null ? '' : String(tk.quantity), is_active: !!tk.is_active } }))} className="biz-toggle">Modifica</button>
+                    <button onClick={() => deleteTicketType(tk)} className="admin-danger-btn">Elimina</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <form onSubmit={addTicketType} style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '.6rem' }}>
+          <input style={inputStyle} value={newTicket.name} onChange={e => setNewTicket(p => ({ ...p, name: e.target.value }))} placeholder="Nome (es. Base, Premium, Lista)" />
+          <input style={inputStyle} type="number" min="0" step="0.5" value={newTicket.price} onChange={e => setNewTicket(p => ({ ...p, price: e.target.value }))} placeholder="Prezzo €" />
+          <input style={inputStyle} type="number" min="0" value={newTicket.drinks_included} onChange={e => setNewTicket(p => ({ ...p, drinks_included: e.target.value }))} placeholder="Drink inclusi" />
+          <input style={inputStyle} type="number" min="1" value={newTicket.quantity} onChange={e => setNewTicket(p => ({ ...p, quantity: e.target.value }))} placeholder="Disponibilità (vuota = illimitata)" />
+          <input style={{ ...inputStyle, gridColumn: '1 / -1' }} value={newTicket.description} onChange={e => setNewTicket(p => ({ ...p, description: e.target.value }))} placeholder="Descrizione (opzionale)" />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <button type="submit" className="biz-toggle active">Aggiungi tipologia di ingresso</button>
           </div>
         </form>
       </div>

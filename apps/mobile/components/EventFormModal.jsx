@@ -37,7 +37,9 @@ const labelStyle = { color: COLORS.textMuted, fontSize: 11, marginBottom: 6, tex
 
 // Form evento condiviso tra creazione (events.jsx) e modifica (business-event/[id]).
 // Data via calendario, orari via picker a scorrimento. Formato salvato: YYYY-MM-DD / HH:MM.
-export default function EventFormModal({ visible, onClose, mode = 'create', venueId, event, onSaved }) {
+// hasActiveTicketTypes: con tipologie di ingresso attive il prezzo è governato dal
+// minimo attivo (trigger DB) → campo disabilitato, non incluso nell'update.
+export default function EventFormModal({ visible, onClose, mode = 'create', venueId, event, onSaved, hasActiveTicketTypes = false }) {
   const { t, tLabel } = useI18n();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState(EMPTY);
@@ -107,9 +109,10 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
       event_date: form.event_date,
       event_time: form.event_time,
       end_time: form.end_time,
-      price,
       capacity: capacity || null,
     };
+    // Con tipologie attive il prezzo lo governa il DB (minimo attivo): non inviarlo.
+    if (!(isEdit && hasActiveTicketTypes)) payload.price = price;
     setSaving(true);
     try {
       const vId = isEdit ? event.venue_id : venueId;
@@ -231,14 +234,23 @@ export default function EventFormModal({ visible, onClose, mode = 'create', venu
                 ))}
               </View>
               {/* Prezzo + Capienza */}
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24 }}>
-                {[[t('eventForm.fPrice'), 'price', '0'], [t('eventForm.fCapacity'), 'capacity', t('eventForm.unlimited')]].map(([label, key, ph]) => (
-                  <View key={key} style={{ flex: 1 }}>
-                    <Text style={labelStyle}>{label}</Text>
-                    <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor={COLORS.textDisabled} keyboardType="numeric" style={inputStyle} />
-                  </View>
-                ))}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: isEdit && hasActiveTicketTypes ? 8 : 24 }}>
+                {[[t('eventForm.fPrice'), 'price', '0'], [t('eventForm.fCapacity'), 'capacity', t('eventForm.unlimited')]].map(([label, key, ph]) => {
+                  const priceLocked = key === 'price' && isEdit && hasActiveTicketTypes;
+                  return (
+                    <View key={key} style={{ flex: 1, opacity: priceLocked ? 0.5 : 1 }}>
+                      <Text style={labelStyle}>{label}</Text>
+                      <TextInput value={form[key]} onChangeText={v => setForm(f => ({ ...f, [key]: v }))} placeholder={ph} placeholderTextColor={COLORS.textDisabled} keyboardType="numeric" editable={!priceLocked} style={inputStyle} />
+                    </View>
+                  );
+                })}
               </View>
+              {isEdit && hasActiveTicketTypes && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                  <Ionicons name="information-circle-outline" size={15} color={COLORS.textMuted} />
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12, flex: 1, lineHeight: 16 }}>{t('eventForm.priceByTypes')}</Text>
+                </View>
+              )}
               {!isEdit && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 8 }}>
                   <Ionicons name="information-circle-outline" size={15} color={COLORS.textMuted} />

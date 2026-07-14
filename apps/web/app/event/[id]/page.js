@@ -8,9 +8,9 @@ import { supabase } from '../../../lib/supabase';
 import { COLORS_BY_CAT, formatDateFull, formatTime, getPriceLabel, generateBookingQR, computeBookingPrice, isPastDate, TABLE_MIN_SHARE, BOOKING_FEE } from '@lets-night/shared';
 import Navbar from '../../../components/Navbar';
 
-function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoading, setBookingError, setBookingSuccess, setLastBookingQR, router, id }) {
+function PaymentForm({ event, qty, bookingType, ticketType = null, bookingLoading, setBookingLoading, setBookingError, setBookingSuccess, setLastBookingQR, router, id }) {
   const router2 = router;
-  const pricing = computeBookingPrice(event, bookingType, qty);
+  const pricing = computeBookingPrice(event, bookingType, qty, ticketType);
 
   async function handlePay() {
     if (bookingLoading) return;
@@ -34,6 +34,7 @@ function PaymentForm({ event, qty, bookingType, bookingLoading, setBookingLoadin
           eventId: event.id,
           quantity: pricing.safeQty,
           bookingType: pricing.bookingType,
+          ...(pricing.bookingType === 'ticket' && ticketType ? { ticketTypeId: ticketType.id } : {}),
           accessToken: session.access_token,
         }),
       });
@@ -197,6 +198,9 @@ export default function EventDetailPage({ params }) {
   const [tableTypes, setTableTypes] = useState([]);
   const [tables, setTables] = useState([]);
   const [tableModal, setTableModal] = useState(null);
+  const [ticketTypes, setTicketTypes] = useState([]);
+  const [selectedTicketTypeId, setSelectedTicketTypeId] = useState(null);
+  const selectedTicketType = ticketTypes.find(tt => tt.id === selectedTicketTypeId) || null;
 
   useEffect(() => {
     async function loadEvent() {
@@ -218,12 +222,15 @@ export default function EventDetailPage({ params }) {
 
       // Tavoli condivisi: tipologie + tavoli pubblici aperti (al ritorno dal pagamento
       // la pagina si ricarica, quindi basta caricarli al mount).
-      const [{ data: tt }, { data: ts }] = await Promise.all([
+      const [{ data: tt }, { data: ts }, { data: tk }] = await Promise.all([
         supabase.from('event_table_types').select('*').eq('event_id', id).order('total_price', { ascending: true }),
         supabase.from('event_tables').select('*, event_table_types(name)').eq('event_id', id).neq('status', 'cancelled').order('created_at', { ascending: true }),
+        supabase.from('event_ticket_types').select('*').eq('event_id', id).eq('is_active', true).order('sort_order', { ascending: true }).order('price', { ascending: true }),
       ]);
       setTableTypes(tt || []);
       setTables(ts || []);
+      setTicketTypes(tk || []);
+      setSelectedTicketTypeId((tk && tk[0]?.id) || null);
 
       // Carica altri eventi dello stesso locale
       if (data.venue_id) {
@@ -301,7 +308,7 @@ export default function EventDetailPage({ params }) {
       setTimeout(() => router.push('/login?next=' + encodeURIComponent('/event/' + id)), 1500);
       return;
     }
-    const pricing = computeBookingPrice(event, bookingType, bookingQty);
+    const pricing = computeBookingPrice(event, bookingType, bookingQty, bookingType === 'ticket' ? selectedTicketType : null);
     if (!pricing.isFree) {
       setBookingError('Errore interno: questo evento è a pagamento.');
       setBookingLoading(false);
@@ -318,12 +325,17 @@ export default function EventDetailPage({ params }) {
       fee: 0,
       qr_code: qrCode,
       booking_type: pricing.bookingType,
+      ticket_type_id: pricing.bookingType === 'ticket' ? (selectedTicketType?.id || null) : null,
       snapshot_full_name: prof?.full_name || null,
     });
     setBookingLoading(false);
     if (error) {
       if (error.code === '23505') {
         setBookingError('Hai già prenotato questo evento.');
+      } else if (/TICKET_TYPE_FULL/.test(error.message || '')) {
+        setBookingError('Tipologia di ingresso esaurita.');
+      } else if (/BOOKING_TICKET_TYPE/.test(error.message || '')) {
+        setBookingError('Tipologia di ingresso non più disponibile.');
       } else if (error.code === '23514' || /CAPACITY_FULL/.test(error.message || '')) {
         setBookingError('Posti esauriti per questo evento.');
       } else {
@@ -344,6 +356,7 @@ export default function EventDetailPage({ params }) {
     setBookingLoading(false);
     setBookingQty(1);
     setBookingType('ticket');
+    setSelectedTicketTypeId(ticketTypes[0]?.id || null);
   }
 
   function shareWhatsApp() {
@@ -674,6 +687,36 @@ export default function EventDetailPage({ params }) {
                   </div>
                 )}
 
+                {bookingType !== 'table' && ticketTypes.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ color: '#64748B', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                      Tipo di ingresso
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {ticketTypes.map(tt => {
+                        const active = selectedTicketTypeId === tt.id;
+                        const drinks = Number(tt.drinks_included) || 0;
+                        return (
+                          <button key={tt.id} type="button" onClick={() => { setBookingError(''); setSelectedTicketTypeId(tt.id); }}
+                            style={{
+                              padding: 13, borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                              background: active ? 'rgba(124,58,237,0.15)' : 'var(--dark3)',
+                              border: '1.5px solid ' + (active ? 'var(--purple-light)' : 'var(--border)'),
+                              color: 'inherit',
+                            }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                              <span style={{ color: active ? '#fff' : '#9ca3af', fontWeight: 700, fontSize: 13 }}>{tt.name}</span>
+                              <span style={{ color: active ? 'var(--purple-light)' : '#fff', fontWeight: 700, fontSize: 13 }}>{getPriceLabel(Math.max(0, Number(tt.price) || 0))}</span>
+                            </div>
+                            {tt.description && <div style={{ color: 'var(--text2)', fontSize: 11, marginTop: 3 }}>{tt.description}</div>}
+                            {drinks > 0 && <div style={{ color: 'var(--text2)', fontSize: 11, marginTop: 2 }}>{drinks === 1 ? '1 drink incluso' : `${drinks} drink inclusi`}</div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {bookingType !== 'table' && (
                   <div className="book-modal-qty">
                     <span>Posti</span>
@@ -686,7 +729,7 @@ export default function EventDetailPage({ params }) {
                 )}
 
                 {(() => {
-                  const pricing = computeBookingPrice(event, bookingType, bookingQty);
+                  const pricing = computeBookingPrice(event, bookingType, bookingQty, bookingType === 'ticket' ? selectedTicketType : null);
                   return (
                     <>
                       <div className="book-modal-total">
@@ -711,6 +754,7 @@ export default function EventDetailPage({ params }) {
                           event={event}
                           qty={bookingQty}
                           bookingType={bookingType}
+                          ticketType={bookingType === 'ticket' ? selectedTicketType : null}
                           bookingLoading={bookingLoading}
                           setBookingLoading={setBookingLoading}
                           setBookingError={setBookingError}
