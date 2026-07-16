@@ -730,6 +730,7 @@ export default {
     tableOf: 'Mesa de {name}',
     detailsCta: 'Detalles de la mesa',
     extraShare: 'Cubre más cuotas',
+    stToSettle: 'Por saldar',
   },
   bizEvent: {
     fAll: 'Todos',

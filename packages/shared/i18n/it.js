@@ -730,6 +730,7 @@ export default {
     tableOf: 'Tavolo di {name}',
     detailsCta: 'Dettagli tavolo',
     extraShare: 'Copre più quote',
+    stToSettle: 'Da saldare',
   },
   bizEvent: {
     fAll: 'Tutti',

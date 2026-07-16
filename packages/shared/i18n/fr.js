@@ -730,6 +730,7 @@ export default {
     tableOf: 'Table de {name}',
     detailsCta: 'Détails de la table',
     extraShare: 'Couvre plusieurs parts',
+    stToSettle: 'À solder',
   },
   bizEvent: {
     fAll: 'Tous',

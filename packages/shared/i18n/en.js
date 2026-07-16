@@ -730,6 +730,7 @@ export default {
     tableOf: '{name}’s table',
     detailsCta: 'Table details',
     extraShare: 'Covers extra shares',
+    stToSettle: 'To settle',
   },
   bizEvent: {
     fAll: 'All',
