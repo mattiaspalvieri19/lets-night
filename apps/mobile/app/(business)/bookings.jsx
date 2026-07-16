@@ -162,12 +162,17 @@ export default function BusinessBookings() {
     () => (selectedEvent === 'all' ? tables : tables.filter(tb => tb.event_id === selectedEvent)),
     [tables, selectedEvent]
   );
+  // Ricerca tavoli: matcha il "nome" del tavolo (chi l'ha aperto + tipologia)
+  // E il nome di QUALSIASI partecipante → restituisce il tavolo di cui fa parte.
   const filteredTables = useMemo(() => {
     if (!q) return scopedTables;
     return scopedTables.filter(tb => {
-      const opener = (tb.profiles?.full_name || '').toLowerCase();
+      const hay = (
+        (tb.profiles?.full_name || '') + ' ' +
+        (tb.event_table_types?.name || '')
+      ).toLowerCase();
       const members = sharesByTable[tb.id] || [];
-      return opener.includes(q) || members.some(m => matchesSearch(m, q));
+      return hay.includes(q) || members.some(m => matchesSearch(m, q));
     });
   }, [scopedTables, q, sharesByTable]);
 
@@ -386,9 +391,9 @@ export default function BusinessBookings() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 12 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 60, paddingBottom: 18 }}>
           <Text style={{ color: COLORS.brand, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>{t('bizBookings.eyebrow')}</Text>
-          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 24, marginBottom: 12 }}>{t('bizBookings.title')}</Text>
+          <Text style={{ fontFamily: FONT_FAMILY.displayHeavy, color: '#fff', fontSize: 24, marginBottom: 14 }}>{t('bizBookings.title')}</Text>
 
           {/* Filtro evento */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -410,36 +415,36 @@ export default function BusinessBookings() {
         <View style={{ paddingHorizontal: 20 }}>
           <Pressable
             onPress={() => goTo('entries')}
-            style={({ pressed }) => ({ backgroundColor: COLORS.bgElev2, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: COLORS.borderSubtle, opacity: pressed ? 0.85 : 1 })}
+            style={({ pressed }) => ({ backgroundColor: COLORS.bgElev2, borderRadius: 18, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: COLORS.borderStrong, opacity: pressed ? 0.85 : 1 })}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                 <Ionicons name="ticket-outline" size={17} color={COLORS.brand} />
               </View>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, flex: 1 }}>{t('bizBookings.tabEntries')}</Text>
+              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, flex: 1 }}>{t('bizBookings.tabEntries')}</Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               <StatBox label={t('bizBookings.stBookings')} value={entryStats.count} />
               <StatBox label={t('bizBookings.stPeople')} value={entryStats.people} />
               <StatBox label={t('bizBookings.stEntered')} value={entryStats.checked} valueColor={COLORS.success} />
               <StatBox label={t('bizBookings.stToCheck')} value={entryStats.toCheck} valueColor={entryStats.toCheck > 0 ? COLORS.warning : COLORS.success} />
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
-              <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('bizBookings.stRevenue')}</Text>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 16 }}>{euro(entryStats.revenue)}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{t('bizBookings.stRevenue')}</Text>
+              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18 }}>{euro(entryStats.revenue)}</Text>
             </View>
             {Object.keys(entryStats.byType).length > 0 && (
-              <View style={{ marginTop: 8 }}>
+              <View style={{ marginTop: 10 }}>
                 {Object.entries(entryStats.byType).map(([name, people]) => (
-                  <Text key={name} style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }} numberOfLines={1}>
+                  <Text key={name} style={{ color: COLORS.textMuted, fontSize: 12, marginTop: 3 }} numberOfLines={1}>
                     · {name} × {people}
                   </Text>
                 ))}
               </View>
             )}
-            <View style={{ backgroundColor: COLORS.brandStrong, borderRadius: 10, paddingVertical: 11, alignItems: 'center', marginTop: 14 }}>
+            <View style={{ backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 16 }}>
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{t('bizBookings.manageEntries')}</Text>
             </View>
           </Pressable>
@@ -447,27 +452,27 @@ export default function BusinessBookings() {
           {/* CARD TAVOLI */}
           <Pressable
             onPress={() => goTo('tables')}
-            style={({ pressed }) => ({ backgroundColor: COLORS.bgElev2, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: COLORS.borderSubtle, opacity: pressed ? 0.85 : 1 })}
+            style={({ pressed }) => ({ backgroundColor: COLORS.bgElev2, borderRadius: 18, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: COLORS.borderStrong, opacity: pressed ? 0.85 : 1 })}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: COLORS.brandSubtle, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                 <Ionicons name="wine-outline" size={17} color={COLORS.brand} />
               </View>
-              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 18, flex: 1 }}>{t('bizBookings.tabTables')}</Text>
+              <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 19, flex: 1 }}>{t('bizBookings.tabTables')}</Text>
               <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
             </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               <StatBox label={t('bizBookings.stTables')} value={tableStats.count} />
               <StatBox label={t('bizBookings.stMembers')} value={tableStats.members} />
               <StatBox label={t('bizBookings.stShares')} value={tableStats.shares} />
             </View>
-            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
+            <View style={{ marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
               <TotalRow label={t('bizBookings.stTableTotal')} value={euro(tableStats.total)} />
               <TotalRow label={t('bizBookings.stPaidApp')} value={euro(tableStats.paid)} valueColor={COLORS.success} />
               <TotalRow label={t('bizBookings.stResidual')} value={euro(tableStats.residual)} valueColor={tableStats.residual > 0 ? COLORS.warning : COLORS.success} />
             </View>
-            <View style={{ backgroundColor: COLORS.brandStrong, borderRadius: 10, paddingVertical: 11, alignItems: 'center', marginTop: 14 }}>
+            <View style={{ backgroundColor: COLORS.brandStrong, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 16 }}>
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{t('bizBookings.manageTables')}</Text>
             </View>
           </Pressable>
@@ -479,9 +484,9 @@ export default function BusinessBookings() {
 
 function StatBox({ label, value, valueColor }) {
   return (
-    <View style={{ minWidth: '22%', flexGrow: 1, backgroundColor: COLORS.bgElev3, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10 }}>
-      <Text style={{ fontFamily: FONT_FAMILY.display, color: valueColor || COLORS.textPrimary, fontSize: 16 }} numberOfLines={1}>{value}</Text>
-      <Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }} numberOfLines={1}>{label}</Text>
+    <View style={{ minWidth: '22%', flexGrow: 1, backgroundColor: COLORS.bgElev3, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 12 }}>
+      <Text style={{ fontFamily: FONT_FAMILY.display, color: valueColor || COLORS.textPrimary, fontSize: 19 }} numberOfLines={1}>{value}</Text>
+      <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -497,9 +502,9 @@ function StatInline({ label, value, valueColor }) {
 
 function TotalRow({ label, value, valueColor }) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-      <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: valueColor || COLORS.textPrimary, fontSize: 13, fontWeight: '700' }}>{value}</Text>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: valueColor || COLORS.textPrimary, fontSize: 14, fontWeight: '700' }}>{value}</Text>
     </View>
   );
 }
