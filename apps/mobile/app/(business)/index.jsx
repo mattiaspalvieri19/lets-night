@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useState, useCallback, useMemo } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Pressable } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
@@ -32,7 +32,8 @@ export default function BusinessDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [venue, setVenue] = useState(null);
-  const [d, setD] = useState(null);
+  const [raw, setRaw] = useState(null); // dati grezzi: le statistiche si calcolano nel useMemo sotto
+  const [selectedEvent, setSelectedEvent] = useState('all');
 
   async function loadData() {
     try {
@@ -47,78 +48,14 @@ export default function BusinessDashboard() {
           .select('id, status, checked_in, total_price, booking_type, created_at, user_id, events!inner(id, venue_id), profiles(birth_date, gender)')
           .eq('events.venue_id', venueData.id)
           .not('status', 'in', '("cancelled","denied")'),
-        supabase.from('events').select('id, title, event_date, event_time, is_active').eq('venue_id', venueData.id),
+        supabase.from('events').select('id, title, event_date, event_time, is_active').eq('venue_id', venueData.id).order('event_date', { ascending: false }),
         // Ingressi: TUTTE le prenotazioni (inclusi denied/cancelled) per categorizzare entrati/rifiutati/no-show
         supabase.from('bookings')
-          .select('status, checked_in, refund_reason, events!inner(venue_id, event_date)')
+          .select('status, checked_in, refund_reason, events!inner(id, venue_id, event_date)')
           .eq('events.venue_id', venueData.id),
       ]);
 
-      const bs = bookings || [];
-      const evs = events || [];
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      // raggruppa prenotazioni per evento
-      const byEvent = {};
-      for (const b of bs) { const id = b.events?.id; if (id) (byEvent[id] ||= []).push(b); }
-
-      // Stasera
-      const todayEvents = evs.filter(e => e.is_active && e.event_date === todayStr).map(e => {
-        const list = byEvent[e.id] || [];
-        return {
-          id: e.id, title: e.title, time: e.event_time,
-          prenotati: list.length,
-          entrati: list.filter(b => b.checked_in).length,
-          tavoli: list.filter(b => b.booking_type === 'table_share').length,
-          vendite: list.reduce((s, b) => s + Number(b.total_price || 0), 0),
-        };
-      });
-
-      // Vendite
-      const venditeTotali = bs.reduce((s, b) => s + Number(b.total_price || 0), 0);
-      const venditeMese = bs.filter(b => new Date(b.created_at) >= monthStart).reduce((s, b) => s + Number(b.total_price || 0), 0);
-      const venditeTavoli = bs.filter(b => b.booking_type === 'table_share').reduce((s, b) => s + Number(b.total_price || 0), 0);
-      const venditeBiglietti = venditeTotali - venditeTavoli;
-
-      // KPI
-      const entratiTot = bs.filter(b => b.checked_in).length;
-      const tassoIngresso = bs.length ? Math.round((entratiTot / bs.length) * 100) : 0;
-      const eventiInProgramma = evs.filter(e => e.is_active && e.event_date >= todayStr).length;
-
-      // Pubblico (per cliente unico)
-      const profByUser = {}; const countByUser = {};
-      for (const b of bs) { if (!b.user_id) continue; countByUser[b.user_id] = (countByUser[b.user_id] || 0) + 1; if (b.profiles) profByUser[b.user_id] = b.profiles; }
-      const users = Object.keys(countByUser);
-      const ages = users.map(u => calcAge(profByUser[u]?.birth_date)).filter(a => a != null);
-      const etaMedia = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : null;
-      const fasce = { f1: 0, f2: 0, f3: 0 }; // 18-24 / 25-34 / 35+
-      for (const a of ages) { if (a < 25) fasce.f1++; else if (a < 35) fasce.f2++; else fasce.f3++; }
-      const gen = { u: 0, d: 0, a: 0 };
-      for (const u of users) { const g = (profByUser[u]?.gender || '').toUpperCase(); if (g === 'M') gen.u++; else if (g === 'F') gen.d++; else if (g) gen.a++; }
-      const ritornano = users.filter(u => countByUser[u] > 1).length;
-      const pctRitornano = users.length ? Math.round((ritornano / users.length) * 100) : 0;
-
-      // Ingressi: venduti = entrati + rifiutati + no-show (la somma copre i biglietti degli eventi conclusi).
-      // denied = rifiutato (ha checked_in=false), checked_in=true = entrato, altrimenti venduto-non-entrato a
-      // serata passata = no-show (inclusi i no-show già rimborsati, riconosciuti dal refund_reason).
-      let entrati = 0, rifiutati = 0, noShow = 0;
-      for (const b of (allBk || [])) {
-        const past = (b.events?.event_date || '') < todayStr;
-        if (b.status === 'denied') rifiutati++;
-        else if (b.checked_in) entrati++;
-        else if (past && (b.status === 'confirmed' || (b.status === 'cancelled' && /^Rimborso no-show/.test(b.refund_reason || '')))) noShow++;
-      }
-      const ingressi = { venduti: entrati + rifiutati + noShow, entrati, rifiutati, noShow };
-
-      setD({
-        todayEvents,
-        venditeTotali, venditeMese, venditeBiglietti, venditeTavoli,
-        prenotazioni: bs.length, tassoIngresso, clientiUnici: users.length, eventiInProgramma,
-        etaMedia, fasce, gen, pctRitornano, agesCount: ages.length,
-        ingressi,
-      });
+      setRaw({ bookings: bookings || [], events: events || [], allBk: allBk || [] });
     } catch (e) {
       console.error('Errore dashboard:', e);
     } finally {
@@ -128,6 +65,81 @@ export default function BusinessDashboard() {
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
   const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, []);
+
+  // Statistiche calcolate sullo scope del filtro evento: 'all' = somma di tutti
+  // gli eventi (comportamento storico), altrimenti solo l'evento selezionato.
+  const d = useMemo(() => {
+    if (!raw) return null;
+    const all = selectedEvent === 'all';
+    const bs = all ? raw.bookings : raw.bookings.filter(b => b.events?.id === selectedEvent);
+    const evs = all ? raw.events : raw.events.filter(e => e.id === selectedEvent);
+    const allBk = all ? raw.allBk : raw.allBk.filter(b => b.events?.id === selectedEvent);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // raggruppa prenotazioni per evento
+    const byEvent = {};
+    for (const b of bs) { const id = b.events?.id; if (id) (byEvent[id] ||= []).push(b); }
+
+    // Stasera
+    const todayEvents = evs.filter(e => e.is_active && e.event_date === todayStr).map(e => {
+      const list = byEvent[e.id] || [];
+      return {
+        id: e.id, title: e.title, time: e.event_time,
+        prenotati: list.length,
+        entrati: list.filter(b => b.checked_in).length,
+        tavoli: list.filter(b => b.booking_type === 'table_share').length,
+        vendite: list.reduce((s, b) => s + Number(b.total_price || 0), 0),
+      };
+    });
+
+    // Vendite
+    const venditeTotali = bs.reduce((s, b) => s + Number(b.total_price || 0), 0);
+    const venditeMese = bs.filter(b => new Date(b.created_at) >= monthStart).reduce((s, b) => s + Number(b.total_price || 0), 0);
+    const venditeTavoli = bs.filter(b => b.booking_type === 'table_share').reduce((s, b) => s + Number(b.total_price || 0), 0);
+    const venditeBiglietti = venditeTotali - venditeTavoli;
+
+    // KPI
+    const entratiTot = bs.filter(b => b.checked_in).length;
+    const tassoIngresso = bs.length ? Math.round((entratiTot / bs.length) * 100) : 0;
+    const eventiInProgramma = evs.filter(e => e.is_active && e.event_date >= todayStr).length;
+
+    // Pubblico (per cliente unico dello scope). "Ritornano" resta sensato anche
+    // filtrando un singolo evento: conta i clienti dello scope che hanno più di
+    // una prenotazione considerando TUTTO lo storico del locale.
+    const countAllByUser = {};
+    for (const b of raw.bookings) { if (b.user_id) countAllByUser[b.user_id] = (countAllByUser[b.user_id] || 0) + 1; }
+    const profByUser = {}; const inScope = new Set();
+    for (const b of bs) { if (!b.user_id) continue; inScope.add(b.user_id); if (b.profiles) profByUser[b.user_id] = b.profiles; }
+    const users = [...inScope];
+    const ages = users.map(u => calcAge(profByUser[u]?.birth_date)).filter(a => a != null);
+    const etaMedia = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : null;
+    const fasce = { f1: 0, f2: 0, f3: 0 }; // 18-24 / 25-34 / 35+
+    for (const a of ages) { if (a < 25) fasce.f1++; else if (a < 35) fasce.f2++; else fasce.f3++; }
+    const gen = { u: 0, d: 0, a: 0 };
+    for (const u of users) { const g = (profByUser[u]?.gender || '').toUpperCase(); if (g === 'M') gen.u++; else if (g === 'F') gen.d++; else if (g) gen.a++; }
+    const ritornano = users.filter(u => countAllByUser[u] > 1).length;
+    const pctRitornano = users.length ? Math.round((ritornano / users.length) * 100) : 0;
+
+    // Ingressi: venduti = entrati + rifiutati + no-show (eventi conclusi).
+    let entrati = 0, rifiutati = 0, noShow = 0;
+    for (const b of allBk) {
+      const past = (b.events?.event_date || '') < todayStr;
+      if (b.status === 'denied') rifiutati++;
+      else if (b.checked_in) entrati++;
+      else if (past && (b.status === 'confirmed' || (b.status === 'cancelled' && /^Rimborso no-show/.test(b.refund_reason || '')))) noShow++;
+    }
+    const ingressi = { venduti: entrati + rifiutati + noShow, entrati, rifiutati, noShow };
+
+    return {
+      todayEvents,
+      venditeTotali, venditeMese, venditeBiglietti, venditeTavoli,
+      prenotazioni: bs.length, tassoIngresso, clientiUnici: users.length, eventiInProgramma,
+      etaMedia, fasce, gen, pctRitornano, agesCount: ages.length,
+      ingressi,
+    };
+  }, [raw, selectedEvent]);
 
   if (loading) {
     return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={C.accent} size="large" /></View>;
@@ -147,6 +159,23 @@ export default function BusinessDashboard() {
             <Text style={{ color: C.amber, fontWeight: '600', fontSize: 12 }}>{t('bizDash.pending')}</Text>
             <Text style={{ color: C.sub, fontSize: 11, marginTop: 4, lineHeight: 16 }}>{t('bizDash.pendingSub')}</Text>
           </View>
+        )}
+
+        {/* Filtro evento: le statistiche sotto si ricalcolano sullo scope scelto */}
+        {(raw?.events?.length || 0) > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[{ id: 'all', title: t('biz.allEvents') }, ...raw.events].map(ev => (
+                <Pressable key={ev.id} onPress={() => setSelectedEvent(ev.id)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: selectedEvent === ev.id ? C.white : C.card2, borderWidth: 1, borderColor: selectedEvent === ev.id ? C.white : C.line, maxWidth: 220 }}
+                >
+                  <Text style={{ color: selectedEvent === ev.id ? C.bg : C.sub, fontSize: 12, fontWeight: selectedEvent === ev.id ? '700' : '400' }} numberOfLines={1}>
+                    {ev.id === 'all' ? t('biz.allEvents') : ev.title}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
         )}
       </View>
 
