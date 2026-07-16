@@ -731,6 +731,7 @@ export default {
     detailsCta: 'Table details',
     extraShare: 'Covers extra shares',
     stToSettle: 'To settle',
+    noTablesSearch: 'No tables found',
   },
   bizEvent: {
     fAll: 'All',

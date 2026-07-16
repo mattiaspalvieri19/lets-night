@@ -731,6 +731,7 @@ export default {
     detailsCta: 'Détails de la table',
     extraShare: 'Couvre plusieurs parts',
     stToSettle: 'À solder',
+    noTablesSearch: 'Aucune table trouvée',
   },
   bizEvent: {
     fAll: 'Tous',

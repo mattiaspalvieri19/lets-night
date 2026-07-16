@@ -731,6 +731,7 @@ export default {
     detailsCta: 'Detalles de la mesa',
     extraShare: 'Cubre más cuotas',
     stToSettle: 'Por saldar',
+    noTablesSearch: 'No se encontraron mesas',
   },
   bizEvent: {
     fAll: 'Todos',

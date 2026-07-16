@@ -731,6 +731,7 @@ export default {
     detailsCta: 'Dettagli tavolo',
     extraShare: 'Copre più quote',
     stToSettle: 'Da saldare',
+    noTablesSearch: 'Nessun tavolo trovato',
   },
   bizEvent: {
     fAll: 'Tutti',
