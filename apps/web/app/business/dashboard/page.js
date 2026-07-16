@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import {
   CATS_NO_TUTTI, formatDateFull, formatTime, getPriceLabel, todayLocal,
+  isActiveBooking, sumRevenue,
   MUSIC_TYPES, DRESS_CODES, AGE_TARGETS, QUICK_TAGS,
 } from '@lets-night/shared';
 
@@ -70,7 +71,7 @@ export default function BusinessDashboard() {
             .from('bookings')
             .select('*, events(title, event_date, event_time), profiles(full_name, phone)')
             .in('event_id', eventIds)
-            .neq('status', 'cancelled')
+            .not('status', 'in', '("cancelled","denied")')
             .order('created_at', { ascending: false });
           setBookings(bookingsData || []);
         }
@@ -192,7 +193,7 @@ export default function BusinessDashboard() {
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const todayStr = todayLocal();
   const weekBookings = bookings.filter(b => b.created_at >= weekAgo);
-  const totalRevenue = weekBookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
+  const totalRevenue = sumRevenue(weekBookings);
   const todayCheckins = bookings.filter(b => b.checked_in && b.events?.event_date === todayStr).length;
   const activeEvents = events.filter(e => e.is_active).length;
 

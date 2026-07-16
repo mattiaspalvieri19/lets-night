@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../../lib/supabase';
-import { CATS_NO_TUTTI } from '@lets-night/shared';
+import { CATS_NO_TUTTI, activeBookings, sumRevenue, NOSHOW_REFUND_RE } from '@lets-night/shared';
 
 const MAX_COVER_MB = 5;
 const EMPTY_TYPE = { name: '', total_price: '', max_people: '8', includes: '', tables_count: '1' };
@@ -88,15 +88,15 @@ export default function AdminEventDetailPage() {
 
   const today = todayLocal();
   const concluded = event.event_date < today;
-  const active = bookings.filter(b => b.status !== 'cancelled' && b.status !== 'denied');
+  const active = activeBookings(bookings);
   let entrati = 0, rifiutati = 0, noShow = 0;
   for (const b of bookings) {
     if (b.status === 'denied') rifiutati++;
     else if (b.checked_in) entrati++;
-    else if (concluded && (b.status === 'confirmed' || (b.status === 'cancelled' && /^Rimborso no-show/.test(b.refund_reason || '')))) noShow++;
+    else if (concluded && (b.status === 'confirmed' || (b.status === 'cancelled' && NOSHOW_REFUND_RE.test(b.refund_reason || '')))) noShow++;
   }
   const venduti = entrati + rifiutati + noShow;
-  const incasso = active.reduce((s, b) => s + Number(b.total_price || 0), 0);
+  const incasso = sumRevenue(active);
   const riempimento = event.capacity ? Math.round(((event.booked_count || 0) / event.capacity) * 100) : null;
 
   function setField(k, v) { setForm(f => ({ ...f, [k]: v })); setMsg(''); }

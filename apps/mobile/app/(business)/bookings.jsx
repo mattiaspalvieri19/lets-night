@@ -4,7 +4,7 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, tableTotals } from '@lets-night/shared';
 
 // Sezione PRENOTAZIONI = centro operativo, in 3 viste:
 //   panoramica (card Ingressi | Tavoli con statistiche base)
@@ -35,20 +35,6 @@ function matchesSearch(booking, q) {
     (booking.event_ticket_types?.name || '')
   ).toLowerCase();
   return hay.includes(q);
-}
-
-// Totali tavolo COERENTI: sempre calcolati dalla somma dei pagamenti dei
-// partecipanti (non dal campo denormalizzato `collected`, che viene solo
-// verificato: una discrepanza finisce in console.error, mai nascosta).
-function tableTotals(tb, members) {
-  const paid = members.reduce((s, m) => s + Number(m.total_price || 0), 0);
-  const total = Number(tb.total_price || 0);
-  return {
-    paid,
-    total,
-    residual: Math.max(0, total - paid),
-    shares: members.filter(m => Number(m.total_price || 0) > 0).length,
-  };
 }
 
 export default function BusinessBookings() {

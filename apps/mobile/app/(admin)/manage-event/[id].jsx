@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, A
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
-import { COLORS, FONT_FAMILY, formatDateFull, formatTime } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDateFull, formatTime, sumRevenue, checkedInCount } from '@lets-night/shared';
 import EventFormModal from '../../../components/EventFormModal';
 
 const EMPTY_TYPE = { name: '', total_price: '', max_people: '8', includes: '', tables_count: '1' };
@@ -356,10 +356,8 @@ export default function AdminEventDetailScreen() {
   }, [bookings]);
 
   const stats = useMemo(() => {
-    const checkedIn = bookings.filter(b => b.checked_in).length;
-    const revenue = bookings
-      .filter(b => b.status === 'confirmed')
-      .reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
+    const checkedIn = checkedInCount(bookings);
+    const revenue = sumRevenue(bookings);
     return { checkedIn, revenue };
   }, [bookings]);
 

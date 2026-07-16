@@ -4,7 +4,7 @@ import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
-import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY, activeBookings } from '@lets-night/shared';
 import EventFormModal from '../../components/EventFormModal';
 
 function todayLocal() {
@@ -51,7 +51,7 @@ export default function BusinessEvents() {
     } else if (filter === 'draft') {
       if (e.is_active || e.event_date < today) return false;
     } else if (filter === 'soldout') {
-      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
+      const sold = activeBookings(e.bookings).length;
       if (!(e.capacity && sold >= e.capacity)) return false;
     }
     // Search interna
@@ -68,10 +68,7 @@ export default function BusinessEvents() {
     upcoming: events.filter(e => e.event_date >= today && e.is_active).length,
     draft:    events.filter(e => !e.is_active && e.event_date >= today).length,
     past:     events.filter(e => e.event_date < today).length,
-    soldout:  events.filter(e => {
-      const sold = (e.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
-      return e.capacity && sold >= e.capacity;
-    }).length,
+    soldout:  events.filter(e => e.capacity && activeBookings(e.bookings).length >= e.capacity).length,
   };
 
   if (loading) return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
@@ -168,7 +165,7 @@ export default function BusinessEvents() {
             )}
           </View>
         ) : filtered.map(ev => {
-          const bookingsCount = (ev.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'denied').length;
+          const bookingsCount = activeBookings(ev.bookings).length;
           const isPast = ev.event_date < today;
           return (
             <Pressable

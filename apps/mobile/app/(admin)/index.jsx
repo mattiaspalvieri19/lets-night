@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, A
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, isActiveBooking, sumRevenue } from '@lets-night/shared';
 
 const pad = n => String(n).padStart(2, '0');
 function todayLocal() {
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
     const evs = raw.events.filter(e =>
       (!venueId || e.venue_id === venueId) && (!eventId || e.id === eventId));
     const bks = raw.bookings.filter(b =>
-      b.status !== 'cancelled' && b.status !== 'denied'
+      isActiveBooking(b)
       && (!venueId || b.events?.venue_id === venueId)
       && (!eventId || b.events?.id === eventId));
 
@@ -98,8 +98,8 @@ export default function AdminDashboard() {
     const futuri = evs.filter(e => e.is_active && e.event_date >= today).length;
     const soldout = evs.filter(e => e.capacity && e.booked_count >= e.capacity).length;
 
-    const incasso = bks.reduce((s, b) => s + Number(b.total_price || 0), 0);
-    const incassoTavoli = bks.filter(b => b.booking_type === 'table_share').reduce((s, b) => s + Number(b.total_price || 0), 0);
+    const incasso = sumRevenue(bks);
+    const incassoTavoli = sumRevenue(bks.filter(b => b.booking_type === 'table_share'));
 
     const withCap = evs.filter(e => e.capacity > 0);
     const sumBooked = withCap.reduce((s, e) => s + (e.booked_count || 0), 0);

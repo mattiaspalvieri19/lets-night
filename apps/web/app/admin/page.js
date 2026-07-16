@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import { isActiveBooking } from '@lets-night/shared';
 
 function todayLocal() {
   const now = new Date();
@@ -76,7 +77,7 @@ export default function AdminDashboardPage() {
     const today = todayLocal();
     const evs = fVenue ? events.filter(e => e.venue_id === fVenue) : events;
     const bks = (fVenue ? bookings.filter(b => b.events?.venue_id === fVenue) : bookings)
-      .filter(b => b.status !== 'cancelled' && b.status !== 'denied');
+      .filter(isActiveBooking);
 
     const attivi = evs.filter(e => e.is_active).length;
     const futuri = evs.filter(e => e.is_active && e.event_date >= today).length;

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, ActivityIndicator, RefreshControl, Pressable } 
 import { router, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useI18n } from '../../lib/i18n';
-import { formatTime, COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { formatTime, COLORS, FONT_FAMILY, sumRevenue, checkedInCount, categorizeEntries } from '@lets-night/shared';
 
 function calcAge(birthDate) {
   if (!birthDate) return null;
@@ -94,14 +94,14 @@ export default function BusinessDashboard() {
       };
     });
 
-    // Vendite
-    const venditeTotali = bs.reduce((s, b) => s + Number(b.total_price || 0), 0);
-    const venditeMese = bs.filter(b => new Date(b.created_at) >= monthStart).reduce((s, b) => s + Number(b.total_price || 0), 0);
-    const venditeTavoli = bs.filter(b => b.booking_type === 'table_share').reduce((s, b) => s + Number(b.total_price || 0), 0);
+    // Vendite (metriche canoniche condivise)
+    const venditeTotali = sumRevenue(bs);
+    const venditeMese = sumRevenue(bs.filter(b => new Date(b.created_at) >= monthStart));
+    const venditeTavoli = sumRevenue(bs.filter(b => b.booking_type === 'table_share'));
     const venditeBiglietti = venditeTotali - venditeTavoli;
 
     // KPI
-    const entratiTot = bs.filter(b => b.checked_in).length;
+    const entratiTot = checkedInCount(bs);
     const tassoIngresso = bs.length ? Math.round((entratiTot / bs.length) * 100) : 0;
     const eventiInProgramma = evs.filter(e => e.is_active && e.event_date >= todayStr).length;
 
@@ -122,15 +122,8 @@ export default function BusinessDashboard() {
     const ritornano = users.filter(u => countAllByUser[u] > 1).length;
     const pctRitornano = users.length ? Math.round((ritornano / users.length) * 100) : 0;
 
-    // Ingressi: venduti = entrati + rifiutati + no-show (eventi conclusi).
-    let entrati = 0, rifiutati = 0, noShow = 0;
-    for (const b of allBk) {
-      const past = (b.events?.event_date || '') < todayStr;
-      if (b.status === 'denied') rifiutati++;
-      else if (b.checked_in) entrati++;
-      else if (past && (b.status === 'confirmed' || (b.status === 'cancelled' && /^Rimborso no-show/.test(b.refund_reason || '')))) noShow++;
-    }
-    const ingressi = { venduti: entrati + rifiutati + noShow, entrati, rifiutati, noShow };
+    // Ingressi: venduti = entrati + rifiutati + no-show (formula condivisa).
+    const ingressi = categorizeEntries(allBk, todayStr);
 
     return {
       todayEvents,
