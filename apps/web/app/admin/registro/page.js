@@ -27,6 +27,8 @@ const TYPE_LABELS = {
   checkin_removed: 'Check-in rimosso',
   qr_invalidated: 'QR invalidato',
   event_price_changed: 'Prezzo evento modificato',
+  ticket_type_price_changed: 'Prezzo tipologia ingresso modificato',
+  table_member_moved: 'Partecipante spostato di tavolo',
 };
 
 const SEVERITY_META = {
