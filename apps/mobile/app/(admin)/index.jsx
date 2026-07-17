@@ -3,7 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, A
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
-import { COLORS, FONT_FAMILY, isActiveBooking, sumRevenue } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, isActiveBooking, sumRevenue, categorizeEntries } from '@lets-night/shared';
 
 const pad = n => String(n).padStart(2, '0');
 function todayLocal() {
@@ -17,7 +17,6 @@ function daysAgoIso(days) {
 }
 function euro(v) { return '€ ' + (Number(v) || 0).toFixed(0); }
 
-const PERIODS = [[7, '7 giorni'], [30, '30 giorni'], [90, '90 giorni'], [365, '1 anno']];
 
 function Section({ title, children }) {
   return (
@@ -31,14 +30,14 @@ function Section({ title, children }) {
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [days, setDays] = useState(30);
+  const [tab, setTab] = useState('active'); // 'active' = eventi in corso/futuri | 'history' = conclusi
   const [venueId, setVenueId] = useState(null);
   const [eventId, setEventId] = useState(null);
   const [raw, setRaw] = useState(null);
 
-  async function loadData(period = days) {
+  async function loadData() {
     try {
-      const since = daysAgoIso(period);
+      const since = daysAgoIso(30); // solo per il KPI "nuovi utenti"
       const [
         { data: events },
         { data: bookings },
@@ -51,8 +50,8 @@ export default function AdminDashboard() {
       ] = await Promise.all([
         supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
         supabase.from('bookings')
-          .select('status, total_price, booking_type, created_at, events!inner(id, venue_id, title, event_date)')
-          .gte('created_at', since),
+          .select('status, checked_in, refund_reason, total_price, booking_type, created_at, events!inner(id, venue_id, title, event_date)')
+,
         supabase.from('venues').select('id, name, is_verified'),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         // profiles.created_at potrebbe non esistere: in caso di errore il KPI sparisce.
@@ -81,18 +80,32 @@ export default function AdminDashboard() {
     }
   }
 
-  useFocusEffect(useCallback(() => { loadData(); }, [days]));
-  const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, [days]);
+  useFocusEffect(useCallback(() => { loadData(); }, []));
+  const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, []);
 
   const d = useMemo(() => {
     if (!raw) return null;
     const today = todayLocal();
     const evs = raw.events.filter(e =>
-      (!venueId || e.venue_id === venueId) && (!eventId || e.id === eventId));
-    const bks = raw.bookings.filter(b =>
-      isActiveBooking(b)
-      && (!venueId || b.events?.venue_id === venueId)
-      && (!eventId || b.events?.id === eventId));
+      (tab === 'history' ? e.event_date < today : e.event_date >= today)
+      && (!venueId || e.venue_id === venueId) && (!eventId || e.id === eventId));
+    const ids = new Set(evs.map(e => e.id));
+    const scoped = raw.bookings.filter(b => ids.has(b.events?.id));
+    const bks = scoped.filter(isActiveBooking);
+
+    // Storico: card per-evento
+    const pastCards = tab !== 'history' ? [] : evs
+      .slice().sort((a, b) => (a.event_date < b.event_date ? 1 : -1))
+      .map(e => {
+        const list = scoped.filter(b => b.events?.id === e.id);
+        const cat = categorizeEntries(list, today);
+        return {
+          id: e.id, title: e.title, date: e.event_date,
+          incasso: sumRevenue(list),
+          riempimento: e.capacity ? Math.round(((e.booked_count || 0) / e.capacity) * 100) : null,
+          ...cat,
+        };
+      });
 
     const attivi = evs.filter(e => e.is_active).length;
     const futuri = evs.filter(e => e.is_active && e.event_date >= today).length;
@@ -129,8 +142,8 @@ export default function AdminDashboard() {
     }
     const topEvents = Object.values(byEvent).sort((a, b) => b.total - a.total).slice(0, 5);
 
-    return { attivi, futuri, soldout, prenotazioni: bks.length, incasso, incassoTavoli, riempimento, venueRows, topEvents };
-  }, [raw, venueId, eventId]);
+    return { attivi, futuri, soldout, prenotazioni: bks.length, incasso, incassoTavoli, riempimento, venueRows, topEvents, pastCards };
+  }, [raw, venueId, eventId, tab]);
 
   if (loading || !d) {
     return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
@@ -202,17 +215,17 @@ export default function AdminDashboard() {
         </Section>
       )}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, marginBottom: 8 }}>
-        {PERIODS.map(([n, label]) => {
-          const active = days === n;
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 8 }}>
+        {[['active', 'In corso'], ['history', 'Storico']].map(([id, label]) => {
+          const on = tab === id;
           return (
-            <Pressable key={n} onPress={() => { setDays(n); setLoading(true); }}
-              style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14, backgroundColor: active ? COLORS.textPrimary : 'transparent', borderWidth: 1, borderColor: active ? COLORS.textPrimary : COLORS.borderSubtle }}>
-              <Text style={{ color: active ? COLORS.bg : COLORS.textSecondary, fontSize: 12, fontWeight: active ? '700' : '500' }}>{label}</Text>
+            <Pressable key={id} onPress={() => { setTab(id); setEventId(null); }}
+              style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', backgroundColor: on ? COLORS.textPrimary : COLORS.bgElev2, borderWidth: 1, borderColor: on ? COLORS.textPrimary : COLORS.borderSubtle }}>
+              <Text style={{ color: on ? COLORS.bg : COLORS.textSecondary, fontSize: 13, fontWeight: '700' }}>{label}</Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, marginBottom: 8 }}>
         {[[null, 'Tutti i locali'], ...[...raw.venues].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(v => [v.id, v.name])].map(([vid, label]) => {
@@ -245,7 +258,7 @@ export default function AdminDashboard() {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, marginTop: 12, marginBottom: 24 }}>
         {[
-          { label: 'Incasso (periodo)', value: euro(d.incasso) },
+          { label: 'Incasso', value: euro(d.incasso) },
           { label: 'di cui tavoli', value: euro(d.incassoTavoli) },
           { label: 'Prenotazioni', value: d.prenotazioni },
           { label: 'Riempimento medio', value: d.riempimento != null ? `${d.riempimento}%` : '—' },
@@ -254,7 +267,7 @@ export default function AdminDashboard() {
           { label: 'Sold out', value: d.soldout },
           ...(venueId ? [] : [
             { label: 'Utenti totali', value: raw.usersCount ?? '—' },
-            ...(raw.newUsers != null ? [{ label: 'Nuovi utenti (periodo)', value: raw.newUsers }] : []),
+            ...(raw.newUsers != null ? [{ label: 'Nuovi utenti (30gg)', value: raw.newUsers }] : []),
             { label: 'Locali verificati', value: raw.venues.filter(v => v.is_verified).length },
           ]),
         ].map(s => (
@@ -265,10 +278,37 @@ export default function AdminDashboard() {
         ))}
       </View>
 
-      <Section title="Incassi per locale (periodo)">
+      {tab === 'history' && (
+        <Section title={`Eventi conclusi (${d.pastCards.length})`}>
+          {d.pastCards.length === 0 ? (
+            <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: COLORS.borderSubtle }}>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Nessun evento concluso.</Text>
+            </View>
+          ) : d.pastCards.map(e => (
+            <View key={e.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: COLORS.borderSubtle }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, flex: 1, marginRight: 10 }} numberOfLines={1}>{e.title}</Text>
+                <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{e.date}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+                <View><Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{e.venduti}</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>venduti</Text></View>
+                <View><Text style={{ color: COLORS.success, fontSize: 16, fontWeight: '800' }}>{e.entrati}</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>entrati</Text></View>
+                <View><Text style={{ color: COLORS.danger, fontSize: 16, fontWeight: '800' }}>{e.rifiutati}</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>rifiutati</Text></View>
+                <View><Text style={{ color: COLORS.warning, fontSize: 16, fontWeight: '800' }}>{e.noShow}</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>no-show</Text></View>
+                <View><Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{euro(e.incasso)}</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>incasso</Text></View>
+                {e.riempimento != null && (
+                  <View><Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{e.riempimento}%</Text><Text style={{ color: COLORS.textMuted, fontSize: 10, marginTop: 2 }}>riempimento</Text></View>
+                )}
+              </View>
+            </View>
+          ))}
+        </Section>
+      )}
+
+      <Section title="Incassi per locale">
         {d.venueRows.length === 0 ? (
           <View style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 18, alignItems: 'center' }}>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Nessuna prenotazione nel periodo.</Text>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>Nessuna prenotazione.</Text>
           </View>
         ) : d.venueRows.map(v => (
           <View key={v.id} style={{ backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 14, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

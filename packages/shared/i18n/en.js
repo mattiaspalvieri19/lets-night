@@ -564,6 +564,11 @@ export default {
     other: 'Other',
     fewData: 'Not enough data yet.',
     fewDataSub: 'Audience stats appear with the first bookings.',
+    tabActive: 'Active',
+    tabHistory: 'History',
+    histTotals: 'All-time totals',
+    histEmpty: 'No past events',
+    fill: 'Fill rate',
   },
   bizEvents: {
     title: 'Event management',

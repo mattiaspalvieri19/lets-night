@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
-import { isActiveBooking } from '@lets-night/shared';
+import { isActiveBooking, sumRevenue, categorizeEntries } from '@lets-night/shared';
 
 function todayLocal() {
   const now = new Date();
@@ -24,11 +24,10 @@ export default function AdminDashboardPage() {
   const [venues, setVenues] = useState([]);
   const [counts, setCounts] = useState({ users: null, newUsers: null, pendingVenues: 0, pendingRefunds: 0, openTickets: 0, anomalies: 0 });
   const [fVenue, setFVenue] = useState('');
-  const [fDays, setFDays] = useState('30');
+  const [tab, setTab] = useState('active'); // 'active' = eventi in corso/futuri | 'history' = conclusi
 
   useEffect(() => {
     (async () => {
-      const since = daysAgoIso(Number(fDays) || 30);
       const [
         { data: evs, error: evErr },
         { data: bks },
@@ -42,12 +41,11 @@ export default function AdminDashboardPage() {
       ] = await Promise.all([
         supabase.from('events').select('id, venue_id, title, event_date, capacity, booked_count, is_active'),
         supabase.from('bookings')
-          .select('status, total_price, booking_type, created_at, events!inner(id, venue_id, title, event_date)')
-          .gte('created_at', since),
+          .select('status, checked_in, refund_reason, total_price, booking_type, created_at, events!inner(id, venue_id, title, event_date)'),
         supabase.from('venues').select('id, name, is_verified'),
         supabase.from('profiles').select('id', { count: 'exact', head: true }),
         // profiles.created_at potrebbe non esistere: in caso di errore il KPI sparisce.
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', since),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', daysAgoIso(30)),
         supabase.from('venues').select('id', { count: 'exact', head: true }).eq('is_verified', false),
         supabase.from('bookings').select('id', { count: 'exact', head: true })
           .not('refund_requested_at', 'is', null)
@@ -71,13 +69,29 @@ export default function AdminDashboardPage() {
       });
       setLoading(false);
     })();
-  }, [fDays]);
+  }, []);
 
   const d = useMemo(() => {
     const today = todayLocal();
-    const evs = fVenue ? events.filter(e => e.venue_id === fVenue) : events;
-    const bks = (fVenue ? bookings.filter(b => b.events?.venue_id === fVenue) : bookings)
-      .filter(isActiveBooking);
+    const base = fVenue ? events.filter(e => e.venue_id === fVenue) : events;
+    const evs = base.filter(e => (tab === 'history' ? e.event_date < today : e.event_date >= today));
+    const ids = new Set(evs.map(e => e.id));
+    const scoped = bookings.filter(b => ids.has(b.events?.id));
+    const bks = scoped.filter(isActiveBooking);
+
+    // Storico: card per-evento (venduti/entrati/rifiutati/no-show, incasso, riempimento)
+    const pastCards = tab !== 'history' ? [] : evs
+      .slice().sort((a, b) => (a.event_date < b.event_date ? 1 : -1))
+      .map(e => {
+        const list = scoped.filter(b => b.events?.id === e.id);
+        const cat = categorizeEntries(list, today);
+        return {
+          id: e.id, title: e.title, date: e.event_date,
+          incasso: sumRevenue(list),
+          riempimento: e.capacity ? Math.round(((e.booked_count || 0) / e.capacity) * 100) : null,
+          ...cat,
+        };
+      });
 
     const attivi = evs.filter(e => e.is_active).length;
     const futuri = evs.filter(e => e.is_active && e.event_date >= today).length;
@@ -115,8 +129,8 @@ export default function AdminDashboardPage() {
     }
     const topEvents = Object.values(byEvent).sort((a, b) => b.total - a.total).slice(0, 5);
 
-    return { attivi, futuri, passati, soldout, prenotazioni: bks.length, incasso, incassoTavoli, riempimento, venueRows, topEvents };
-  }, [events, bookings, venues, fVenue]);
+    return { attivi, futuri, passati, soldout, prenotazioni: bks.length, incasso, incassoTavoli, riempimento, venueRows, topEvents, pastCards };
+  }, [events, bookings, venues, fVenue, tab]);
 
   if (loading) return <div className="dash-loading">Caricamento dashboard...</div>;
 
@@ -157,26 +171,22 @@ export default function AdminDashboardPage() {
           <option value="">Tutti i locali</option>
           {venues.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
-        <select value={fDays} onChange={e => setFDays(e.target.value)}>
-          <option value="7">Ultimi 7 giorni</option>
-          <option value="30">Ultimi 30 giorni</option>
-          <option value="90">Ultimi 90 giorni</option>
-          <option value="365">Ultimo anno</option>
-        </select>
+        <button onClick={() => setTab('active')} className={tab === 'active' ? 'biz-toggle active' : 'biz-toggle'}>In corso</button>
+        <button onClick={() => setTab('history')} className={tab === 'history' ? 'biz-toggle active' : 'biz-toggle'}>Storico</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '.8rem', marginBottom: '2rem' }}>
         {[
-          ['Incasso (periodo)', `€ ${d.incasso.toFixed(0)}`],
+          ['Incasso', `€ ${d.incasso.toFixed(0)}`],
           ['di cui tavoli', `€ ${d.incassoTavoli.toFixed(0)}`],
-          ['Prenotazioni (periodo)', d.prenotazioni],
+          ['Prenotazioni', d.prenotazioni],
           ['Riempimento medio', d.riempimento != null ? `${d.riempimento}%` : '—'],
           ['Eventi attivi', d.attivi],
           ['Eventi futuri', d.futuri],
           ['Eventi passati', d.passati],
           ['Sold out', d.soldout],
           ['Utenti totali', counts.users ?? '—'],
-          ...(counts.newUsers != null ? [['Nuovi utenti (periodo)', counts.newUsers]] : []),
+          ...(counts.newUsers != null ? [['Nuovi utenti (30gg)', counts.newUsers]] : []),
           ['Locali verificati', venues.filter(v => v.is_verified).length],
           ['Locali in attesa', counts.pendingVenues],
           ['Ticket aperti', counts.openTickets],
@@ -188,10 +198,38 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
+      {tab === 'history' && (
+        <div className="dash-section" style={{ marginBottom: '2rem' }}>
+          <h2 className="dash-section-title">Eventi conclusi ({d.pastCards.length})</h2>
+          {d.pastCards.length === 0 ? (
+            <div className="dash-empty"><p>Nessun evento concluso.</p></div>
+          ) : (
+            <div className="biz-events-list">
+              {d.pastCards.map(e => (
+                <div key={e.id} className="biz-event-item">
+                  <div className="biz-event-info">
+                    <h3>{e.title}</h3>
+                    <div className="biz-event-meta">
+                      <span>{e.date}</span>
+                      <span>{e.venduti} venduti</span>
+                      <span style={{ color: '#4ade80' }}>{e.entrati} entrati</span>
+                      <span style={{ color: '#f87171' }}>{e.rifiutati} rifiutati</span>
+                      <span style={{ color: '#fbbf24' }}>{e.noShow} no-show</span>
+                      <span>€ {e.incasso.toFixed(2)}</span>
+                      {e.riempimento != null && <span>{e.riempimento}% riempimento</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="dash-section" style={{ marginBottom: '2rem' }}>
-        <h2 className="dash-section-title">Incassi per locale (periodo)</h2>
+        <h2 className="dash-section-title">Incassi per locale</h2>
         {d.venueRows.length === 0 ? (
-          <div className="dash-empty"><p>Nessuna prenotazione nel periodo.</p></div>
+          <div className="dash-empty"><p>Nessuna prenotazione.</p></div>
         ) : (
           <div className="biz-events-list">
             {d.venueRows.map(v => (
@@ -210,9 +248,9 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="dash-section">
-        <h2 className="dash-section-title">Top eventi (periodo)</h2>
+        <h2 className="dash-section-title">Top eventi</h2>
         {d.topEvents.length === 0 ? (
-          <div className="dash-empty"><p>Nessun dato nel periodo.</p></div>
+          <div className="dash-empty"><p>Nessun dato.</p></div>
         ) : (
           <div className="biz-events-list">
             {d.topEvents.map((e, i) => (

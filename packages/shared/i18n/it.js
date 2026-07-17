@@ -564,6 +564,11 @@ export default {
     other: 'Altro',
     fewData: 'Ancora pochi dati.',
     fewDataSub: 'Le statistiche sul pubblico compaiono con le prime prenotazioni.',
+    tabActive: 'In corso',
+    tabHistory: 'Storico',
+    histTotals: 'Totali di sempre',
+    histEmpty: 'Nessun evento concluso',
+    fill: 'Riempimento',
   },
   bizEvents: {
     title: 'Gestione eventi',

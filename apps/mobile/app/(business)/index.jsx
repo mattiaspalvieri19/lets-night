@@ -34,6 +34,7 @@ export default function BusinessDashboard() {
   const [venue, setVenue] = useState(null);
   const [raw, setRaw] = useState(null); // dati grezzi: le statistiche si calcolano nel useMemo sotto
   const [selectedEvent, setSelectedEvent] = useState('all');
+  const [tab, setTab] = useState('active'); // 'active' = eventi in corso/futuri | 'history' = conclusi
 
   async function loadData() {
     try {
@@ -48,7 +49,7 @@ export default function BusinessDashboard() {
           .select('id, status, checked_in, total_price, booking_type, created_at, user_id, events!inner(id, venue_id), profiles(birth_date, gender)')
           .eq('events.venue_id', venueData.id)
           .not('status', 'in', '("cancelled","denied")'),
-        supabase.from('events').select('id, title, event_date, event_time, is_active').eq('venue_id', venueData.id).order('event_date', { ascending: false }),
+        supabase.from('events').select('id, title, event_date, event_time, is_active, capacity, booked_count').eq('venue_id', venueData.id).order('event_date', { ascending: false }),
         // Ingressi: TUTTE le prenotazioni (inclusi denied/cancelled) per categorizzare entrati/rifiutati/no-show
         supabase.from('bookings')
           .select('status, checked_in, refund_reason, events!inner(id, venue_id, event_date)')
@@ -68,15 +69,19 @@ export default function BusinessDashboard() {
 
   // Statistiche calcolate sullo scope del filtro evento: 'all' = somma di tutti
   // gli eventi (comportamento storico), altrimenti solo l'evento selezionato.
+  // Dashboard = PRESENTE (eventi in corso/futuri, numeri da sempre);
+  // Storico = eventi conclusi, con totali aggregati e card per-evento.
   const d = useMemo(() => {
     if (!raw) return null;
-    const all = selectedEvent === 'all';
-    const bs = all ? raw.bookings : raw.bookings.filter(b => b.events?.id === selectedEvent);
-    const evs = all ? raw.events : raw.events.filter(e => e.id === selectedEvent);
-    const allBk = all ? raw.allBk : raw.allBk.filter(b => b.events?.id === selectedEvent);
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const tabEvs = raw.events.filter(e => (tab === 'history' ? e.event_date < todayStr : e.event_date >= todayStr));
+    const all = selectedEvent === 'all';
+    const evs = all ? tabEvs : tabEvs.filter(e => e.id === selectedEvent);
+    const ids = new Set(evs.map(e => e.id));
+    const bs = raw.bookings.filter(b => ids.has(b.events?.id));
+    const allBk = raw.allBk.filter(b => ids.has(b.events?.id));
 
     // raggruppa prenotazioni per evento
     const byEvent = {};
@@ -122,17 +127,34 @@ export default function BusinessDashboard() {
     const ritornano = users.filter(u => countAllByUser[u] > 1).length;
     const pctRitornano = users.length ? Math.round((ritornano / users.length) * 100) : 0;
 
-    // Ingressi: venduti = entrati + rifiutati + no-show (formula condivisa).
+    // Ingressi conclusi (formula condivisa) — mostrati nello Storico.
     const ingressi = categorizeEntries(allBk, todayStr);
 
+    // Card per-evento dello Storico
+    const pastCards = tab !== 'history' ? [] : evs
+      .slice()
+      .sort((a, b) => (a.event_date < b.event_date ? 1 : -1))
+      .map(e => {
+        const list = raw.allBk.filter(b => b.events?.id === e.id);
+        const act = raw.bookings.filter(b => b.events?.id === e.id);
+        const cat = categorizeEntries(list, todayStr);
+        return {
+          id: e.id, title: e.title, date: e.event_date,
+          prenotazioni: act.length, incasso: sumRevenue(act),
+          riempimento: e.capacity ? Math.round(((e.booked_count || 0) / e.capacity) * 100) : null,
+          ...cat,
+        };
+      });
+
     return {
+      eventsForChips: tabEvs, pastCards,
       todayEvents,
       venditeTotali, venditeMese, venditeBiglietti, venditeTavoli,
       prenotazioni: bs.length, tassoIngresso, clientiUnici: users.length, eventiInProgramma,
       etaMedia, fasce, gen, pctRitornano, agesCount: ages.length,
       ingressi,
     };
-  }, [raw, selectedEvent]);
+  }, [raw, selectedEvent, tab]);
 
   if (loading) {
     return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={C.accent} size="large" /></View>;
@@ -154,11 +176,24 @@ export default function BusinessDashboard() {
           </View>
         )}
 
+        {/* In corso | Storico */}
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
+          {[['active', t('bizDash.tabActive')], ['history', t('bizDash.tabHistory')]].map(([id, label]) => {
+            const on = tab === id;
+            return (
+              <Pressable key={id} onPress={() => { setTab(id); setSelectedEvent('all'); }}
+                style={{ flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: 'center', backgroundColor: on ? C.white : C.card, borderWidth: 1, borderColor: on ? C.white : C.line }}>
+                <Text style={{ color: on ? C.bg : C.sub, fontSize: 13, fontWeight: '700' }}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Filtro evento: le statistiche sotto si ricalcolano sullo scope scelto */}
-        {(raw?.events?.length || 0) > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
+        {(d?.eventsForChips?.length || 0) > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {[{ id: 'all', title: t('biz.allEvents') }, ...raw.events].map(ev => (
+              {[{ id: 'all', title: t('biz.allEvents') }, ...d.eventsForChips].map(ev => (
                 <Pressable key={ev.id} onPress={() => setSelectedEvent(ev.id)}
                   style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: selectedEvent === ev.id ? C.white : C.card2, borderWidth: 1, borderColor: selectedEvent === ev.id ? C.white : C.line, maxWidth: 220 }}
                 >
@@ -172,7 +207,7 @@ export default function BusinessDashboard() {
         )}
       </View>
 
-      {/* STASERA */}
+      {tab === 'active' && (
       <Section title={t('bizDash.tonight')}>
         {d?.todayEvents?.length ? d.todayEvents.map(e => {
           const pct = e.prenotati ? Math.round((e.entrati / e.prenotati) * 100) : 0;
@@ -196,6 +231,7 @@ export default function BusinessDashboard() {
           </View>
         )}
       </Section>
+      )}
 
       {/* VENDITE */}
       <Section title={t('bizDash.salesSection')}>
@@ -226,7 +262,7 @@ export default function BusinessDashboard() {
         </View>
       </Section>
 
-      {/* INGRESSI */}
+      {tab === 'history' && (
       <Section title={t('bizDash.entriesSection')}>
         <View style={{ backgroundColor: C.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: C.line }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
@@ -253,6 +289,34 @@ export default function BusinessDashboard() {
           </Text>
         </View>
       </Section>
+      )}
+
+      {tab === 'history' && (
+      <Section title={t('bizDash.histTotals')}>
+        {d?.pastCards?.length ? d.pastCards.map(e => (
+          <View key={e.id} style={{ backgroundColor: C.card, borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: C.line }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: C.white, fontWeight: '700', fontSize: 15, flex: 1, marginRight: 10 }} numberOfLines={1}>{e.title}</Text>
+              <Text style={{ color: C.muted, fontSize: 12 }}>{e.date}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
+              <View><Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{e.venduti}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.soldConcluded').split(' ')[0]}</Text></View>
+              <View><Text style={{ color: C.green, fontSize: 16, fontWeight: '800' }}>{e.entrati}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lEntered')}</Text></View>
+              <View><Text style={{ color: C.danger, fontSize: 16, fontWeight: '800' }}>{e.rifiutati}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lRejected')}</Text></View>
+              <View><Text style={{ color: C.amber, fontSize: 16, fontWeight: '800' }}>{e.noShow}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lNoShow')}</Text></View>
+              <View><Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{euro(e.incasso)}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.salesLow')}</Text></View>
+              {e.riempimento != null && (
+                <View><Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{e.riempimento}%</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.fill')}</Text></View>
+              )}
+            </View>
+          </View>
+        )) : (
+          <View style={{ backgroundColor: C.card, borderRadius: 14, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: C.line }}>
+            <Text style={{ color: C.sub, fontSize: 14 }}>{t('bizDash.histEmpty')}</Text>
+          </View>
+        )}
+      </Section>
+      )}
 
       {/* KPI */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, marginBottom: 24 }}>
