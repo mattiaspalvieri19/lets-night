@@ -172,6 +172,10 @@ export default function AdminDashboard() {
             <Ionicons name="log-out-outline" size={15} color={COLORS.textSecondary} />
             <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600' }}>Esci</Text>
           </Pressable>
+          <Pressable onPress={() => router.push('/(admin)/registro')} hitSlop={8}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+            <Ionicons name="reader-outline" size={19} color={COLORS.textSecondary} />
+          </Pressable>
           <Pressable onPress={() => router.push('/(admin)/manage-support')} hitSlop={8}
             style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: COLORS.borderSubtle, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="chatbubbles-outline" size={19} color={COLORS.textSecondary} />

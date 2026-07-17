@@ -53,6 +53,7 @@ export default function AdminLayout() {
         <Tabs.Screen name="venues" options={{ title: 'Locali', tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} /> }} />
         <Tabs.Screen name="users" options={{ title: 'Utenti', tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} /> }} />
         {/* Route del gruppo ma non tab */}
+        <Tabs.Screen name="registro" options={{ href: null }} />
         <Tabs.Screen name="manage-event/[id]" options={{ href: null }} />
         <Tabs.Screen name="manage-support/index" options={{ href: null }} />
         <Tabs.Screen name="manage-support/[id]" options={{ href: null }} />
