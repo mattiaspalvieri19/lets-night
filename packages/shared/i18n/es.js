@@ -569,6 +569,7 @@ export default {
     histTotals: 'Totales históricos',
     histEmpty: 'Sin eventos concluidos',
     fill: 'Ocupación',
+    soldShort: 'Vendidos',
   },
   bizEvents: {
     title: 'Gestión de eventos',
@@ -737,6 +738,8 @@ export default {
     extraShare: 'Cubre más cuotas',
     stToSettle: 'Por saldar',
     noTablesSearch: 'No se encontraron mesas',
+    noEntriesSearch: 'No se encontraron entradas',
+    overTotal: 'Por encima del total: +{amount}',
   },
   bizEvent: {
     fAll: 'Todos',

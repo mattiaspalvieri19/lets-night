@@ -39,7 +39,7 @@ function matchesSearch(booking, q) {
 
 export default function BusinessBookings() {
   const { t, fmtDate } = useI18n();
-  const { event: eventParam } = useLocalSearchParams();
+  const { event: eventParam, ts: tsParam } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState([]);
@@ -55,13 +55,16 @@ export default function BusinessBookings() {
   const appliedParam = useRef(null);
 
   useEffect(() => {
-    if (eventParam && appliedParam.current !== eventParam) {
-      appliedParam.current = eventParam;
+    // La chiave include il timestamp del tap: ogni "Vedi prenotazioni" riapplica
+    // il filtro, anche sullo stesso evento (il ref evita solo il replay stale).
+    const key = `${eventParam || ''}-${tsParam || ''}`;
+    if (eventParam && appliedParam.current !== key) {
+      appliedParam.current = key;
       setSelectedEvent(String(eventParam));
       setView('overview');
       setSearch('');
     }
-  }, [eventParam]);
+  }, [eventParam, tsParam]);
 
   function goTo(nextView) {
     setSearch('');
@@ -253,8 +256,10 @@ export default function BusinessBookings() {
           {isEntries ? (
             entries.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-                <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>{t('bizBookings.noEntries')}</Text>
-                <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('bizBookings.noEntriesSub')}</Text>
+                <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+                  {q ? t('bizBookings.noEntriesSearch') : t('bizBookings.noEntries')}
+                </Text>
+                {!q && <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{t('bizBookings.noEntriesSub')}</Text>}
               </View>
             ) : entries.map(b => {
               const age = calcAge(b.profiles?.birth_date);
@@ -278,6 +283,9 @@ export default function BusinessBookings() {
                       </Text>
                       {b.event_ticket_types?.description ? (
                         <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }} numberOfLines={1}>{b.event_ticket_types.description}</Text>
+                      ) : null}
+                      {b.profiles?.phone ? (
+                        <Text style={{ color: COLORS.textDisabled, fontSize: 11, marginTop: 3 }} selectable>{b.profiles.phone}</Text>
                       ) : null}
                       {selectedEvent === 'all' && (
                         <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 3 }} numberOfLines={1}>{b.events?.title}</Text>
@@ -547,6 +555,11 @@ function TableDetailModal({ table, members, checkingIn, onCheckIn, onClose }) {
             <TotalRow label={t('bizBookings.stTableTotal')} value={euro(total)} />
             <TotalRow label={t('bizBookings.stPaidApp')} value={euro(paid)} valueColor={COLORS.success} />
             <TotalRow label={t('bizBookings.stResidual')} value={euro(residual)} valueColor={residual > 0 ? COLORS.warning : COLORS.success} />
+            {paid > total + 0.009 && (
+              <Text style={{ color: COLORS.warning, fontSize: 12, fontWeight: '700', marginTop: 6 }}>
+                {t('bizBookings.overTotal', { amount: euro(paid - total) })}
+              </Text>
+            )}
           </View>
 
           <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>

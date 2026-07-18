@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -57,8 +57,9 @@ export default function AdminRegistro() {
   const [fType, setFType] = useState('');
   const [fDays, setFDays] = useState(30);
   const [missing, setMissing] = useState(false);
+  const filtersRef = useRef({ view: 'problems', type: '', days: 30 });
 
-  async function loadData(view = fView, type = fType, days = fDays) {
+  async function loadData(view = filtersRef.current.view, type = filtersRef.current.type, days = filtersRef.current.days) {
     let q = supabase
       .from('audit_logs')
       .select('*')
@@ -82,9 +83,9 @@ export default function AdminRegistro() {
   useFocusEffect(useCallback(() => { loadData(); }, []));
   const onRefresh = useCallback(async () => { setRefreshing(true); await loadData(); setRefreshing(false); }, [fView, fType, fDays]);
 
-  function setView(v) { setFView(v); loadData(v, fType, fDays); }
-  function setType(v) { setFType(v); loadData(fView, v, fDays); }
-  function setDays(v) { setFDays(v); loadData(fView, fType, v); }
+  function setView(v) { setFView(v); filtersRef.current = { ...filtersRef.current, view: v }; loadData(v, fType, fDays); }
+  function setType(v) { setFType(v); filtersRef.current = { ...filtersRef.current, type: v }; loadData(fView, v, fDays); }
+  function setDays(v) { setFDays(v); filtersRef.current = { ...filtersRef.current, days: v }; loadData(fView, fType, v); }
 
   if (loading) return <View style={{ flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
 

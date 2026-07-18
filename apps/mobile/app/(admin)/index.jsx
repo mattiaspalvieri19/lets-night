@@ -246,7 +246,7 @@ export default function AdminDashboard() {
       {venueId && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, marginBottom: 8 }}>
           {[[null, 'Tutti gli eventi'], ...raw.events
-            .filter(e => e.venue_id === venueId)
+            .filter(e => e.venue_id === venueId && (tab === 'history' ? e.event_date < todayLocal() : e.event_date >= todayLocal()))
             .sort((a, b) => (a.event_date < b.event_date ? 1 : -1))
             .map(e => [e.id, e.title])].map(([eid, label]) => {
             const active = eventId === eid;

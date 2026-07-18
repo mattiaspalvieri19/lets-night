@@ -104,6 +104,8 @@ DECLARE
   origin       record;
   dest         record;
   dest_members int;
+  dest_paid    numeric;
+  overflow     numeric := 0;
   origin_left  int;
   origin_emptied boolean := false;
 BEGIN
@@ -138,12 +140,17 @@ BEGIN
     RAISE EXCEPTION 'DIFFERENT_EVENT' USING ERRCODE = 'check_violation';
   END IF;
 
-  SELECT count(*) INTO dest_members
+  SELECT count(*), COALESCE(SUM(total_price), 0) INTO dest_members, dest_paid
   FROM public.bookings
   WHERE table_id = p_dest_table_id AND status NOT IN ('cancelled','denied');
+  -- Limite DURO: solo le persone. Decisione prodotto (Mattia, 2026-07-18):
+  -- lo sforamento ECONOMICO è ammesso (tavoli pubblici, quote eque, caso raro:
+  -- il locale viene informato e si organizza su drink/extra) ma va reso
+  -- VISIBILE, mai nascosto → severity 'warn' nel Registro + overflow nel result.
   IF dest_members + 1 > dest.max_people THEN
     RAISE EXCEPTION 'DEST_FULL' USING ERRCODE = 'check_violation';
   END IF;
+  overflow := GREATEST(0, (dest_paid + COALESCE(b.total_price, 0)) - COALESCE(dest.total_price, 0));
 
   -- Sblocco immutabilità SOLO per questa transazione, poi UPDATE.
   PERFORM set_config('letsnight.table_move', '1', true);
@@ -160,22 +167,29 @@ BEGIN
   END IF;
 
   -- Registro (M3): lo spostamento è un'azione operativa admin da tracciare.
+  -- Con sforamento economico → 'warn' (visibile tra i Problemi), mai nascosto.
   BEGIN
     INSERT INTO public.audit_logs (type, severity, actor_id, user_id, booking_id, event_id, message, details)
     VALUES (
-      'table_member_moved', 'info', auth.uid(), b.user_id, b.id, b.event_id,
-      'Partecipante spostato di tavolo dall''amministrazione',
+      'table_member_moved',
+      CASE WHEN overflow > 0 THEN 'warn' ELSE 'info' END,
+      auth.uid(), b.user_id, b.id, b.event_id,
+      CASE WHEN overflow > 0
+        THEN 'Partecipante spostato di tavolo — il tavolo di destinazione supera il totale di ' || overflow || ' €'
+        ELSE 'Partecipante spostato di tavolo dall''amministrazione'
+      END,
       jsonb_build_object(
         'from_table', b.table_id,
         'to_table', p_dest_table_id,
         'amount_paid', b.total_price,
+        'dest_overflow', overflow,
         'origin_emptied', origin_emptied
       )
     );
   EXCEPTION WHEN OTHERS THEN NULL;  -- il diario non blocca mai l'operazione
   END;
 
-  RETURN jsonb_build_object('ok', true, 'origin_emptied', origin_emptied);
+  RETURN jsonb_build_object('ok', true, 'origin_emptied', origin_emptied, 'overflow', overflow);
 END;
 $$;
 

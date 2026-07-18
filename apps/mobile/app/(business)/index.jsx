@@ -300,7 +300,7 @@ export default function BusinessDashboard() {
               <Text style={{ color: C.muted, fontSize: 12 }}>{e.date}</Text>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }}>
-              <View><Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{e.venduti}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.soldConcluded').split(' ')[0]}</Text></View>
+              <View><Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>{e.venduti}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.soldShort')}</Text></View>
               <View><Text style={{ color: C.green, fontSize: 16, fontWeight: '800' }}>{e.entrati}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lEntered')}</Text></View>
               <View><Text style={{ color: C.danger, fontSize: 16, fontWeight: '800' }}>{e.rifiutati}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lRejected')}</Text></View>
               <View><Text style={{ color: C.amber, fontSize: 16, fontWeight: '800' }}>{e.noShow}</Text><Text style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{t('bizDash.lNoShow')}</Text></View>

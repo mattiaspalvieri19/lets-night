@@ -698,6 +698,7 @@ export default function AdminEventDetailScreen() {
           visible={editModal}
           mode="edit"
           event={event}
+          hasActiveTicketTypes={ticketTypes.some(tk => tk.is_active)}
           onClose={() => setEditModal(false)}
           onSaved={loadData}
         />

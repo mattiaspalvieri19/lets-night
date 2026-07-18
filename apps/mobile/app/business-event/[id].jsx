@@ -341,7 +341,7 @@ export default function BusinessEventDetailScreen() {
       {/* Vedi prenotazioni → tab Prenotazioni (filtro già su questo evento) */}
       <View style={{ paddingHorizontal: 20, marginBottom: 22 }}>
         <Pressable
-          onPress={() => router.push({ pathname: '/(business)/bookings', params: { event: String(id) } })}
+          onPress={() => router.push({ pathname: '/(business)/bookings', params: { event: String(id), ts: String(Date.now()) } })}
           style={({ pressed }) => ({
             flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
             backgroundColor: COLORS.bgElev2, borderRadius: 12, padding: 16,

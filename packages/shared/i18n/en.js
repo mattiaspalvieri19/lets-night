@@ -569,6 +569,7 @@ export default {
     histTotals: 'All-time totals',
     histEmpty: 'No past events',
     fill: 'Fill rate',
+    soldShort: 'Sold',
   },
   bizEvents: {
     title: 'Event management',
@@ -737,6 +738,8 @@ export default {
     extraShare: 'Covers extra shares',
     stToSettle: 'To settle',
     noTablesSearch: 'No tables found',
+    noEntriesSearch: 'No entries found',
+    overTotal: 'Over the total: +{amount}',
   },
   bizEvent: {
     fAll: 'All',

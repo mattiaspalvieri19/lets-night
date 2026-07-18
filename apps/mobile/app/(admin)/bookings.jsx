@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, TextInput, Alert, Modal } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -66,8 +66,11 @@ export default function AdminBookings() {
   const [busy, setBusy] = useState(null);
   const [tableDetail, setTableDetail] = useState(null);
   const [moveMember, setMoveMember] = useState(null); // booking da spostare
+  // Il reload al focus legge i filtri da un ref: la closure di useFocusEffect
+  // cattura la loadData del primo render (filtri null) — il ref resta vivo.
+  const filtersRef = useRef({ venue: null, event: null });
 
-  async function loadData(v = venueFilter, e = eventFilter) {
+  async function loadData(v = filtersRef.current.venue, e = filtersRef.current.event) {
     let bq = supabase
       .from('bookings')
       .select('*, events!inner(id, title, event_date, venue_id, venues(name)), profiles(full_name, birth_date, gender), event_ticket_types(name, drinks_included)')
@@ -107,6 +110,7 @@ export default function AdminBookings() {
   async function selectVenue(vid) {
     setVenueFilter(vid);
     setEventFilter(null);
+    filtersRef.current = { venue: vid, event: null };
     if (vid) {
       const { data } = await supabase.from('events')
         .select('id, title, event_date')
@@ -122,12 +126,14 @@ export default function AdminBookings() {
 
   function selectEvent(eid) {
     setEventFilter(eid);
+    filtersRef.current = { ...filtersRef.current, event: eid };
     loadData(venueFilter, eid);
   }
 
   function goTo(nextView) {
     setSearch('');
     setExpanded(null);
+    setStatusFilter('all');
     setView(nextView);
   }
 
@@ -243,9 +249,13 @@ export default function AdminBookings() {
   // ── Spostamento partecipante (RPC admin, stessa-serata) ───────────────────
   function askMove(member, destTable) {
     const name = member.snapshot_full_name || member.profiles?.full_name || 'Utente';
+    const destMembers = sharesByTable[destTable.id] || [];
+    const destPaid = destMembers.reduce((s, m) => s + Number(m.total_price || 0), 0);
+    const over = Math.max(0, destPaid + Number(member.total_price || 0) - Number(destTable.total_price || 0));
     Alert.alert(
       'Spostare il partecipante?',
-      `${name} passerà al tavolo di ${destTable.profiles?.full_name || 'altro utente'} (${destTable.event_table_types?.name || 'Tavolo'}). L'importo pagato (${euro(member.total_price)}) e il QR restano validi; i totali dei due tavoli si ricalcolano.`,
+      `${name} passerà al tavolo di ${destTable.profiles?.full_name || 'altro utente'} (${destTable.event_table_types?.name || 'Tavolo'}). L'importo pagato (${euro(member.total_price)}) e il QR restano validi; i totali dei due tavoli si ricalcolano.`
+      + (over > 0.009 ? `\n\nNota: con questa quota il tavolo supererà il suo totale di ${euro(over)}.` : ''),
       [
         { text: 'Annulla', style: 'cancel' },
         { text: 'Sposta', onPress: async () => {
@@ -390,7 +400,7 @@ export default function AdminBookings() {
           {isEntries ? (
             entries.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-                <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600' }}>{q ? 'Nessun ingresso trovato' : 'Nessun ingresso'}</Text>
+                <Text style={{ color: COLORS.textPrimary, fontSize: 14, fontWeight: '600' }}>{(q || statusFilter !== 'all') ? 'Nessun ingresso trovato' : 'Nessun ingresso'}</Text>
               </View>
             ) : entries.map(b => {
               const isOpen = expanded === b.id;
@@ -513,6 +523,11 @@ export default function AdminBookings() {
                         <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>
                           {members.length}/{tableDetail.max_people} partecipanti · pagato in app {euro(tt.paid)} su {euro(tt.total)} · residuo <Text style={{ color: tt.residual > 0 ? COLORS.warning : COLORS.success, fontWeight: '700' }}>{euro(tt.residual)}</Text>
                         </Text>
+                        {tt.paid > tt.total + 0.009 && (
+                          <Text style={{ color: COLORS.warning, fontSize: 12, fontWeight: '700', marginTop: 4 }}>
+                            Oltre il totale: +{euro(tt.paid - tt.total)}
+                          </Text>
+                        )}
                       </View>
                       <Text style={{ color: COLORS.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
                         Partecipanti ({members.length})
