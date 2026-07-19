@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, RefreshControl, Modal } from 'react-native';
 import { useFocusEffect, router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { COLORS, FONT_FAMILY } from '@lets-night/shared';
+import { COLORS, FONT_FAMILY, formatDate } from '@lets-night/shared';
 import { Ionicons } from '@expo/vector-icons';
 
 // REGISTRO (audit_logs) — versione app della pagina /admin/registro web.
@@ -47,6 +47,18 @@ function daysAgoIso(days) {
   return d.toISOString();
 }
 
+function shortId(id) { return id ? id.slice(0, 8) + '…' : ''; }
+function euro(v) { return Number(v || 0).toFixed(2).replace('.', ',').replace(',00', '') + ' €'; }
+
+function RefLine({ label, value }) {
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: 3 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 11, width: 92 }}>{label}</Text>
+      <Text style={{ color: COLORS.textSecondary, fontSize: 11, flex: 1 }} selectable>{value}</Text>
+    </View>
+  );
+}
+
 export default function AdminRegistro() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,9 +69,14 @@ export default function AdminRegistro() {
   const [fType, setFType] = useState('');
   const [fDays, setFDays] = useState(30);
   const [missing, setMissing] = useState(false);
+  const [typeMenu, setTypeMenu] = useState(false);
+  // Codici → nomi: mappe id→record per evento/profilo/prenotazione.
+  const [refs, setRefs] = useState({ ev: {}, pr: {}, bk: {} });
+  const [myId, setMyId] = useState(null);
   const filtersRef = useRef({ view: 'problems', type: '', days: 30 });
 
   async function loadData(view = filtersRef.current.view, type = filtersRef.current.type, days = filtersRef.current.days) {
+    supabase.auth.getSession().then(({ data: { session } }) => setMyId(session?.user?.id || null));
     let q = supabase
       .from('audit_logs')
       .select('*')
@@ -76,8 +93,34 @@ export default function AdminRegistro() {
     } else {
       setMissing(false);
       setRows(data || []);
+      resolveRefs(data || []);
     }
     setLoading(false);
+  }
+
+  // Risolve i riferimenti delle righe in nomi leggibili. Se un record non
+  // esiste più (eliminato) la riga mostra il codice troncato come fallback.
+  async function resolveRefs(list) {
+    const evIds = [...new Set(list.map(r => r.event_id).filter(Boolean))];
+    const prIds = [...new Set(list.flatMap(r => [r.user_id, r.actor_id]).filter(Boolean))];
+    const bkIds = [...new Set(list.map(r => r.booking_id).filter(Boolean))];
+    const [ev, pr, bk] = await Promise.all([
+      evIds.length ? supabase.from('events').select('id, title, event_date').in('id', evIds) : { data: [] },
+      prIds.length ? supabase.from('profiles').select('id, full_name, role').in('id', prIds) : { data: [] },
+      bkIds.length ? supabase.from('bookings').select('id, snapshot_full_name, total_price').in('id', bkIds) : { data: [] },
+    ]);
+    const toMap = arr => Object.fromEntries((arr || []).map(x => [x.id, x]));
+    setRefs({ ev: toMap(ev.data), pr: toMap(pr.data), bk: toMap(bk.data) });
+  }
+
+  function actorLabel(r) {
+    if (!r.actor_id) return 'Server · azione automatica';
+    const p = refs.pr[r.actor_id];
+    let name = p?.full_name || shortId(r.actor_id);
+    if (r.actor_id === myId) name += ' (tu)';
+    else if (p?.role === 'business') name += ' (locale)';
+    else if (r.actor_id === r.user_id) name += " (l'utente stesso)";
+    return name;
   }
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
@@ -129,18 +172,17 @@ export default function AdminRegistro() {
         })}
       </ScrollView>
 
-      {/* Tipo */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 36 }} contentContainerStyle={{ paddingHorizontal: 20, gap: 6, paddingBottom: 10 }}>
-        {[['', 'Tutti i tipi'], ...Object.entries(TYPE_LABELS)].map(([k, v]) => {
-          const on = fType === k;
-          return (
-            <Pressable key={k || 'all'} onPress={() => setType(k)}
-              style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: on ? COLORS.textPrimary : 'transparent', borderWidth: 1, borderColor: on ? COLORS.textPrimary : COLORS.borderSubtle }}>
-              <Text style={{ color: on ? COLORS.bg : COLORS.textSecondary, fontSize: 11, fontWeight: on ? '600' : '500' }}>{v}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* Tipo — menù a tendina (le chip orizzontali erano troppo dispersive) */}
+      <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+        <Pressable onPress={() => setTypeMenu(true)}
+          style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bgElev2, borderWidth: 1, borderColor: fType ? COLORS.textPrimary : COLORS.borderSubtle, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 }}>
+          <Ionicons name="funnel-outline" size={14} color={fType ? COLORS.textPrimary : COLORS.textMuted} />
+          <Text style={{ color: fType ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 13, fontWeight: '600', flex: 1, marginLeft: 8 }} numberOfLines={1}>
+            {fType ? (TYPE_LABELS[fType] || fType) : 'Tutti i tipi'}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+        </Pressable>
+      </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.brand} />}>
         {missing ? (
@@ -173,12 +215,24 @@ export default function AdminRegistro() {
               </View>
               {isOpen && (
                 <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle }}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11 }} selectable>
-                    {r.booking_id ? `Prenotazione: ${r.booking_id}\n` : ''}
-                    {r.event_id ? `Evento: ${r.event_id}\n` : ''}
-                    {r.user_id ? `Utente: ${r.user_id}\n` : ''}
-                    {`Autore: ${r.actor_id || 'server'}`}
-                  </Text>
+                  {r.booking_id ? (
+                    <RefLine label="Prenotazione" value={
+                      refs.bk[r.booking_id]
+                        ? `${refs.bk[r.booking_id].snapshot_full_name || refs.pr[r.user_id]?.full_name || shortId(r.booking_id)} · ${euro(refs.bk[r.booking_id].total_price)}`
+                        : shortId(r.booking_id)
+                    } />
+                  ) : null}
+                  {r.event_id ? (
+                    <RefLine label="Evento" value={
+                      refs.ev[r.event_id]
+                        ? `${refs.ev[r.event_id].title} · ${formatDate(refs.ev[r.event_id].event_date)}`
+                        : shortId(r.event_id)
+                    } />
+                  ) : null}
+                  {r.user_id ? (
+                    <RefLine label="Utente" value={refs.pr[r.user_id]?.full_name || shortId(r.user_id)} />
+                  ) : null}
+                  <RefLine label="Autore" value={actorLabel(r)} />
                   {r.details ? (
                     <View style={{ backgroundColor: COLORS.bgElev3, borderRadius: 8, padding: 10, marginTop: 8 }}>
                       <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontFamily: 'Courier' }} selectable>
@@ -192,6 +246,28 @@ export default function AdminRegistro() {
           );
         })}
       </ScrollView>
+
+      <Modal visible={typeMenu} transparent animationType="slide" onRequestClose={() => setTypeMenu(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onPress={() => setTypeMenu(false)} />
+          <View style={{ backgroundColor: COLORS.bgElev2, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 30, maxHeight: '75%' }}>
+            <View style={{ width: 36, height: 4, backgroundColor: COLORS.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 14 }} />
+            <Text style={{ fontFamily: FONT_FAMILY.display, color: COLORS.textPrimary, fontSize: 17, paddingHorizontal: 24, marginBottom: 8 }}>Filtra per tipo</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {[['', 'Tutti i tipi'], ...Object.entries(TYPE_LABELS)].map(([k, label]) => {
+                const on = fType === k;
+                return (
+                  <Pressable key={k || 'all'} onPress={() => { setTypeMenu(false); setType(k); }}
+                    style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: COLORS.borderSubtle, backgroundColor: pressed ? COLORS.bgElev3 : 'transparent' })}>
+                    <Text style={{ color: on ? COLORS.textPrimary : COLORS.textSecondary, fontSize: 14, fontWeight: on ? '700' : '500', flex: 1 }}>{label}</Text>
+                    {on && <Ionicons name="checkmark" size={18} color={COLORS.brand} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
